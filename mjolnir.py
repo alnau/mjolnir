@@ -1,14 +1,16 @@
 
-from image_processing import analyseAll, analyseFile
 from camera_feed import cameraHandler
 
-
+from image_processing import ImageData
 
 def main():
     # cameraHandler()
     path = "D:\Photonics\KGW МУР"
+    name = "!18_d.tif" 
 
-    analyseAll(path)
+    image_data = ImageData(path,name)
+    image_data.analyseFile()
+    
 
         
         

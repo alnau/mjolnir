@@ -21,7 +21,12 @@ def getReport(name, h_width, left_side_mm, right_side_mm, coords_of_max_intensit
     return report
 
 
-def bresnanLine(x1,y1,x2,y2, width, height):
+def bresnanLine(p1,p2, width, height):
+    x1 = p1[0]
+    y1 = p1[1]
+
+    x2 = p2[0]
+    y2 = p2[1]
     
     if (x1 == x2):
         # вертикальная линя
