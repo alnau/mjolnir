@@ -1,0 +1,5 @@
+PIXEL_TO_MM = 0.0052
+
+MAX_EXPOSURE_MS = 1
+
+FG_COLOR = ['#3a7ebf', '#1f538d']

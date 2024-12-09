@@ -4,7 +4,15 @@ import csv
 import cv2
 import matplotlib.pyplot as plt
 
+import scipy as sp
+from scipy.optimize import differential_evolution
+
+from constants import *
+
 from PIL import Image as img
+
+
+
 
 
 def getReport(name, h_width, left_side_mm, right_side_mm, coords_of_max_intensity, coords_of_com, angle):
@@ -27,7 +35,7 @@ def bresnanLine(p1,p2, width, height):
 
     x2 = p2[0]
     y2 = p2[1]
-    
+
     if (x1 == x2):
         # вертикальная линя
         xcoordinates = x1+np.zeros(height)
@@ -178,3 +186,82 @@ def printReportToCSV(new_names, width_data_d, width_data_o):
             print(string)
             writer.writerow([str(new_names[i]), str(width_data_d[i]), str(width_data_o[i])])
 
+
+def getIntegral(x1,y1,x2,y2,image, moment = 0):
+        if (x1 == x2 and y1 == y2):
+            return -1000000
+
+        width, height = getSize(image)
+
+        brightnessValues = []
+
+        p1 = (x1,y1)
+        p2 = (x2,y2)
+        
+        x_coords_index, y_coords_index = bresnanLine(p1,p2, width, height)
+        
+
+        lenght = len(x_coords_index) - 1
+        if (lenght == 0):
+            return -100000
+
+        for i in range(lenght):
+            try:
+                brightness  = image.getpixel((x_coords_index[i]-1, y_coords_index[i]-1))
+        
+                # brightness = pixel[0]
+                brightnessValues.append(brightness)
+            except:
+                print("error in getIntegral")
+
+
+        integral = 0
+        maximum = max(brightnessValues)
+        len_along_the_line = 0
+        for i in range(lenght-1):
+            try:
+                deltaLineCoord = PIXEL_TO_MM*np.sqrt((x_coords_index[i]-x_coords_index[i+1])**2 + (y_coords_index[i] - y_coords_index[i+1])**2)
+                # if (brightnessValues[i]/maximum > 0.135):
+                if (moment == 0):
+                    # if (brightnessValues[i]/maximum > 0.05):
+                    integral += brightnessValues[i]*deltaLineCoord
+                else:
+                    integral += brightnessValues[i]*deltaLineCoord*len_along_the_line**moment
+                    len_along_the_line+=deltaLineCoord
+            except:
+                print("error in integral; i=", i, "length-1 =", lenght - 1)
+        # print(integral)
+        return integral
+
+def funcToOptimize(args,image, RMS = True):
+    x0,y0,x1,y1 = map(int, args)
+    if (RMS):
+        norm = 1.0/getIntegral(x0,y0,x1,y1,image)
+        dispersion = norm*getIntegral(x0,y0,x1,y1,image, moment=2) - (norm**2)*getIntegral(x0,y0,x1,y1,image, moment = 1)**2
+
+        return - np.sqrt(max(dispersion,0))
+    else:
+        return -getIntegral(x0,y0,x1,y1,image)
+
+def optimisation(image_name, image):
+    
+    print("optimisation on", image_name, " has been started")
+    trial_image = thresholdImage(image, 0.12)
+    start = time.time()
+    width,height = getSize(trial_image)
+    bounds = [[0, width-1], [0,height-1], [0, width-1], [0,height-1]]
+    result = differential_evolution(lambda args: funcToOptimize(args, trial_image, RMS=False), bounds)
+    x0_initial, y0_initial, x1_initial, y1_initial = map(int, result.x)
+    
+    # image_data.p0_initial[0] = x0_initial
+    # image_data.p0_initial[0] = y0_initial
+
+    # image_data.p1_initial[0] = x1_initial
+    # image_data.p1_initial[0] = y1_initial
+
+
+    bestVal = result.fun
+    end = time.time()
+    # print(best_x0,best_y0,best_x1, best_y1)
+    print("gotcha. By the way, it took", "{:.1f}".format(end-start),"s")
+    return x0_initial, y0_initial, x1_initial, y1_initial

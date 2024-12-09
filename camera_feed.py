@@ -2,6 +2,38 @@
 import numpy as np
 import cv2 
 from instrumental.drivers.cameras import uc480
+import time
+from PIL import Image
+
+import constants as const
+
+def setExposure(camera, exposure_time_ms):
+    try:
+        camera.set_exposure_time(min(exposure_time_ms, const.MAX_EXPOSURE_MS))
+    except:
+        print('Error during exposure set')
+
+def initCamera():
+    try:
+        cam = uc480.UC480_Camera()
+        cam.start_live_video(framerate=10)
+        return cam
+    except:
+        print('Error during cam init')
+        return 0
+    
+def cameraFeed(camera, shared_image):
+    # camera = uc480.UC480_Camera()
+    # camera.start_live_video(framerate=10)
+    
+    try:
+        while True:
+            frame = camera.latest_frame()
+            shared_image['image'] = Image.fromarray(frame)
+            time.sleep(0.1)  # 10 Hz refresh rate
+    finally:
+        camera.stop_live_video()
+        camera.close()
 
 
 # def cameraFeed():
@@ -43,21 +75,21 @@ def getImage(cam):
     
 
 
-def cameraHandler():
-    # cv2.setMouseCallback('image',draw_circle)
+# def initCamera():
+#     # cv2.setMouseCallback('image',draw_circle)
 
-    instruments = uc480.list_instruments()
-    cam = uc480.UC480_Camera(instruments[0])
-    cam.start_live_video(framerate = "10Hz")
+#     instruments = uc480.list_instruments()
+#     cam = uc480.UC480_Camera(instruments[0])
+#     cam.start_live_video(framerate = "10Hz")
 
-    while cam.is_open:
+#     while cam.is_open:
         
-        image = getImage(cam)
-        cv2.imshow('Camera', image)
+#         image = getImage(cam)
+#         cv2.imshow('Camera', image)
         
-        if cv2.waitKey(30) & 0xFF == ord('q'):
-            break
+#         if cv2.waitKey(30) & 0xFF == ord('q'):
+#             break
 
-    cam.close()
-    cv2.destroyAllWindows()
+#     cam.close()
+#     cv2.destroyAllWindows()
 
