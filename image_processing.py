@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import time
 import csv
 
+from scipy.stats import norm
+
 from PIL import Image as img
 from PIL import ImageDraw
 
@@ -28,11 +30,13 @@ class ImageData():
         self.norm_image = utility.normalizeImage(self.initial_image, self.image_name).convert('L')
         self.modified_image = 0
 
+        self.width, self.height = utility.getSize(self.norm_image)
         self.coords_of_max_intensity = [0,0]
         self.coords_of_com = [0,0]
         self.left_side_mm = 0
         self.right_side_mm = 0
         self.h_width = 0
+        self.radius_mm = 0
 
         self.optimisation_needed = True
         self.image_has_been_analysed = False
@@ -42,7 +46,7 @@ class ImageData():
         self.integral = 0
 
         self.brightness_values = []
-        self.normalised_brightness_values = []
+        self.normalized_brightness_values = []
         self.coord = []
 
         self.plotname = ''
@@ -54,11 +58,73 @@ class ImageData():
         self.p0_new = (0,0)
         self.p1_new = (0,0)
     
+    def getCOM(self):
+
+        arr_image = np.array(self.norm_image)
+
+        x = np.sum(np.sum(arr_image, axis=0) * np.arange(self.width)) / np.sum(arr_image)
+        y = np.sum(np.sum(arr_image, axis=1) * np.arange(self.height)) / np.sum(arr_image)
+        com = (int(x),int(y))
+        return com
+    
+    def getRMax(self, p_com):
+        rx = min(p_com[0], self.width - p_com[0])-1
+        ry = min(p_com[1], self.height - p_com[1]) - 1
+
+        return min(rx,ry)
+
+    def getRadius(self):
+        
+        print('Radius evaluation algorithm has been initiated...')
+        print('Damned math inbound! \n(god save our souls)')
+        start = time.time()
+
+        com_xy = self.getCOM()
+        self.coords_of_com[0] = com_xy[0]*PIXEL_TO_MM
+        self.coords_of_com[1] = com_xy[1]*PIXEL_TO_MM
+
+        arr_image = np.array(self.norm_image)
+        r_max = self.getRMax(com_xy)
+
+        print("calculating full integral")
+        full_integral, error_full_integral = utility.integrateOverPolar(arr_image, com_xy[0], com_xy[1], r_max)
+
+        radius_mm = 0
+        r_for_test = np.arange(10, r_max,10)
+
+        for r in r_for_test:
+            integral, error = utility.integrateOverPolar(arr_image, com_xy[0], com_xy[1], r)
+            # print(integral, error)
+            if (integral/full_integral >= 1- 0.135):
+                radius_mm = r*PIXEL_TO_MM
+                break
+        end = time.time()
+        print('That wasn''t too hard, but, man, it still hurts. Time per execution =', '{:.1f}'.format(end-start),'s')
+        
+        # self.verification(radius_mm/PIXEL_TO_MM)
+        return radius_mm
+    
+    def verification(self, radius):
+        print('verification started, grab a beer, it may take a while...')
+        start = time.time()
+        I_in = 0
+        I_sum = 0
+        com = (self.coords_of_com[0]/PIXEL_TO_MM, self.coords_of_com[1]/PIXEL_TO_MM)
+        for ix in range(self.width):
+            for iy in range(self.height):
+                if ((com[0]-ix)**2+(com[1] - iy)**2 < self.getRMax(com)**2):
+                    brightness = self.norm_image.getpixel((ix,iy))
+                    I_sum+=brightness
+                    if ((com[0]-ix)**2+(com[1] - iy)**2 < radius**2):
+                        I_in+=brightness
+        end = time.time()
+
+
+        print(I_in/I_sum, ";", end-start,"s")
+
+    
 
     def calculateNumbers(self):
-
-        
-        width, height = utility.getSize(self.initial_image)
 
         if (self.optimisation_needed):
             self.p0_new, self.p1_new = utility.getIntersections(self.p0_initial, self.p1_initial, self.initial_image)
@@ -70,7 +136,7 @@ class ImageData():
         x1 = self.p1_new[0]
         y1 = self.p1_new[1]
 
-        x_coords_index, y_coords_index = utility.bresnanLine(self.p0_new, self.p1_new, width, height)
+        x_coords_index, y_coords_index = utility.bresnanLine(self.p0_new, self.p1_new, self.width, self.height)
 
         lenght = len(x_coords_index) - 1
 
@@ -114,7 +180,7 @@ class ImageData():
             if (self.brightness_values[i] > max_tmp):
                 max_tmp = self.brightness_values[i]
                 max_index = i
-            self.normalised_brightness_values.append(self.brightness_values[i]/self.maximum)
+            self.normalized_brightness_values.append(self.brightness_values[i]/self.maximum)
         
         if (self.maximum != max_tmp):
             print("Calculated maximum not equal to max()")
@@ -135,26 +201,37 @@ class ImageData():
                     self.right_side_mm = self.coord[i]
             except:
                 print("error in max intensity; i =", i, "len =", lenght) 
+        
+        
         self.coords_of_max_intensity[0] = x_coords_index[max_index]*PIXEL_TO_MM
         self.coords_of_max_intensity[1] = y_coords_index[max_index]*PIXEL_TO_MM
+
+        self.radius_mm = self.getRadius()
+
+        
 
         self.modified_image = self.getModifiedImage()
 
         self.h_width = (self.right_side_mm - self.left_side_mm)/2
         
-        integration_len = 0
-        # и координаты центра масс вдоль выбранного направления
-        try:
-            for i in range(lenght-1):
-                dl = np.sqrt((x_coords_index[i] - x_coords_index[i+1])**2 + (y_coords_index[i] - y_coords_index[i+1])**2)
-                if (self.brightness_values[i]/max_tmp > 0.135):
-                    COM_index += integration_len*dl*self.brightness_values[i]*(PIXEL_TO_MM/self.integral)
-                integration_len+= dl
-        except:
-            print("error in COM calculations")
-        self.coords_of_com[0] = x_coords_index[int(COM_index)]*PIXEL_TO_MM
-        self.coords_of_com[1] = y_coords_index[int(COM_index)]*PIXEL_TO_MM
+        # integration_len = 0
+        # # и координаты центра масс вдоль выбранного направления
+        # try:
+        #     for i in range(lenght-1):
+        #         dl = np.sqrt((x_coords_index[i] - x_coords_index[i+1])**2 + (y_coords_index[i] - y_coords_index[i+1])**2)
+        #         if (self.brightness_values[i]/max_tmp > 0.135):
+        #             COM_index += integration_len*dl*self.brightness_values[i]*(PIXEL_TO_MM/self.integral)
+        #         integration_len+= dl
+        # except:
+        #     print("error in COM calculations")
+        # self.coords_of_com[0] = x_coords_index[int(COM_index)]*PIXEL_TO_MM
+        # self.coords_of_com[1] = y_coords_index[int(COM_index)]*PIXEL_TO_MM
 
+        # com_xy = self.getCOM()
+
+        # self.coords_of_com[0] = com_xy[0]*PIXEL_TO_MM
+        # self.coords_of_com[1] = com_xy[1]*PIXEL_TO_MM
+        
         try:
             _, tail= os.path.split(self.image_name)
             plotname, _ = os.path.splitext(tail)
@@ -164,13 +241,11 @@ class ImageData():
             plotname = 'none'
         self.angle = np.degrees(np.arctan(np.abs((self.p1_new[1]-self.p0_new[1])/(self.p1_new[0]-self.p0_new[0]))))
 
-        self.report = utility.getReport(plotname, self.h_width, self.left_side_mm, self.right_side_mm, self.coords_of_max_intensity, self.coords_of_com, self.angle)
+        self.report = utility.getReport(plotname, self.radius_mm, self.h_width, self.left_side_mm, self.right_side_mm, self.coords_of_max_intensity, self.coords_of_com, self.angle)
 
 
 
     def plotBepis(self):
-        
-        width, height = utility.getSize(self.initial_image)
         
         plt.tight_layout(pad=0)
         plt.figure(figsize=(12.1, 4.8))
@@ -198,13 +273,11 @@ class ImageData():
         plt.savefig(plotname_updated)
 
 
-    
-    
+
 
     def getModifiedImage(self):
         tmp_image = self.norm_image.copy()
 
-        width, height = utility.getSize(self.initial_image)
         x0 = self.p0_new[0]
         y0 = self.p0_new[1]
 
@@ -221,6 +294,9 @@ class ImageData():
         line_color = 255  
         line_width = 2  # Width of the line
         draw.line([self.p0_new, self.p1_new], fill = line_color, width = line_width)
+        circle_radius = int(self.radius_mm/PIXEL_TO_MM)
+        start_coords = (int(self.coords_of_com[0]/PIXEL_TO_MM),int(self.coords_of_com[1]/PIXEL_TO_MM))
+        draw.ellipse(utility.getCircleBound(start_coords, circle_radius), outline = line_color, width = line_width)
 
         return tmp_image
 

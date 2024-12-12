@@ -4,8 +4,12 @@ import csv
 import cv2
 import matplotlib.pyplot as plt
 
+
+
 import scipy as sp
 from scipy.optimize import differential_evolution
+from scipy.interpolate import griddata
+from scipy.integrate import dblquad
 
 from constants import *
 
@@ -15,10 +19,10 @@ from PIL import Image as img
 
 
 
-def getReport(name, h_width, left_side_mm, right_side_mm, coords_of_max_intensity, coords_of_com, angle):
+def getReport(name, radius, h_width, left_side_mm, right_side_mm, coords_of_max_intensity, coords_of_com, angle):
     str_name = "Имя файла: " + name + "\n"
     str_date = "Дата анализа: " + time.strftime("%d.%m.%Y") + "\n"
-    str_width = "Полуширина по уровню 0.135: " + str(round(h_width,2)) + " (мм) \n"
+    str_width = "Радиус 86.5% от интегральной энергии: " + str(round(radius,2)) + " (мм) \n"
     str_angle = "Угол поворота оси: " + str(round(angle,2)) + " (град) \n"
     str_max_I = "Координаты максимума интенсивности: " + str(round(coords_of_max_intensity[0],2)) + ", " + str(round(coords_of_max_intensity[1],2)) + " (мм) \n"
     str_COM = "Координаты центра масс пучка: " + str(round(coords_of_com[0],2)) + ", " + str(round(coords_of_com[1],2)) + " (мм) \n"
@@ -28,6 +32,9 @@ def getReport(name, h_width, left_side_mm, right_side_mm, coords_of_max_intensit
     
     return report
 
+    
+def getCircleBound(point, r):
+    return (point[0]-r,point[1]-r, point[0]+r, point[1]+r)
 
 def bresnanLine(p1,p2, width, height):
     x1 = p1[0]
@@ -293,3 +300,57 @@ def optimisation(image_name, image):
     # print(best_x0,best_y0,best_x1, best_y1)
     print("gotcha. By the way, it took", "{:.1f}".format(end-start),"s")
     return x0_initial, y0_initial, x1_initial, y1_initial
+
+
+
+def interpolateFknHard(image_data, x,y):
+    x1 = int(np.floor(x))
+    y1 = int(np.floor(y))
+
+    x2 = int(np.ceil(x))
+    y2 = int(np.ceil(y))
+
+    if (y1 == y2 and x1!=x2):
+        return (x2-x)/(x2-x1)*image_data[y1][x1] + (x-x1)/(x2-x1)*image_data[y1][x2]
+    elif (x1 == x2 and y1!=y2):
+        return (y2-y)/(y2-y1)*image_data[y1][x1] + (y-y1)/(y2-y1)*image_data[y2][x1]
+    elif (x1 == x2 and y1 == y2):
+        return image_data[y1][x1]
+    else:
+        x_inter1 = (x2-x)/(x2-x1)*image_data[y1][x1] + (x-x1)/(x2-x1)*image_data[y1][x2]
+        x_inter2 = (x2-x)/(x2-x1)*image_data[y2][x1] + (x-x1)/(x2-x1)*image_data[y2][x2]
+        y_inter = (y2-y)/(y2-y1)*x_inter1 + (y-y1)/(y2-y1)*x_inter2
+
+        return y_inter
+
+
+def integrateOverPolar(arr_image, x0, y0, r_max, r_min = 0, theta_min = 0, theta_max = 2*np.pi):
+    
+    if len(arr_image.shape) != 2:
+        raise ValueError("Image must be a 2D grayscale image")
+
+    def integrand(r, theta):
+        x = x0 + r*np.cos(theta)
+        y = y0 + r*np.sin(theta)
+        
+        result = interpolateFknHard(arr_image, x, y)*r 
+        return result 
+    
+    result, error = dblquad(integrand, theta_min, theta_max,
+                            lambda theta: r_min, lambda theta: r_max, epsabs= 0.1, epsrel = 0.1)
+    return result, error
+
+def sumOverPixels(image_data,r):
+    I_in = 0
+    I_sum = 0
+
+    com = (image_data.coords_of_com[0]/PIXEL_TO_MM, image_data.coords_of_com[1]/PIXEL_TO_MM)
+
+    for ix in range(image_data.width):
+        for iy in range(image_data.height):
+            if ((com[0]-ix)**2+(com[1] - iy)**2 < image_data.getRMax(com)**2):
+                brightness = image_data.norm_image.getpixel((ix,iy))
+                I_sum+=brightness
+                if ((com[0]-ix)**2+(com[1] - iy)**2 < r**2):
+                    I_in+=brightness
+    return (I_in/I_sum)

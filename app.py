@@ -168,12 +168,6 @@ class LeftFrame(ctk.CTkFrame):
         self.canvas.after(100, self.update_canvas, shared_image)  # 10 Hz refresh rate
 
 
-        
-
-    def getCircleBound(self, point, r):
-        return (point[0]-r,point[1]-r, point[0]+r, point[1]+r)
-        
-
     def updateLineOnPhoto(self):
         # TODO добавить флаг конца обработки и снимать его в случае, если пользователь изменил линию
         tmp_image = self.image_resized.copy()
@@ -183,8 +177,8 @@ class LeftFrame(ctk.CTkFrame):
         line_color = (255)  
         line_width = 2  # Width of the line
         circle_radius = 2
-        draw.ellipse(self.getCircleBound(self.start_coords, circle_radius), fill = line_color, width = line_width)
-        draw.ellipse(self.getCircleBound(self.tmp_coords, circle_radius), fill = line_color, width = line_width)
+        draw.ellipse(util.getCircleBound(self.start_coords, circle_radius), fill = line_color, width = line_width)
+        draw.ellipse(util.getCircleBound(self.tmp_coords, circle_radius), fill = line_color, width = line_width)
         draw.line([self.start_coords, self.tmp_coords], fill = line_color, width = line_width)
         return tmp_image
     
@@ -561,8 +555,8 @@ class TitleMenu(CTkTitleMenu):
         dropdown1.add_separator()
 
         save_sub_menu = dropdown1.add_submenu("Экспортировать")
-        save_sub_menu.add_option(option = "Данные текущего изображения")
-        save_sub_menu.add_option(option = "Данные всех изображений")
+        save_sub_menu.add_option(option = "Данные текущего изображения", command = self.saveFile)
+        save_sub_menu.add_option(option = "Данные всех изображений", command = self.saveAll)
 
     def openFile(self):
         file_path = filedialog.askopenfilename(filetypes = [("tif file(*.tif)","*.tif")], defaultextension = [("tif file(*.tif)","*.tif")])
@@ -595,7 +589,19 @@ class TitleMenu(CTkTitleMenu):
             self.master.right_frame.tabview.set('Обработка')
             self.master.navigation_frame.next_button.configure(state = 'normal')
             self.master.navigation_frame.prev_button.configure(state = 'normal')
+
+    def saveFile(self):
+        index = self.mastr.navigation_frame.image_index
+        image_data = self.master.image_data_container[index]
+        image_data.plotBepis()
+        
+        self.right_frame.logStatus("Данные", image_data.image_name, "сохранены в папке mjolnir")
                         
+    def saveAll(self):
+        for image_data in self.master.image_data_container:
+            image_data.plotBepis()
+            
+        self.right_frame.logStatus("Данные измерений сохранены в папке mjolnir")
 
 
 
