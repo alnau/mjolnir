@@ -150,7 +150,7 @@ def normalize(arr):
 
 def normalizeImage(image, name):
    
-    print(name, "normalization had been started...")
+    # print(name, "normalization had been started...")
     start = time.time()
     # TODO возникает ошибка где-то здесь. Какое-то переполнение буффера: ValueError: buffer is not large enough
     arr = np.array(image)
@@ -158,7 +158,7 @@ def normalizeImage(image, name):
 
     new_img = img.fromarray(normalize(arr).astype('uint8'),'L')
     end = time.time()
-    print("Well, that was too fast. Man, it took only", "{:.1f}".format(end-start),"s")
+    # print("Well, that was too fast. Man, it took only", "{:.1f}".format(end-start),"s")
     return new_img
 
 def thresholdImage(image, threshold):
@@ -185,6 +185,34 @@ def printReportToCSV(new_names, width_data_d, width_data_o):
             string = str(new_names[i]) + "," + str(width_data_d[i]) + "," + str(width_data_o[i])
             print(string)
             writer.writerow([str(new_names[i]), str(width_data_d[i]), str(width_data_o[i])])
+
+def getBrightness(p1, p2, image):
+    tmp_image = image.copy()
+    tmp_image.convert('L')
+    width, height = getSize(image)
+
+
+
+    x_coords_index, y_coords_index = bresnanLine(p1,p2, width, height)
+    brightness_values =[]
+    lenght = len(x_coords_index)-1
+    for i in range(lenght):
+        brightness = tmp_image.getpixel((x_coords_index[i]-1, y_coords_index[i]-1))
+        brightness_values.append(brightness)
+
+    coords = []
+    coords.append(0)
+    
+  
+    conversion_factor = PIXEL_TO_MM*1280/width
+    len_of_line = 0
+    for i in range(lenght-1):
+        dl = conversion_factor*np.sqrt((x_coords_index[i] - x_coords_index[i+1])**2 + (y_coords_index[i] - y_coords_index[i+1])**2)
+        coords.append(len_of_line)
+        len_of_line+=dl
+
+    return coords, brightness_values
+
 
 
 def getIntegral(x1,y1,x2,y2,image, moment = 0):
