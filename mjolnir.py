@@ -2,7 +2,7 @@
 # from camera_feed import cameraHandler
 
 import image_processing as ip 
-
+import utility
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -20,19 +20,21 @@ def main():
 
 
 
-    path = "D:\Photonics\KGW МУР"
-    name = "!18_d.tif" 
+    path = "D:\Photonics\МУР 13.12"
+    names = ["90_62_d.tif"]  
 
-    image = Image.open(os.path.join(path, name)).convert('L')
+    # image = Image.open(os.path.join(path, name)).convert('L')
 
-    image_data = ip.ImageData(image,name)
+     
 
-    image_data.analyseImage()
-
-    new_image = image_data.getModifiedImage()
-    new_image.show()
     
+    # image_data = ip.ImageData(image,name)
 
+    for name in names:
+        ip.analyseFile(path,name)  
+    
+    # ip.analyseAll(path)
+    # ip.analyseFile(path,name)
         
         
 

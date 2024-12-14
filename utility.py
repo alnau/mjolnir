@@ -10,6 +10,7 @@ import scipy as sp
 from scipy.optimize import differential_evolution
 from scipy.interpolate import griddata
 from scipy.integrate import dblquad
+from scipy import integrate 
 
 from constants import *
 
@@ -36,55 +37,112 @@ def getReport(name, radius, h_width, left_side_mm, right_side_mm, coords_of_max_
 def getCircleBound(point, r):
     return (point[0]-r,point[1]-r, point[0]+r, point[1]+r)
 
-def bresnanLine(p1,p2, width, height):
-    x1 = p1[0]
-    y1 = p1[1]
 
-    x2 = p2[0]
-    y2 = p2[1]
+def bresnanLine(p1, p2, width, height):
+    x1, y1 = p1
+    x2, y2 = p2
 
-    if (x1 == x2):
-        # вертикальная линя
-        xcoordinates = x1+np.zeros(height)
-        ycoordinates = np.arange(height)
+    # На всякий пожарный
+    if not (0 <= x1 < width and 0 <= y1 < height and 0 <= x2 < width and 0 <= y2 < height):
+        raise ValueError("Coordinates are out of bounds.")
+
+    xcoordinates = []
+    ycoordinates = []
+
+    # вертикаль
+    if x1 == x2:
+        y_range = np.arange(min(y1, y2), max(y1, y2) + 1)
+        xcoordinates = [x1] * len(y_range)
+        ycoordinates = list(y_range)
         return xcoordinates, ycoordinates
 
-    elif (y1 == y2):
-        #горизонтальная линия
-        xcoordinates = np.arange(width)
-        ycoordinates = y1+np.zeros(width)
+    # горизонталь
+    elif y1 == y2:
+        x_range = np.arange(min(x1, x2), max(x1, x2) + 1)
+        ycoordinates = [y1] * len(x_range)
+        xcoordinates = list(x_range)
         return xcoordinates, ycoordinates
 
-    x,y = x1,y1
+    # Общий случай
     dx = abs(x2 - x1)
-    dy = abs(y2 -y1)
-    gradient = dy/float(dx)
+    dy = abs(y2 - y1)
+    sx = 1 if x1 < x2 else -1
+    sy = 1 if y1 < y2 else -1
 
-    if gradient > 1:
+    if dy > dx:
         dx, dy = dy, dx
-        x, y = y, x
         x1, y1 = y1, x1
         x2, y2 = y2, x2
+        sx, sy = sy, sx
 
-    p = 2*dy - dx
-    xcoordinates = [x]
-    ycoordinates = [y]
+    err = dx / 2.0
+    while x1 != x2:
+        if 0 <= x1 < width and 0 <= y1 < height:
+            xcoordinates.append(x1)
+            ycoordinates.append(y1)
 
-    for k in range(2, dx + 2):
-        if p > 0:
-            y = y + 1 if y < y2 else y - 1
-            p = p + 2 * (dy - dx)
-        else:
-            p = p + 2 * dy
+        err -= dy
+        if err < 0:
+            y1 += sy
+            err += dx
+        x1 += sx
 
-        x = x + 1 if x < x2 else x - 1
+    # конечные точки
+    if 0 <= x2 < width and 0 <= y2 < height:
+        xcoordinates.append(x2)
+        ycoordinates.append(y2)
 
-        if (x > width or y > height):
-            break
-        #print(f"x = {x}, y = {y}")
-        xcoordinates.append(x)
-        ycoordinates.append(y)
     return xcoordinates, ycoordinates
+
+# def bresnanLine(p1,p2, width, height):
+#     x1 = p1[0]
+#     y1 = p1[1]
+
+#     x2 = p2[0]
+#     y2 = p2[1]
+
+#     if (x1 == x2):
+#         # вертикальная линя
+#         xcoordinates = x1+np.zeros(height)
+#         ycoordinates = np.arange(height)
+#         return xcoordinates, ycoordinates
+
+#     elif (y1 == y2):
+#         #горизонтальная линия
+#         xcoordinates = np.arange(width)
+#         ycoordinates = y1+np.zeros(width)
+#         return xcoordinates, ycoordinates
+
+#     x,y = x1,y1
+#     dx = abs(x2 - x1)
+#     dy = abs(y2 -y1)
+#     gradient = dy/float(dx)
+
+#     if gradient > 1:
+#         dx, dy = dy, dx
+#         x, y = y, x
+#         x1, y1 = y1, x1
+#         x2, y2 = y2, x2
+
+#     p = 2*dy - dx
+#     xcoordinates = [x]
+#     ycoordinates = [y]
+
+#     for k in range(2, dx + 2):
+#         if p > 0:
+#             y = y + 1 if y < y2 else y - 1
+#             p = p + 2 * (dy - dx)
+#         else:
+#             p = p + 2 * dy
+
+#         x = x + 1 if x < x2 else x - 1
+
+#         if (x > width or y > height):
+#             break
+#         #print(f"x = {x}, y = {y}")
+#         xcoordinates.append(x)
+#         ycoordinates.append(y)
+#     return xcoordinates, ycoordinates
 
 def getSize(image):
     width, height = image.size
@@ -97,25 +155,23 @@ def getIntersections(point1, point2, image):
 
     image_width,image_height = getSize(image)
 
-    # Calculate the slope (m) and y-intercept (c) of the line
-    if x2 - x1 == 0:  # Vertical line
+    if x2 - x1 == 0:  # Вертикаль:
         m = np.inf
         c = x1
     else:
         m = (y2 - y1) / (x2 - x1)
         c = y1 - m * x1
 
-    # Initialize a list to store the intersection points
     intersections = []
     intersection_counter = 0
-    # Check intersection with the left border (x = 0)
+    # Левое пересечение (x = 0)
     if m != 0:
         y_intersect = int(m * 0 + c)
         if 0 <= y_intersect < image_height:
             intersections.append((0, y_intersect))
             intersection_counter +=1
 
-    # Check intersection with the right border (x = image_width)
+    # правое пересечение (x = image_width)
     if m != 0:
         y_intersect = int(m * image_width + c)
         if 0 <= y_intersect < image_height:
@@ -124,7 +180,7 @@ def getIntersections(point1, point2, image):
             if (intersection_counter == 2):
                 return intersections
 
-    # Check intersection with the top border (y = 0)
+    # ... верх (y = 0)
     if m != np.inf:
         x_intersect = int((0 - c) / m)
         if 0 <= x_intersect < image_width:
@@ -133,7 +189,7 @@ def getIntersections(point1, point2, image):
             if (intersection_counter == 2):
                 return intersections
 
-    # Check intersection with the bottom border (y = image_height)
+    # ... и низ (y = image_height)
     if m != np.inf:
         x_intersect = int((image_height - c) / m)
         if 0 <= x_intersect < image_width:
@@ -144,15 +200,17 @@ def getIntersections(point1, point2, image):
 
 
 
-def normalize(arr):
+def normalize(arr, threshold = 5):
     arr = arr.astype('float')
     # Do not touch the alpha channel
 
-    minval = arr[...].min()
-    maxval = arr[...].max()
+    minval = arr.min()
+    maxval = arr.max()
     if minval != maxval:
-        arr[...] -= minval
-        arr[...] *= (255.0/(maxval-minval))
+        arr -= (minval)
+        arr *= (255.0/(maxval-minval))
+
+    # arr[arr < threshold] = 0
     return arr
 
 def normalizeImage(image, name):
@@ -193,6 +251,7 @@ def printReportToCSV(new_names, width_data_d, width_data_o):
             print(string)
             writer.writerow([str(new_names[i]), str(width_data_d[i]), str(width_data_o[i])])
 
+# возвращает (width, height)
 def getBrightness(p1, p2, image):
     tmp_image = image.copy()
     tmp_image.convert('L')
@@ -251,12 +310,11 @@ def getIntegral(x1,y1,x2,y2,image, moment = 0):
 
 
         integral = 0
-        maximum = max(brightnessValues)
         len_along_the_line = 0
         for i in range(lenght-1):
             try:
                 deltaLineCoord = PIXEL_TO_MM*np.sqrt((x_coords_index[i]-x_coords_index[i+1])**2 + (y_coords_index[i] - y_coords_index[i+1])**2)
-                # if (brightnessValues[i]/maximum > 0.135):
+                # if (brightnessValues[i]/maximum > 1 - ENERGY_THRESHOLD):
                 if (moment == 0):
                     # if (brightnessValues[i]/maximum > 0.05):
                     integral += brightnessValues[i]*deltaLineCoord
@@ -281,10 +339,13 @@ def funcToOptimize(args,image, RMS = True):
 def optimisation(image_name, image):
     
     print("optimisation on", image_name, " has been started")
-    trial_image = thresholdImage(image, 0.12)
+    # trial_image = thresholdImage(image, 0.1)
+    arr_image = np.array(image)
+    arr_image[arr_image<5] = 0
+    trial_image = img.fromarray(arr_image.astype('uint8'),'L')
     start = time.time()
     width,height = getSize(trial_image)
-    bounds = [[0, width-1], [0,height-1], [0, width-1], [0,height-1]]
+    bounds = [[1, width-1], [1,height-1], [1, width-1], [1,height-1]]
     result = differential_evolution(lambda args: funcToOptimize(args, trial_image, RMS=False), bounds)
     x0_initial, y0_initial, x1_initial, y1_initial = map(int, result.x)
     
@@ -304,40 +365,104 @@ def optimisation(image_name, image):
 
 
 def interpolateFknHard(image_data, x,y):
-    x1 = int(np.floor(x))
-    y1 = int(np.floor(y))
+    # x1 = int(np.floor(x))
+    # y1 = int(np.floor(y))
 
-    x2 = int(np.ceil(x))
-    y2 = int(np.ceil(y))
+    # x2 = int(np.ceil(x))
+    # y2 = int(np.ceil(y))
 
-    if (y1 == y2 and x1!=x2):
-        return (x2-x)/(x2-x1)*image_data[y1][x1] + (x-x1)/(x2-x1)*image_data[y1][x2]
-    elif (x1 == x2 and y1!=y2):
-        return (y2-y)/(y2-y1)*image_data[y1][x1] + (y-y1)/(y2-y1)*image_data[y2][x1]
-    elif (x1 == x2 and y1 == y2):
-        return image_data[y1][x1]
-    else:
-        x_inter1 = (x2-x)/(x2-x1)*image_data[y1][x1] + (x-x1)/(x2-x1)*image_data[y1][x2]
-        x_inter2 = (x2-x)/(x2-x1)*image_data[y2][x1] + (x-x1)/(x2-x1)*image_data[y2][x2]
-        y_inter = (y2-y)/(y2-y1)*x_inter1 + (y-y1)/(y2-y1)*x_inter2
+    # if (y1 == y2 and x1!=x2):
+    #     return (x2-x)/(x2-x1)*image_data[y1][x1] + (x-x1)/(x2-x1)*image_data[y1][x2]
+    # elif (x1 == x2 and y1!=y2):
+    #     return (y2-y)/(y2-y1)*image_data[y1][x1] + (y-y1)/(y2-y1)*image_data[y2][x1]
+    # elif (x1 == x2 and y1 == y2):
+    #     return image_data[y1][x1]
+    # else:
+    #     x_inter1 = (x2-x)/(x2-x1)*image_data[y1][x1] + (x-x1)/(x2-x1)*image_data[y1][x2]
+    #     x_inter2 = (x2-x)/(x2-x1)*image_data[y2][x1] + (x-x1)/(x2-x1)*image_data[y2][x2]
+    #     y_inter = (y2-y)/(y2-y1)*x_inter1 + (y-y1)/(y2-y1)*x_inter2
 
-        return y_inter
+    #     return y_inter
 
 
-def integrateOverPolar(arr_image, x0, y0, r_max, r_min = 0, theta_min = 0, theta_max = 2*np.pi):
+    # Ensure the image is a 2D grayscale image
+    if len(image_data.shape) != 2:
+        raise ValueError("Image must be a 2D grayscale image")
+
+    # Get the dimensions of the image
+    height, width = image_data.shape
+
+    # Determine the integer coordinates surrounding (x, y)
+    x0 = int(np.floor(x))
+    x1 = int(np.ceil(x))
+    y0 = int(np.floor(y))
+    y1 = int(np.ceil(y))
+
+    # Clamp coordinates to be within the image bounds
+    x0 = max(0, min(x0, width - 1))
+    x1 = max(0, min(x1, width - 1))
+    y0 = max(0, min(y0, height - 1))
+    y1 = max(0, min(y1, height - 1))
+
+    # Get the weights for interpolation
+    wx = x - x0
+    wy = y - y0
+
+    # Perform bilinear interpolation
+    top_left = image_data[y0, x0]
+    top_right = image_data[y0, x1]
+    bottom_left = image_data[y1, x0]
+    bottom_right = image_data[y1, x1]
+
+    # Interpolate
+    top = (1 - wx) * top_left + wx * top_right
+    bottom = (1 - wx) * bottom_left + wx * bottom_right
+    brightness = (1 - wy) * top + wy * bottom
+
+    return brightness
+
+def checkIfInBounds(x,y, width, height):
     
+    if (x < 0 or y < 0 or x > width, y > height ):
+        return False
+    else:
+        return True
+
+
+def integrateOverPolar(image, x0, y0, r_max, r_min = 0, theta_min = 0, theta_max = 2*np.pi):
+    arr_image = np.array(image)
+    arr_image[arr_image < CUTOFF_THRESHOLD] = 0
+    # plt.imshow(arr_image, interpolation= 'none')
+    # plt.show()
+
+    width, height = getSize(image) 
+
+
     if len(arr_image.shape) != 2:
         raise ValueError("Image must be a 2D grayscale image")
 
     def integrand(r, theta):
         x = x0 + r*np.cos(theta)
         y = y0 + r*np.sin(theta)
-        
+
+        # if (checkIfInBounds(x,y,width,height)):    
+        #     result = interpolateFknHard(arr_image, x, y)*r 
+        # else:
+        #     result = 0
+
         result = interpolateFknHard(arr_image, x, y)*r 
+
         return result 
     
-    result, error = dblquad(integrand, theta_min, theta_max,
-                            lambda theta: r_min, lambda theta: r_max, epsabs= 0.1, epsrel = 0.1)
+    r_limits = (r_min, r_max)
+    theta_limits = (theta_min, theta_max)   
+    options = {'limit': 200, 'epsabs': 0.1, 'epsrel': 0.1}
+
+    # Perform the integration with nquad
+    result, error = integrate.nquad(integrand, [r_limits, theta_limits], opts=options)
+
+    # result, error = dblquad(integrand, theta_min, theta_max,
+    #                         r_min, r_max, epsabs= 0.1, epsrel = 0.1, limit = 100)
     return result, error
 
 def sumOverPixels(image_data,r):

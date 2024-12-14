@@ -97,19 +97,45 @@ def interpolate_brightness(image, coordinates):
     return brightness
 
 def interpolateFknHard(image_data, x,y):
-    x1 = int(np.floor(x))
-    y1 = int(np.floor(y))
-    x2 = int(np.ceil(x))
-    y2 = int(np.ceil(y))
+    
+    if len(image_data.shape) != 2:
+        raise ValueError("Image must be a 2D grayscale image")
 
-    x_inter1 = (x2-x)/(x2-x1)*image_data[y1][x1] + (x-x1)/(x2-x1)*image_data[y1][x2]
-    x_inter2 = (x2-x)/(x2-x1)*image_data[y2][x1] + (x-x1)/(x2-x1)*image_data[y2][x2]
-    y_inter = (y2-y)/(y2-y1)*x_inter1 + (y-y1)/(y2-y1)*x_inter2
+    # Get the dimensions of the image
+    height, width = image_data.shape
 
-    return y_inter
+    # Determine the integer coordinates surrounding (x, y)
+    x0 = int(np.floor(x))
+    x1 = int(np.ceil(x))
+    y0 = int(np.floor(y))
+    y1 = int(np.ceil(y))
+
+    # Clamp coordinates to be within the image bounds
+    x0 = max(0, min(x0, width - 1))
+    x1 = max(0, min(x1, width - 1))
+    y0 = max(0, min(y0, height - 1))
+    y1 = max(0, min(y1, height - 1))
+
+    # Get the weights for interpolation
+    wx = x - x0
+    wy = y - y0
+
+    # Perform bilinear interpolation
+    top_left = image_data[y0, x0]
+    top_right = image_data[y0, x1]
+    bottom_left = image_data[y1, x0]
+    bottom_right = image_data[y1, x1]
+
+    # Interpolate
+    top = (1 - wx) * top_left + wx * top_right
+    bottom = (1 - wx) * bottom_left + wx * bottom_right
+    brightness = (1 - wy) * top + wy * bottom
+
+    return brightness
 
 
-x,y = 120.1, 120.1
+
+x,y = 80.1, 220.1
 
 path = "D:\Photonics\KGW МУР"
 name = "!18_d_crop.tif" 
@@ -125,4 +151,4 @@ end = time.time()
 brightness2 = interpolateFknHard(image_data, x,y)
 end2 = time.time()
 
-print( brightness,  brightness2, image.getpixel((120,120)))
+print( brightness,  brightness2, image.getpixel((80,220)))
