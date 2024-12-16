@@ -5,35 +5,83 @@ from instrumental.drivers.cameras import uc480
 import time
 from PIL import Image
 
-import constants as const
+from constants import * 
 
-def setExposure(camera, exposure_time_ms):
-    try:
-        camera.set_exposure_time(min(exposure_time_ms, const.MAX_EXPOSURE_MS))
-    except:
-        print('Error during exposure set')
 
-def initCamera():
-    try:
-        cam = uc480.UC480_Camera()
-        cam.start_live_video(framerate=10)
-        return cam
-    except:
-        print('Error during cam init')
-        return 0
+class Camera():
+    def __init__(self):
     
-def cameraFeed(camera, shared_image):
-    # camera = uc480.UC480_Camera()
-    # camera.start_live_video(framerate=10)
+        try:
+            instruments = uc480.list_instruments()
+            self.cam = uc480.UC480_Camera(instruments[0])
+            self.cam.start_live_video(framerate=10)
+            self.cam.set_auto_exposure(enable = False)
+        except:
+            print('Error during cam init')
+
+
+
+    def setExposure(self, exposure_time_ms):
+        try:
+            self.cam.set_exposure_time(min(exposure_time_ms, MAX_EXPOSURE_MS))
+        except:
+            print('Error during exposure set')
+
     
-    try:
-        while True:
-            frame = camera.latest_frame()
-            shared_image['image'] = Image.fromarray(frame)
-            time.sleep(0.1)  # 10 Hz refresh rate
-    finally:
-        camera.stop_live_video()
-        camera.close()
+    
+    def cameraFeed(self, shared_image):
+        # camera = uc480.UC480_Camera()
+        # camera.start_live_video(framerate=10)
+        
+        try:
+            while True:
+                frame = self.cam.latest_frame()
+                shared_image['image'] = Image.fromarray(frame)
+                time.sleep(0.1)  # 10 Hz refresh rate
+        finally:
+            self.stop_live_video()
+            self.close()
+
+
+# class Camera(uc480.UC480_Camera):
+#     # def __init__(self):
+#     #     super()._initialize()
+    
+#     #     try:
+#     #         self.start_live_video(framerate=10)
+#     #         self.set_auto_exposure(enable = False)
+#     #     except:
+#     #         print('Error during cam init')
+
+#     def _initialize(self):
+#         super()._initialize()
+    
+#         try:
+#             self.start_live_video(framerate=10)
+#             self.set_auto_exposure(enable = False)
+#         except:
+#             print('Error during cam init')
+
+#     def setExposure(self, exposure_time_ms):
+#         try:
+#             self.set_exposure_time(min(exposure_time_ms, MAX_EXPOSURE_MS))
+#         except:
+#             print('Error during exposure set')
+
+    
+    
+#     def cameraFeed(self, shared_image):
+#         # camera = uc480.UC480_Camera()
+#         # camera.start_live_video(framerate=10)
+        
+#         try:
+#             while True:
+#                 frame = self.latest_frame()
+#                 shared_image['image'] = Image.fromarray(frame)
+#                 time.sleep(0.1)  # 10 Hz refresh rate
+#         finally:
+#             self.stop_live_video()
+#             self.close()
 
 
 # def cameraFeed():

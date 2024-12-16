@@ -5,8 +5,7 @@ from PIL import Image, ImageTk
 import numpy as np
 from PIL import ImageDraw
 
-import camera_feed as camera
-from camera_feed import cameraFeed
+from camera_feed import Camera
 
 import constants as const
 
@@ -28,14 +27,84 @@ from CTkMenuBar import *
 ctk.set_appearance_mode("Dark")  # Modes: "System" (standard), "Dark", "Light"
 ctk.set_default_color_theme("dark-blue")  # Themes: "blue" (standard), "green", "dark-blue"
 
+class TitleMenu(CTkTitleMenu):
+    def __init__(self, master):
+        super().__init__(master)
+
+        file_button = self.add_cascade("Файл")
+
+        dropdown1 = CustomDropdownMenu(widget=file_button)
+
+        open_sub_menu = dropdown1.add_submenu("Открыть")
+        open_sub_menu.add_option(option="Файл", command = self.openFile)
+        open_sub_menu.add_option(option="Папку", command = self.openFolder)
+
+        dropdown1.add_separator()
+
+        save_sub_menu = dropdown1.add_submenu("Экспортировать")
+        save_sub_menu.add_option(option = "Данные текущего изображения", command = self.saveFile)
+        save_sub_menu.add_option(option = "Данные всех изображений", command = self.saveAll)
+        
+
+    def toggleControl(self):
+        pass
+
+    def openFile(self):
+        file_path = filedialog.askopenfilename(filetypes = [("tif file(*.tif)","*.tif")], defaultextension = [("tif file(*.tif)","*.tif")])
+        if file_path:
+            try:
+                _, tail= os.path.split(file_path)
+                plotname, _ = os.path.splitext(tail)
+                image = Image.open(file_path)
+                pure_name,_ = os.path.splitext(plotname)
+                self.image_data_container.append(ip.ImageData(image, pure_name))
+            except Exception as e:
+                print("Error during image import")
+
+    def openFolder(self):
+        self.master.image_data_container = []
+        dir_path = filedialog.askdirectory()
+        if dir_path:          
+            names = []
+            for image_name in os.listdir(dir_path):
+                if (image_name.endswith(".tif")):
+                    names.append(image_name)
+            for name in names:
+                image = Image.open(os.path.join(dir_path, name)).convert('L')
+                pure_name,_ = os.path.splitext(name)
+                self.master.image_data_container.append(ip.ImageData(image, pure_name))
+            
+            self.master.image_frame.loadImage(self.master.image_data_container[0].norm_image, names[0])
+            text = "Импортировано " + str(len(self.master.image_data_container)) + " изображений. Вы можете приступиить к их обработке"
+            self.master.right_frame.logMessage(text)
+            self.master.right_frame.tabview.set('Обработка')
+            self.master.navigation_frame.next_button.configure(state = 'normal')
+            self.master.navigation_frame.prev_button.configure(state = 'normal')
+
+    def saveFile(self):
+        index = self.mastr.navigation_frame.image_index
+        image_data = self.master.image_data_container[index]
+        image_data.plotBepis()
+        
+        self.right_frame.logMessage("Данные", image_data.image_name, "сохранены в папке mjolnir")
+                        
+    def saveAll(self):
+        for image_data in self.master.image_data_container:
+            image_data.plotBepis()
+            
+        self.right_frame.logMessage("Данные измерений сохранены в папке mjolnir")
+
+
+
 class NavigationFrame(ctk.CTkFrame):
-    def __init__(self, master, **kwargs):
+    def __init__(self, master, camera_handle, **kwargs):
         super().__init__(master, **kwargs)
 
         self.image_index = 0
         # self.right_frame_handle = right_frame_handle
 
         self.is_active = True
+        # self.cam = camera_handle
 
         self.button_frame = ctk.CTkFrame(self)
         self.button_frame.pack(fill="x", pady=10, padx = const.DEFAULT_PADX, side = 'top')
@@ -64,7 +133,7 @@ class NavigationFrame(ctk.CTkFrame):
         self.master.right_frame.entry.configure(placeholder_text = name)
         self.master.right_frame.updatePlotAfterAnalysis(self.image_index)
         self.master.right_frame.updatePrintedDataAfterAnalysis(self.image_index)
-        self.master.left_frame.loadImage(self.master.image_data_container[self.image_index].norm_image, name = self.master.image_data_container[self.image_index].image_name)
+        self.master.image_frame.loadImage(self.master.image_data_container[self.image_index].norm_image, name = self.master.image_data_container[self.image_index].image_name)
 
     def toggleControl(self):
         # if self.is_active:
@@ -81,25 +150,18 @@ class NavigationFrame(ctk.CTkFrame):
 
 
 
-class LeftFrame(ctk.CTkFrame):
-    def __init__(self, master, right_frame_handle, image_path = '', **kwargs):
+class imageFrame(ctk.CTkFrame):
+    def __init__(self, master, right_frame_handle, camera_handle, image_path = '', **kwargs):
         super().__init__(master, **kwargs)
-
-        # shared_image = {}
-
-        # # Start the camera feed thread
-        # camera_thread = threading.Thread(target=cam.cameraFeed, args=(shared_image,))
-        # camera_thread.daemon = True  # Daemonize the thread to stop it when the main program exits
-        # camera_thread.start()
-
-        # # Start the periodic update of the canvas
-        # self.updateCanvas(shared_image)
 
         self.right_frame_handle = right_frame_handle
 
         self.start_coords = (0,0)
         self.tmp_coords = (0,0)
         self.end_coords = (0,0)
+
+        # Если True останавливает обновление картинки с камеры
+        self.is_pause = True
 
         self.p0_real_coords = (0,0)
         self.p1_real_coords = (0,0)
@@ -123,7 +185,7 @@ class LeftFrame(ctk.CTkFrame):
         self.start_button.grid(row = 1,column = 1, sticky = 'we')
 
 
-        self.image_canvas = tk.Canvas(self)
+        self.image_canvas = tk.Canvas(self, highlightbackground="black")
         # self.image_canvas.pack(fill="both", padx = (5,0), pady = 5, expand=True)
 
         
@@ -140,7 +202,20 @@ class LeftFrame(ctk.CTkFrame):
 
     def toggleControl(self):
         pass
+    
+    def startVideoFeed(self):
+        self.is_pause = False
+        update_image_thread = threading.Thread(target = self.startVideoFeedWorker, args = (self.master.camera_feed_image,))
+        update_image_thread.daemon = True
+        update_image_thread.start()
 
+    def startVideofeedWorker(self):
+        # while (self.master.cam.is_open() and not self.is_pause):
+        while (not self.is_pause):
+            if (self.master.cam.wait_for_frame()):
+                #ждем пока прийдет новое изображение
+                self.updateCanvas(self.master.camera_feed_image)
+                time.sleep(0.08)
 
     def activateCamera(self):
         self.start_dialog.pack_forget()
@@ -150,7 +225,8 @@ class LeftFrame(ctk.CTkFrame):
         self.bind("<Configure>", self.resize_image)
         self.resize_image(None)
         self.master.toggleControl()
-        
+
+        self.master.initCamera()
         
         self.resize_image(None)
 
@@ -198,7 +274,7 @@ class LeftFrame(ctk.CTkFrame):
                 self.image_canvas.image = photo
                 self.image_canvas.create_image(0,0,image=photo,anchor = 'nw')
         else:
-            self.master.right_frame.logStatus("Необходимо сначала захватить изображение")
+            self.master.right_frame.logMessage("Необходимо сначала захватить изображение")
 
     def updateCanvas(self, shared_image):
         if 'image' in shared_image:
@@ -283,7 +359,7 @@ class RightFrame(ctk.CTkFrame):
 
         self.is_active = True
 
-
+        # self.cam = camera_handle
         self.fig, self.ax = plt.subplots(figsize=(self.plot_width, self.plot_height))  
         # self.ax.plot([1, 2, 3], [4, 5, 6])
         # self.ax.text(self.plot_width/2, self.plot_height/2, 'Нет данных'
@@ -316,7 +392,7 @@ class RightFrame(ctk.CTkFrame):
         # self.empty_frame = ctk.CTkFrame(self, fg_color='transparent')
         # self.empty_frame.pack(fill="x", expand = True)
 
-        self.tabview = Tab(master = self, main=master)
+        self.tabview = Tab(master = self, camera_handle=camera_handle, main=master)
         self.tabview.pack(side = 'top', fill = 'x') 
         
         self.continue_button = ctk.CTkButton(master = self, command = self.nextImage, text = 'Продолжить', state = 'disabled')
@@ -338,7 +414,7 @@ class RightFrame(ctk.CTkFrame):
             self.tabview.configure(state = 'normal')
             self.is_active = True
 
-    def logStatus(self, text_to_log):
+    def logMessage(self, text_to_log):
         now = datetime.now()
         current_time = now.strftime("%H:%M:%S")
 
@@ -356,56 +432,65 @@ class RightFrame(ctk.CTkFrame):
             time.sleep(0.05)  # Sleep for 50ms (0.5 seconds total) 
 
 
+    def lockCamera(self):
+        self.master.updateImage()
+        
+        self.master.image_frame.is_pause = True
+        self.capture_button.configure(text = 'Отмена')
+        self.continue_button.configure(state = 'enabled')
+        self.master.image_frame.image_canvas.configure(highlightbackground="red")
+        self.photo_is_captured = True
+        self.master.image_frame.loadImage(self.master.current_image)
+
+        self.logMessage('Фото захвачено')
+
+    def unlockCamera(self):
+        self.master.image_frame.is_pause = False
+        self.capture_button.configure(text = 'Захватить')
+        self.continue_button.configure(state = 'disabled')
+        self.master.image_frame.image_canvas.configure(highlightbackground="black")
+        self.photo_is_captured = False
+        self.master.image_frame.clearPhoto()
+        
+
     def captureImage(self):
-        # захват текущего изображения
+        # отработка захвата или сброса текущего изображения
         
         if (self.photo_is_captured):
-            # возможно, происходит очистка собранных данных
             # переход к живой камере
-            self.capture_button.configure(text = 'Захватить')
-            self.photo_is_captured = False
-            self.master.left_frame.clearPhoto()
-            self.continue_button.configure(state = 'disabled')
-            self.logStatus('Фото сброшено')
-
-
-        else:
+            self.unlockCamera()
+            self.logMessage('Фото сброшено')
+        elif(len(self.entry.get())!=0) :
             # Показать картинку, сохранить в буффер
-            # TODO: заменить image на данные с камеры, а также заблокировать запись пока не будет установлено имя
-            if (len(self.entry.get())!=0):
-                self.master.left_frame.loadImage(self.master.current_image)
-                self.image_data = ip.ImageData(self.master.current_image, self.entry.get())
-
-                self.capture_button.configure(text = 'Отмена')
-                self.photo_is_captured = True
-
-                self.continue_button.configure(state = 'enabled')
-            else:
-                self.logStatus('Введите имя файла')
+            self.lockCamera()
+            self.image_data = ip.ImageData(self.master.current_image, self.entry.get())
+        else:
+                self.logMessage('Введите имя файла')
 
         
 
     def nextImage(self):
         if len(self.entry.get()) != 0:
+
+            self.unlockCamera()
+
             # TODO запись данных, возобновление трансляции
-            self.master.left_frame.clearPhoto()
             if (self.tabview.check_var.get() == 'on'):
                 self.image_data.optimisation_needed = False
             
-
             self.tabview.check_var.set('off')
             self.entry.focus()
+
             self.master.image_data_container.append(self.image_data)
             self.master.navigation_frame.image_index += 1
-            self.logStatus('Данные записаны')
+            
+            self.logMessage('Данные записаны')
             self.entry.configure(text = '')
 
-            self.capture_button.configure(text = 'Захватить')
-            self.photo_is_captured = False
-            self.master.left_frame.reset()
-            self.continue_button.configure(state = 'disabled')
+
+            self.master.image_frame.reset()
         else:
-            self.logStatus('Введите название файла')
+            self.logMessage('Введите название файла')
 
     def clearPlot(self):
         self.ax.clear()
@@ -425,7 +510,7 @@ class RightFrame(ctk.CTkFrame):
         index = self.master.navigation_frame.image_index
         self.updatePlotAfterAnalysis(index)
         self.updatePrintedDataAfterAnalysis(index)
-        self.master.left_frame.switchImage(index)
+        self.master.image_frame.switchImage(index)
         self.tabview.analyse_all_button.configure(state = 'disabled')
         self.tabview.analyse_current_button.configure(state = 'disabled')
 
@@ -443,11 +528,11 @@ class RightFrame(ctk.CTkFrame):
 
 
 class Tab(ctk.CTkTabview):
-    def __init__(self, master, main, **kwargs):
+    def __init__(self, master, camera_handle, main, **kwargs):
         super().__init__(master, **kwargs)
 
         self.main = main
-
+        # self.cam = camera_handle
         self.configure(command = self.handleTab)
 
         self.pack(fill="x", expand = True)
@@ -543,6 +628,7 @@ class Tab(ctk.CTkTabview):
         return [text1,text2,text3]
 
 
+    # TODO: вероятно, не самый "умный" подход к названию, путается с handle, которые передаются от родительского класса
     def handleTab(self):
         if (self.get() == 'Захват'):
             self.main.navigation_frame.next_button.configure(state = 'disabled')
@@ -610,7 +696,7 @@ class Tab(ctk.CTkTabview):
             image_data.image_has_been_analysed = True
             
             text = "Обработка " + name + " закончена"
-            self.after(100, self.master.logStatus(text))
+            self.after(100, self.master.logMessage(text))
         
         self.master.updateWindowAfterAnalysis()
 
@@ -623,16 +709,17 @@ class Tab(ctk.CTkTabview):
         self.main.image_data_container[index].image_has_been_analysed = True
 
         text = "Обработка " + name + " закончена"
-        self.after(100, self.master.logStatus(text))
+        self.after(100, self.master.logMessage(text))
         
         self.master.updateWindowAfterAnalysis()
     
 
     def sliderEvent(self, val):
         try:
-            camera.setExposure(camera=self.main.cam, exposure_time_ms = val)
+            self.main.cam.setExposure(exposure_time_ms = val)
         except:
             print('Error. cannot set exposure')
+            self.master.logMessage('Ошибка, не  могу установить экспозицию')
         
         image_array = np.array(self.master.image)
         brightest_pixel_value = np.max(image_array)
@@ -656,6 +743,8 @@ class App(ctk.CTk):
         self.image_data_container = []
 
         self.title("mjolnir")
+
+        self.cam = Camera()
         
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
@@ -665,32 +754,39 @@ class App(ctk.CTk):
 
         self.image_path="D:\Photonics\KGW МУР\!18_o.tif"
 
-        self.cam = camera.initCamera()
+    
         
-        self.current_image = Image.open(self.image_path).convert('L')
-        
+        self.camera_feed_image = Image.open(self.image_path).convert('L')
+        self.current_image = self.camera_feed_image
 
         self.setupGrid()
         
         self.menu = TitleMenu(self)
         self.menu.grid()
 
-        self.navigation_frame = NavigationFrame(self)
+        self.navigation_frame = NavigationFrame(self, camera_handle = self.cam)
         self.navigation_frame.grid(row=1, column=0, rowspan = 1, sticky="nsew")
         
         self.right_frame = RightFrame(self, camera_handle = self.cam)
         self.right_frame.grid(row=0, column=1, rowspan = 2, sticky="nsew")
         
-        self.left_frame = LeftFrame(self, right_frame_handle= self.right_frame)
-        self.left_frame.grid(row=0, column=0, rowspan = 1, sticky="nsew")
+        self.image_frame = imageFrame(self, right_frame_handle= self.right_frame,camera_handle = self.cam)
+        self.image_frame.grid(row=0, column=0, rowspan = 1, sticky="nsew")
 
-        self.widget_list = [self.menu, self.navigation_frame, self.right_frame, self.left_frame]
+        self.widget_list = [self.menu, self.navigation_frame, self.right_frame, self.image_frame]
 
         self.toggleControl()
 
         
         self.update_idletasks()
         self.mainloop()
+
+    def initCamera(self):
+        # По идее, начиная отсюда у нас заработает камера 
+        camera_thread = threading.Thread(target=self.cam.cameraFeed, args=(self.camera_feed_image,))
+        camera_thread.daemon = True  # Daemonize the thread to stop it when the main program exits
+        camera_thread.start()
+ 
 
     def toggleControl(self):
         for widget in self.widget_list:
@@ -704,79 +800,12 @@ class App(ctk.CTk):
         self.grid_rowconfigure(1, weight = 0)
     
     def getImage(self):
-        return self.current_image
+        return self.camera_feed_image
 
     def updateImage(self):
         self.current_image = self.getImage()
 
 
-
-class TitleMenu(CTkTitleMenu):
-    def __init__(self, master):
-        super().__init__(master)
-
-        file_button = self.add_cascade("Файл")
-
-        dropdown1 = CustomDropdownMenu(widget=file_button)
-
-        open_sub_menu = dropdown1.add_submenu("Открыть")
-        open_sub_menu.add_option(option="Файл", command = self.openFile)
-        open_sub_menu.add_option(option="Папку", command = self.openFolder)
-
-        dropdown1.add_separator()
-
-        save_sub_menu = dropdown1.add_submenu("Экспортировать")
-        save_sub_menu.add_option(option = "Данные текущего изображения", command = self.saveFile)
-        save_sub_menu.add_option(option = "Данные всех изображений", command = self.saveAll)
-        
-
-    def toggleControl(self):
-        pass
-
-    def openFile(self):
-        file_path = filedialog.askopenfilename(filetypes = [("tif file(*.tif)","*.tif")], defaultextension = [("tif file(*.tif)","*.tif")])
-        if file_path:
-            try:
-                _, tail= os.path.split(file_path)
-                plotname, _ = os.path.splitext(tail)
-                image = Image.open(file_path)
-                pure_name,_ = os.path.splitext(plotname)
-                self.image_data_container.append(ip.ImageData(image, pure_name))
-            except Exception as e:
-                print("Error during image import")
-
-    def openFolder(self):
-        self.master.image_data_container = []
-        dir_path = filedialog.askdirectory()
-        if dir_path:          
-            names = []
-            for image_name in os.listdir(dir_path):
-                if (image_name.endswith(".tif")):
-                    names.append(image_name)
-            for name in names:
-                image = Image.open(os.path.join(dir_path, name)).convert('L')
-                pure_name,_ = os.path.splitext(name)
-                self.master.image_data_container.append(ip.ImageData(image, pure_name))
-            
-            self.master.left_frame.loadImage(self.master.image_data_container[0].norm_image, names[0])
-            text = "Импортировано " + str(len(self.master.image_data_container)) + " изображений. Вы можете приступиить к их обработке"
-            self.master.right_frame.logStatus(text)
-            self.master.right_frame.tabview.set('Обработка')
-            self.master.navigation_frame.next_button.configure(state = 'normal')
-            self.master.navigation_frame.prev_button.configure(state = 'normal')
-
-    def saveFile(self):
-        index = self.mastr.navigation_frame.image_index
-        image_data = self.master.image_data_container[index]
-        image_data.plotBepis()
-        
-        self.right_frame.logStatus("Данные", image_data.image_name, "сохранены в папке mjolnir")
-                        
-    def saveAll(self):
-        for image_data in self.master.image_data_container:
-            image_data.plotBepis()
-            
-        self.right_frame.logStatus("Данные измерений сохранены в папке mjolnir")
 
 
 
@@ -791,8 +820,8 @@ if __name__ == "__main__":
     # self.grid_rowconfigure(0, weight=1)     # Single row for the frames
 
     # # Create the left frame
-    # left_frame = LeftFrame(app, image_path="D:\Photonics\KGW МУР\!18_d.tif")
-    # left_frame.grid(row=0, column=0, sticky="nsew")
+    # image_frame = imageFrame(app, image_path="D:\Photonics\KGW МУР\!18_d.tif")
+    # image_frame.grid(row=0, column=0, sticky="nsew")
 
     # # Create the right frame
     # right_frame = RightFrame(app)
@@ -803,7 +832,7 @@ if __name__ == "__main__":
 
     # # Debugging: Print frame sizes after 1 second
     # def print_frame_sizes():
-    #     print(f"Left frame width: {left_frame.winfo_width()}")
+    #     print(f"Left frame width: {image_frame.winfo_width()}")
     #     print(f"Right frame width: {right_frame.winfo_width()}")
 
     # self.after(1000, print_frame_sizes)
