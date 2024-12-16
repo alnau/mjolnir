@@ -3,7 +3,7 @@ import time
 import csv
 import cv2
 import matplotlib.pyplot as plt
-
+import xlsxwriter as xlsx
 
 
 import scipy as sp
@@ -213,7 +213,7 @@ def normalize(arr, threshold = 5):
     # arr[arr < threshold] = 0
     return arr
 
-def normalizeImage(image, name):
+def normalizeImage(image):
    
     # print(name, "normalization had been started...")
     start = time.time()
@@ -225,6 +225,29 @@ def normalizeImage(image, name):
     end = time.time()
     # print("Well, that was too fast. Man, it took only", "{:.1f}".format(end-start),"s")
     return new_img
+
+
+def getCOM(image):
+
+    width, height = getSize(image)
+    
+    arr = np.array(image.convert('L'))
+    arr = arr.astype('float')
+    # Do not touch the alpha channel
+
+    minval = arr.min()
+    maxval = arr.max()
+    if minval != maxval:
+        arr -= (minval)
+        arr *= (255.0/(maxval-minval))
+
+
+    x = np.sum(np.sum(arr, axis=0) * np.arange(width)) / np.sum(arr)
+    y = np.sum(np.sum(arr, axis=1) * np.arange(height)) / np.sum(arr)
+    com = (int(x),int(y))
+    return com
+
+
 
 def thresholdImage(image, threshold):
     threshold_int = int(255*threshold)
@@ -250,6 +273,34 @@ def printReportToCSV(new_names, width_data_d, width_data_o):
             string = str(new_names[i]) + "," + str(width_data_d[i]) + "," + str(width_data_o[i])
             print(string)
             writer.writerow([str(new_names[i]), str(width_data_d[i]), str(width_data_o[i])])
+
+def fillTitleLine(worksheet_handle, r_control):
+        first_line = ['№', 'радиус d (мм)', 'радиус o, (мм)','', 'контрольный радиус (мм)',r_control]
+        counter = 0
+        for cols in first_line: 
+            worksheet_handle.write(0,counter, cols)
+            counter+=1
+
+def printReportToXLSX(names, r_d, r_o, r_ref = 0.337):
+
+    xlsx_name = "lastResults/" + time.strftime("%d-%m-%Y_", time.gmtime()) + "data.xlsx"
+    workbook = xlsx.Workbook(xlsx_name)
+    worksheet = workbook.add_worksheet()
+
+
+    fillTitleLine(worksheet, r_ref)
+
+    index = 0
+    for name in names:
+        worksheet.write(index+1,0,name)
+        worksheet.write(index+1, 1, float(r_d[index]))
+        worksheet.write(index+1, 2, float(r_o[index]))
+        index+=1
+    # image_data = ip.ImageData(image,name)
+
+    workbook.close()
+    
+
 
 # возвращает (width, height)
 def getBrightness(p1, p2, image):

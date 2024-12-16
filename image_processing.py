@@ -28,7 +28,7 @@ class ImageData():
         tmp_image = original_image.copy()
 
         self.initial_image = tmp_image.convert('L')
-        self.norm_image = utility.normalizeImage(self.initial_image, self.image_name).convert('L')
+        self.norm_image = utility.normalizeImage(self.initial_image).convert('L')
         self.modified_image = 0
 
         self.width, self.height = utility.getSize(self.norm_image)
@@ -50,8 +50,8 @@ class ImageData():
         self.normalized_brightness_values = []
         self.coord = []
 
-        self.plotname,_ = name.split('.')
 
+        self.plotname = name
 
         self.p0_initial = (0,0)
         self.p1_initial = (0,0)
@@ -378,24 +378,30 @@ def analyseAll(path, start = 0):
     for image_name in os.listdir(path):
         if (image_name.endswith(".tif")):
             names.append(image_name)
+    
 
     
     new_names = []
     width_data_d = []
     width_data_o = []
     counter = 0
+
+    start = time.time()
     for name in names:
         if (counter < start):
             counter+=1
             continue
         image = img.open(os.path.join(path, name)).convert('L')
-                
-        image_data = ImageData(image, name)
+        
+        pure_name,_ = name.split('.')
+        image_data = ImageData(image, pure_name)
+        
         
         image_data.analyseImage()
 
         image_data.plotBepis()
         
+        r_ref = 0
         if (image_data.plotname!='контроль'):
             number, test_for_d_o = image_data.plotname.rsplit("_",1)
         # print(number,test_for_d_o)
@@ -407,9 +413,7 @@ def analyseAll(path, start = 0):
                 width_data_o.append(image_data.radius_mm)
             image.close()
         else:
-            width_data_d.append(image_data.radius_mm)
-            width_data_o.append(image_data.radius_mm)
-            new_names.append('контроль')
+            r_ref = image_data.radius_mm
 
         print("------------------")
     
@@ -417,13 +421,18 @@ def analyseAll(path, start = 0):
     if (len(new_names)!=len(width_data_d) or len(new_names)!=len(width_data_o) ):
         print("error with files")
     
+    num_of_images = len(names)
     utility.printReportToCSV(new_names, width_data_d, width_data_o)
+    utility.printReportToXLSX(new_names, width_data_d, width_data_o, r_ref)
+    end = time.time()
+
+    print("So whole journey took about", '{:.1f}'.format(end-start), 's. That''s about', '{:.1f}'.format((end-start)/num_of_images), 's per image. \nNot too shaby at all')
 
 
 def analyseFile(path,name):
         image = img.open(os.path.join(path, name)).convert('L')
-                
-        image_data = ImageData(image, name)
+        pure_name,_ = name.split('.')
+        image_data = ImageData(image, pure_name)
         
         image_data.analyseImage()
 

@@ -8,6 +8,11 @@ PROGRESS_COLOR = ['gray40', '#AAB0B5']
 
 ENERGY_THRESHOLD = 0.865
 
-CUTOFF_THRESHOLD = 5 # минимальная интенсивность (больше нуля) после нормализации
+CUTOFF_THRESHOLD = 5 # минимальная интенсивность (больше нуля) после нормализац
+
+KGW_REFRACTION_INDEX = 2.0
 
 DEFAULT_PADX = 5
+DEFAULT_PADY = 5
+
+DEFAULT_BASE_CM = 200

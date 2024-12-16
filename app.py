@@ -35,6 +35,8 @@ class NavigationFrame(ctk.CTkFrame):
         self.image_index = 0
         # self.right_frame_handle = right_frame_handle
 
+        self.is_active = True
+
         self.button_frame = ctk.CTkFrame(self)
         self.button_frame.pack(fill="x", pady=10, padx = const.DEFAULT_PADX, side = 'top')
         self.button_frame.grid_columnconfigure(0, weight=3)
@@ -64,12 +66,23 @@ class NavigationFrame(ctk.CTkFrame):
         self.master.right_frame.updatePrintedDataAfterAnalysis(self.image_index)
         self.master.left_frame.loadImage(self.master.image_data_container[self.image_index].norm_image, name = self.master.image_data_container[self.image_index].image_name)
 
+    def toggleControl(self):
+        # if self.is_active:
+        #     self.prev_button.configure(state = 'disabled')
+        #     self.next_button.configure(state = 'disabled')
+        #     self.is_active = False
+        # else:
+        #     self.prev_button.configure(state = 'normal')
+        #     self.next_button.configure(state = 'normal')
+        #     self.is_active = True
+        pass
+
 
 
 
 
 class LeftFrame(ctk.CTkFrame):
-    def __init__(self, master, right_frame_handle, image_path, **kwargs):
+    def __init__(self, master, right_frame_handle, image_path = '', **kwargs):
         super().__init__(master, **kwargs)
 
         # shared_image = {}
@@ -80,7 +93,7 @@ class LeftFrame(ctk.CTkFrame):
         # camera_thread.start()
 
         # # Start the periodic update of the canvas
-        # self.update_canvas(shared_image)
+        # self.updateCanvas(shared_image)
 
         self.right_frame_handle = right_frame_handle
 
@@ -91,22 +104,54 @@ class LeftFrame(ctk.CTkFrame):
         self.p0_real_coords = (0,0)
         self.p1_real_coords = (0,0)
 
-
+        #TODO Depricated (?)
         self.image_path = image_path
+
+        self.start_dialog = ctk.CTkFrame(self)
+        self.start_dialog.pack(fill="both", padx = (5,0), pady = 5, expand=True)
+
+
+        self.start_dialog.grid_columnconfigure(0, weight = 3)
+        self.start_dialog.grid_columnconfigure(1, weight = 1)
+        self.start_dialog.grid_columnconfigure(2, weight = 3)
+
+        self.start_dialog.grid_rowconfigure(0, weight = 3)
+        self.start_dialog.grid_rowconfigure(1, weight = 1)
+        self.start_dialog.grid_rowconfigure(2, weight = 3)
+
+        self.start_button = ctk.CTkButton(self.start_dialog, text='Включить камеру', command = self.activateCamera)
+        self.start_button.grid(row = 1,column = 1, sticky = 'we')
+
+
         self.image_canvas = tk.Canvas(self)
-        self.image_canvas.pack(fill="both", padx = (5,0), pady = 5, expand=True)
-        self.image = Image.open(self.image_path)
+        # self.image_canvas.pack(fill="both", padx = (5,0), pady = 5, expand=True)
+
+        
+        # self.bind("<Configure>", self.resize_image)
 
         # Bind the <Configure> event to resize the image
         
-        self.bind("<Configure>", self.resize_image)
         self.image_canvas.bind("<ButtonPress-1>", self.drawLines )
         self.image_canvas.bind("<B1-Motion>", self.drawLines )
         self.image_canvas.bind("<ButtonRelease-1>", self.drawLines )
         self.image_canvas.bind("<ButtonRelease-1>", self.drawLines )
 
 
-        # Load and display the initial image
+
+    def toggleControl(self):
+        pass
+
+
+    def activateCamera(self):
+        self.start_dialog.pack_forget()
+        # self.image_canvas = tk.Canvas(self)
+        self.image_canvas.pack(fill="both", padx = (5,0), pady = 5, expand=True)
+        # self.image = Image.open(self.image_path)
+        self.bind("<Configure>", self.resize_image)
+        self.resize_image(None)
+        self.master.toggleControl()
+        
+        
         self.resize_image(None)
 
     def reset(self):
@@ -124,8 +169,9 @@ class LeftFrame(ctk.CTkFrame):
         if (self.master.right_frame.photo_is_captured or self.master.right_frame.tabview.get() == 'Обработка'):
             if (event.type == '4'):
                 index = self.master.navigation_frame.image_index
-                self.master.image_data_container[index].image_has_been_analysed = False
-                self.master.image_data_container[index].optimisation_needed = False
+                if len(self.master.image_data_container) != 0:
+                    self.master.image_data_container[index].image_has_been_analysed = False
+                    self.master.image_data_container[index].optimisation_needed = False
                 self.master.right_frame.clearPlot()
                 tabview_handle = self.master.right_frame.tabview 
                 tabview_handle.check_var.set('on')
@@ -138,34 +184,30 @@ class LeftFrame(ctk.CTkFrame):
             elif (event.type == '5'):
                 self.end_coords = (event.x, event.y)
                 self.tmp_coords = self.end_coords
-                self.p0_real_coords = (int(self.start_coords[0]*self.image.width/self.image_resized.width), int(self.start_coords[1]*self.image.height/self.image_resized.height))
-                self.p1_real_coords = (int(self.end_coords[0]*self.image.width/self.image_resized.width), int(self.end_coords[1]*self.image.height/self.image_resized.height))
+                self.p0_real_coords = (int(self.start_coords[0]*self.master.current_image.width/self.image_resized.width), int(self.start_coords[1]*self.master.current_image.height/self.image_resized.height))
+                self.p1_real_coords = (int(self.end_coords[0]*self.master.current_image.width/self.image_resized.width), int(self.end_coords[1]*self.master.current_image.height/self.image_resized.height))
                 self.right_frame_handle.updatePlot(self.p0_real_coords, self.p1_real_coords)
             elif (event.type == '6'):
-                # if (self.start_coords == (0,0)):
-                #     self.start_coords = (event.x, event.y)
-                # else:
                 self.tmp_coords = (event.x, event.y)
             if (self.tmp_coords != (0,0)):
                 updated_image = self.updateLineOnPhoto()
-
+                
                 photo = ImageTk.PhotoImage(updated_image)
 
-                # Update the label with the resized image
                 self.image_canvas.config(width=updated_image.width, height=updated_image.height)
                 self.image_canvas.image = photo
                 self.image_canvas.create_image(0,0,image=photo,anchor = 'nw')
         else:
             self.master.right_frame.logStatus("Необходимо сначала захватить изображение")
 
-    def update_canvas(self, shared_image):
+    def updateCanvas(self, shared_image):
         if 'image' in shared_image:
             img = shared_image['image']
             resized_img = img.resize((self.winfo_width(), self.winfo_height()), Image.ANTIALIAS)
             photo = ImageTk.PhotoImage(resized_img)
             self.canvas.create_image(0, 0, anchor=tk.NW, image=photo)
             self.canvas.image = photo  # Keep a reference to avoid garbage collection
-        self.canvas.after(100, self.update_canvas, shared_image)  # 10 Hz refresh rate
+        self.canvas.after(100, self.updateCanvas, shared_image)  # 10 Hz refresh rate
 
 
     def updateLineOnPhoto(self):
@@ -175,7 +217,7 @@ class LeftFrame(ctk.CTkFrame):
         draw = ImageDraw.Draw(tmp_image)
 
         line_color = (255)  
-        line_width = 2  # Width of the line
+        line_width = 2  
         circle_radius = 2
         draw.ellipse(util.getCircleBound(self.start_coords, circle_radius), fill = line_color, width = line_width)
         draw.ellipse(util.getCircleBound(self.tmp_coords, circle_radius), fill = line_color, width = line_width)
@@ -187,7 +229,6 @@ class LeftFrame(ctk.CTkFrame):
 
         photo = ImageTk.PhotoImage(tmp_image)
 
-        # Update the label with the resized image
         self.image_canvas.config(width=tmp_image.width, height=tmp_image.height)
         self.image_canvas.image = photo
         self.image_canvas.create_image(0,0,image=photo,anchor = 'nw')
@@ -205,7 +246,7 @@ class LeftFrame(ctk.CTkFrame):
         self.image_canvas.create_image(0,0,image=self.photo,anchor = 'nw')
         index = self.master.navigation_frame.image_index
         self.master.right_frame.entry.configure(placeholder_text = name)
-        text = str(index + 1) + "/" + str(len(self.master.image_data_container))
+        text = str(index + 1) + "/" + str(len(self.master.image_data_container)+1)
         self.L = ctk.CTkLabel(self.image_canvas, text = text, fg_color = 'transparent', width = 20, text_color = 'black')
         self.L.place(x = 10,y = 10, anchor = 'nw')
 
@@ -221,7 +262,7 @@ class LeftFrame(ctk.CTkFrame):
         height = self.winfo_height()
 
         # Load and resize the image to fit the frame
-        image = self.image
+        image = self.master.current_image
         self.image_resized = image.resize((width, height))
         self.photo = ImageTk.PhotoImage(self.image_resized)
 
@@ -235,11 +276,14 @@ class RightFrame(ctk.CTkFrame):
         super().__init__(master, **kwargs)
 
         self.photo_is_captured = False
-        self.image = Image.open("D:\Photonics\KGW МУР\!18_o.tif").convert('L')
+        # self.image = Image.open("D:\Photonics\KGW МУР\!18_o.tif").convert('L')
 
         self.plot_width = 5
         self.plot_height = 3
-        
+
+        self.is_active = True
+
+
         self.fig, self.ax = plt.subplots(figsize=(self.plot_width, self.plot_height))  
         # self.ax.plot([1, 2, 3], [4, 5, 6])
         # self.ax.text(self.plot_width/2, self.plot_height/2, 'Нет данных'
@@ -256,11 +300,12 @@ class RightFrame(ctk.CTkFrame):
         self.entry_frame.pack(fill="x", pady=(10, 5), side = 'top')
         
         self.entry = ctk.CTkEntry(self.entry_frame)
-        self.entry.pack(fill="x", side = 'left', padx=5, pady=2, expand = True)
+        self.entry.pack(fill="x", side = 'left', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY, expand = True)
+        self.entry.focus()
         
         # TODO необходимо подгружать имена текущих файлов в entry
         self.capture_button = ctk.CTkButton(self.entry_frame, text = 'Захватить', command= self.captureImage)
-        self.capture_button.pack(side = 'left', pady = 2, padx = const.DEFAULT_PADX)
+        self.capture_button.pack(side = 'left', pady = const.DEFAULT_PADY, padx = const.DEFAULT_PADX)
     
 
 
@@ -282,6 +327,16 @@ class RightFrame(ctk.CTkFrame):
 
         self.status = ctk.CTkLabel(self.status_frame, text = '', height = master.navigation_frame.winfo_height())   
         self.status.pack( fill = 'x', pady = const.DEFAULT_PADX, side = 'top')
+
+    def toggleControl(self):
+        if self.is_active:
+            self.capture_button.configure(state = 'disabled')
+            self.tabview.configure(state = 'disabled')
+            self.is_active = False
+        else:
+            self.capture_button.configure(state = 'normal')
+            self.tabview.configure(state = 'normal')
+            self.is_active = True
 
     def logStatus(self, text_to_log):
         now = datetime.now()
@@ -311,18 +366,23 @@ class RightFrame(ctk.CTkFrame):
             self.photo_is_captured = False
             self.master.left_frame.clearPhoto()
             self.continue_button.configure(state = 'disabled')
+            self.logStatus('Фото сброшено')
+
 
         else:
             # Показать картинку, сохранить в буффер
             # TODO: заменить image на данные с камеры, а также заблокировать запись пока не будет установлено имя
-            
-            self.master.left_frame.loadImage(self.image)
-            self.image_data = ip.ImageData(self.image)
+            if (len(self.entry.get())!=0):
+                self.master.left_frame.loadImage(self.master.current_image)
+                self.image_data = ip.ImageData(self.master.current_image, self.entry.get())
 
-            self.capture_button.configure(text = 'Отмена')
-            self.photo_is_captured = True
+                self.capture_button.configure(text = 'Отмена')
+                self.photo_is_captured = True
 
-            self.continue_button.configure(state = 'enabled')
+                self.continue_button.configure(state = 'enabled')
+            else:
+                self.logStatus('Введите имя файла')
+
         
 
     def nextImage(self):
@@ -334,9 +394,11 @@ class RightFrame(ctk.CTkFrame):
             
 
             self.tabview.check_var.set('off')
-
+            self.entry.focus()
             self.master.image_data_container.append(self.image_data)
+            self.master.navigation_frame.image_index += 1
             self.logStatus('Данные записаны')
+            self.entry.configure(text = '')
 
             self.capture_button.configure(text = 'Захватить')
             self.photo_is_captured = False
@@ -353,7 +415,7 @@ class RightFrame(ctk.CTkFrame):
 
         self.image_data.p0_initial = p0
         self.image_data.p1_initial = p1
-        coords, brightness = util.getBrightness(p0, p1,self.image)
+        coords, brightness = util.getBrightness(p0, p1,self.master.current_image)
         self.ax.clear()
         self.ax.plot(coords, brightness)
         self.canvas.draw()
@@ -373,7 +435,7 @@ class RightFrame(ctk.CTkFrame):
 
         self.ax.clear()
     
-        self.ax.plot(idata.coord, idata.normalised_brightness_values)
+        self.ax.plot(idata.coord, idata.normalized_brightness_values)
         self.canvas.draw()
 
     def updatePrintedDataAfterAnalysis(self, index):
@@ -386,9 +448,17 @@ class Tab(ctk.CTkTabview):
 
         self.main = main
 
-        self.configure(command = self.lockNavigation)
+        self.configure(command = self.handleTab)
 
         self.pack(fill="x", expand = True)
+
+        self.p0 = (0,0)
+        self.p1 = (0,0)
+
+        self.angle_sec = -1
+
+        self.firstImage = 0
+        self.secondImage = 0
 
         #################   Захват   #########################
 
@@ -422,7 +492,103 @@ class Tab(ctk.CTkTabview):
         self.analyse_current_button = ctk.CTkButton(self.analysis_frame, text = 'Обработать текущий', command=self.analyseCurrent)
         self.analyse_current_button.grid(row = 0, column = 0, sticky = 'ew', padx = const.DEFAULT_PADX)
 
-        self.lockNavigation()
+        #################     Обработка   #########################
+        self.analyse_tab = self.add("Клиновидность")
+
+        self.base_entry_frame = ctk.CTkFrame(self.analyse_tab, )
+        self.base_entry_frame.pack(fill="x", pady=(10, 5), side = 'top')
+        
+        self.base_label = ctk.CTkLabel(self.base_entry_frame, text = 'База (см)')
+        self.base_label.pack(side = 'left', pady = const.DEFAULT_PADY, padx = const.DEFAULT_PADX)
+        
+        self.base_entry = ctk.CTkEntry(self.base_entry_frame, )
+        self.base_entry.pack(fill="x", side = 'left', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY, expand = True)
+        
+        self.base_entry.insert(0, str(const.DEFAULT_BASE_CM))
+
+        self.parallelism_button_frame = ctk.CTkFrame(self.analyse_tab)
+        self.parallelism_button_frame.pack(fill = 'x', side = 'top')
+        self.parallelism_button_frame.grid_columnconfigure((0,1), weight = 1)
+
+        self.first_button = ctk.CTkButton(self.parallelism_button_frame, text = 'Записать первую точку', command=self.setFirstPosition)
+        self.first_button.grid(row = 0, column = 0, sticky = 'ew', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
+        
+        self.second_button = ctk.CTkButton(self.parallelism_button_frame, text = 'Записать вторую точку', command=self.setSecondPosition)
+        self.second_button.grid(row = 0, column = 1, sticky = 'ew', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
+
+        res = self.getParallelismReport((0,0), (0,0), 0)
+        self.resultsLabel = []
+        for i in range(3):
+            self.resultsLabel.append(ctk.CTkLabel(self.analyse_tab, text = res[i], anchor= 'nw'))
+            self.resultsLabel[i].pack(fill = 'x', expand = True, side = 'top', pady = 2)
+            self.resultsLabel[i].cget("font").configure(size=15)
+
+        self.handleTab()
+
+
+    def resetReport(self):
+        res = self.getParallelismReport((0,0), (0,0), 0)
+        for i in range(3):
+            self.resultsLabel[i].configure(text = res[i])        
+
+    def getParallelismReport(self, p0, p1, angle):
+        p0x = round(p0[0])
+        p0y = round(p0[1])
+        p1x = round(p1[0])
+        p1y = round(p1[1])
+        
+        text1 = 'Координата первой точки: (' + str(p0x) +', ' + str(p0y) + ') px\n'
+        text2 = 'Координата второй точки: (' + str(p1x) +', ' + str(p1y) + ') px\n'
+        text3 = 'Угол клиновидности: ' + str(round(angle,0)) + '"'
+        return [text1,text2,text3]
+
+
+    def handleTab(self):
+        if (self.get() == 'Захват'):
+            self.main.navigation_frame.next_button.configure(state = 'disabled')
+            self.main.navigation_frame.prev_button.configure(state = 'disabled')
+            self.p0 = (0,0)
+            self.p1 = (0,0)
+        elif (self.get() == 'Обработка'):
+            self.main.navigation_frame.next_button.configure(state = 'normal')
+            self.main.navigation_frame.prev_button.configure(state = 'normal')
+            self.p0 = (0,0)
+            self.p1 = (0,0)
+        elif (self.get() == 'Клиновидность'):
+            self.resetReport()
+
+    def calculateAngleSec(self):
+        dist_px  = np.sqrt((self.p0[0]-self.p1[0])**2 + (self.p0[1]-self.p1[1])**2)
+        dist_mm = const.PIXEL_TO_MM*dist_px
+        base_mm = float(self.base_entry.get())*100
+
+        angle_rad = dist_mm/base_mm/(const.KGW_REFRACTION_INDEX-1)
+        angle_sec = angle_rad*180/np.pi/60/60 
+        return angle_sec
+        
+
+    def setFirstPosition(self):
+        self.firstImage = self.main.getImage()
+        self.p0 = util.getCOM(self.firstImage)
+        if (self.p1 != (0,0)):
+            self.angle_sec = self.calculateAngleSec()
+            # self.getParallelismReport(self.p0, self.p1, self.angle_sec)
+            
+            res = self.getParallelismReport(self.p0, self.p1, self.angle_sec)
+            for i in range(3):
+                self.resultsLabel[i].configure(text = res[i])
+
+
+
+    def setSecondPosition(self):
+        self.secondImage = self.main.getImage()
+        self.p1 = util.getCOM(self.secondImage)
+        if (self.p0 != (0,0)):
+            self.angle_sec = self.calculateAngleSec()
+            res = self.getParallelismReport(self.p0, self.p1, self.angle_sec)
+            for i in range(3):
+                self.resultsLabel[i].configure(text = res[i])
+
 
     def analyseAll(self):
         self.configure(state = 'disabled')
@@ -479,13 +645,6 @@ class Tab(ctk.CTkTabview):
             
 
 
-    def lockNavigation(self):
-        if (self.get() == 'Захват'):
-            self.main.navigation_frame.next_button.configure(state = 'disabled')
-            self.main.navigation_frame.prev_button.configure(state = 'disabled')
-        elif (self.get() == 'Обработка'):
-            self.main.navigation_frame.next_button.configure(state = 'normal')
-            self.main.navigation_frame.prev_button.configure(state = 'normal')
 
 
 
@@ -508,7 +667,7 @@ class App(ctk.CTk):
 
         self.cam = camera.initCamera()
         
-        self.image = 0
+        self.current_image = Image.open(self.image_path).convert('L')
         
 
         self.setupGrid()
@@ -522,21 +681,33 @@ class App(ctk.CTk):
         self.right_frame = RightFrame(self, camera_handle = self.cam)
         self.right_frame.grid(row=0, column=1, rowspan = 2, sticky="nsew")
         
-        self.left_frame = LeftFrame(self, right_frame_handle= self.right_frame, image_path=self.image_path)
+        self.left_frame = LeftFrame(self, right_frame_handle= self.right_frame)
         self.left_frame.grid(row=0, column=0, rowspan = 1, sticky="nsew")
 
+        self.widget_list = [self.menu, self.navigation_frame, self.right_frame, self.left_frame]
 
-
+        self.toggleControl()
 
         
         self.update_idletasks()
         self.mainloop()
-    
+
+    def toggleControl(self):
+        for widget in self.widget_list:
+            widget.toggleControl()
+        print('Toggle control')
+
     def setupGrid(self):
         self.grid_columnconfigure(0, weight=2)  
         self.grid_columnconfigure(1, weight=1)  
         self.grid_rowconfigure(0, weight=1)     
         self.grid_rowconfigure(1, weight = 0)
+    
+    def getImage(self):
+        return self.current_image
+
+    def updateImage(self):
+        self.current_image = self.getImage()
 
 
 
@@ -557,6 +728,10 @@ class TitleMenu(CTkTitleMenu):
         save_sub_menu = dropdown1.add_submenu("Экспортировать")
         save_sub_menu.add_option(option = "Данные текущего изображения", command = self.saveFile)
         save_sub_menu.add_option(option = "Данные всех изображений", command = self.saveAll)
+        
+
+    def toggleControl(self):
+        pass
 
     def openFile(self):
         file_path = filedialog.askopenfilename(filetypes = [("tif file(*.tif)","*.tif")], defaultextension = [("tif file(*.tif)","*.tif")])
