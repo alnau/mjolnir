@@ -246,16 +246,18 @@ class imageFrame(ctk.CTkFrame):
 
     def drawLines(self, event):
         if (self.master.right_frame.photo_is_captured or self.master.right_frame.tabview.get() == 'Обработка'):
+            index = self.master.navigation_frame.image_index
             if (event.type == '4'):
                 # TODO тут какая-то полная грязь с логикой. Я уже слишком пьян чтобы разобраться в этом дерьме
                 # фактически ифы ниже только для того, чтобы нормально отрабатывала логика сброса галки о том, 
                 # что оптимизация не нужна. Уверен, на трезвую голову ты справишься куда лучше
+                # 
+                # При этом, все работает
                 if (self.man_we_just_switched_to_new_image):
                     self.man_we_just_switched_to_new_image = False
                 elif(len(self.master.image_data_container) != 0):
                         self.master.image_data_container[index].image_has_been_analysed = False
                         self.master.image_data_container[index].optimisation_needed = False
-                index = self.master.navigation_frame.image_index
                 self.master.right_frame.clearPlot()
                 tabview_handle = self.master.right_frame.tabview 
                 tabview_handle.check_var.set('on')
@@ -296,6 +298,7 @@ class imageFrame(ctk.CTkFrame):
 
     def updateLineOnPhoto(self):
         # TODO добавить флаг конца обработки и снимать его в случае, если пользователь изменил линию
+        # ВАЖНО: выглядит так, что я уже пофиксил это. Взгляни более трезвым взглядом
         tmp_image = self.image_resized.copy()
 
         draw = ImageDraw.Draw(tmp_image)
@@ -388,6 +391,7 @@ class RightFrame(ctk.CTkFrame):
         self.entry.focus()
         
         # TODO необходимо подгружать имена текущих файлов в entry
+        # ВАЖНО: Точно работает с "захваченными" кадрами, загруженные не проверял. Возможно, с ними факап 
         self.capture_button = ctk.CTkButton(self.entry_frame, text = 'Захватить', command= self.captureImage)
         self.capture_button.pack(side = 'left', pady = const.DEFAULT_PADY, padx = const.DEFAULT_PADX)
     
@@ -483,6 +487,7 @@ class RightFrame(ctk.CTkFrame):
             self.unlockCamera()
 
             # TODO запись данных, возобновление трансляции
+            # ВАЖНО если работает класс Camera, то уже решено
             if (self.tabview.check_var.get() == 'on'):
                 self.image_data.optimisation_needed = False
             
@@ -513,15 +518,21 @@ class RightFrame(ctk.CTkFrame):
         self.ax.plot(coords, brightness)
         self.canvas.draw()
 
+    # TODO крашится как минимум начиная с этого момента. Вроде, не сильно драматично, но просто не оч
+    # TODO кстати, после анализа графики переключаются, но не отрисовываются линии, вдоль которых 
+    # проводился анализ. Должно быть что-то простое (или банально не реализованное). 
+    # Займись этим
     def updateWindowAfterAnalysis(self):
-        self.after(100, self.tabview.configure(state = 'normal'))
-        index = self.master.navigation_frame.image_index
-        self.updatePlotAfterAnalysis(index)
-        self.updatePrintedDataAfterAnalysis(index)
-        self.master.image_frame.switchImage(index)
-        self.tabview.analyse_all_button.configure(state = 'disabled')
-        self.tabview.analyse_current_button.configure(state = 'disabled')
-
+        try:
+            self.after(100, self.tabview.configure(state = 'normal'))
+            index = self.master.navigation_frame.image_index
+            self.updatePlotAfterAnalysis(index)
+            self.updatePrintedDataAfterAnalysis(index)
+            self.master.image_frame.switchImage(index)
+            self.tabview.analyse_all_button.configure(state = 'disabled')
+            self.tabview.analyse_current_button.configure(state = 'disabled')
+        except:
+            print('You know, I''m just hanging around, anyways, checkout updateWidndowAfterAnalysis()')
 
     def updatePlotAfterAnalysis(self, index):
         idata = self.master.image_data_container[index]
@@ -706,6 +717,8 @@ class Tab(ctk.CTkTabview):
             text = "Обработка " + name + " закончена"
             self.after(100, self.master.logMessage(text))
         
+        # TODO возникает какая-то сложная проблема с выходом за пределы массиве в функции, в которой нет массивов 
+        # (см todo ~ 516)
         self.master.updateWindowAfterAnalysis()
 
 
@@ -802,7 +815,6 @@ class App(ctk.CTk):
     def toggleControl(self):
         for widget in self.widget_list:
             widget.toggleControl()
-        print('Toggle control')
 
     def setupGrid(self):
         self.grid_columnconfigure(0, weight=2)  

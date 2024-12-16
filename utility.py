@@ -217,7 +217,6 @@ def normalizeImage(image):
    
     # print(name, "normalization had been started...")
     start = time.time()
-    # TODO возникает ошибка где-то здесь. Какое-то переполнение буффера: ValueError: buffer is not large enough
     arr = np.array(image)
     
 

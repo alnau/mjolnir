@@ -95,8 +95,6 @@ class ImageData():
 
         # arr_image = np.array(self.norm_image)
         r_max = self.getRMax(com_xy)
-        # TODO: проверить на скорость работы и то, как меняются результаты
-        # r_max = self.getSupRMax(com_xy)
 
         full_integral, error_full_integral = utility.integrateOverPolar(self.norm_image, com_xy[0], com_xy[1], r_max)
 
@@ -140,11 +138,14 @@ class ImageData():
             if (right_val*intermediate_val < 0):
                 # величины меняют знак => ноль между ними
                 r0 = r_inter
-            else:
+            elif(left_val*intermediate_val > 0):
                 r1 = r_inter
-            # TODO: ожидаю что нужна обработка ситуации где промежуточное значение попадает в ноль тестовой ф-ии
-            # потом починю, ну если сломается
-            # также, возможно, следует возвращать ошибку (хз зачем)
+            else:
+                # TODO: ожидаю что нужна обработка ситуации где промежуточное значение попадает в ноль тестовой ф-ии
+                # потом починю, ну если сломается
+                # также, возможно, следует возвращать ошибку (хз зачем)
+                print("You're so fucked up. Check out boundary case of binarySearch")
+                print("I think you're able to handle this")
             iter_counter+=1
         return (r1+r0)/2
         
@@ -187,8 +188,6 @@ class ImageData():
 
         lenght = len(x_coords_index) - 1
 
-        # TODO: иногда здесь (и ниже, где-то до максимума) происходит факап. Разберись с этим
-        # (1061,0) (83,1023) создавали проблемы
         for i in range(lenght):
             try:
                 brightness = self.norm_image.getpixel((x_coords_index[i], y_coords_index[i]))
@@ -201,6 +200,7 @@ class ImageData():
                 # После чего ты решил высадить полный магазин в свежую рану, лишь для того, 
                 # чтобы понять, что боль была от твоих же действий
 
+                # (upd + ~1w, чисто для истории) Ты анализировал изображение, на котором ты успел нарисовать линию
                 self.brightness_values.append(brightness)
             except:
                 # print("ERROR in brightness", image.getpixel((x_coords_index[i]-1, y_coords_index[i]-1)))
