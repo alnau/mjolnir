@@ -151,7 +151,7 @@ class NavigationFrame(ctk.CTkFrame):
 
 
 class imageFrame(ctk.CTkFrame):
-    def __init__(self, master, right_frame_handle, camera_handle, image_path = '', **kwargs):
+    def __init__(self, master, right_frame_handle, camera_handle, **kwargs):
         super().__init__(master, **kwargs)
 
         self.right_frame_handle = right_frame_handle
@@ -166,8 +166,8 @@ class imageFrame(ctk.CTkFrame):
         self.p0_real_coords = (0,0)
         self.p1_real_coords = (0,0)
 
-        #TODO Depricated (?)
-        self.image_path = image_path
+        self.man_we_just_switched_to_new_image = False
+
 
         self.start_dialog = ctk.CTkFrame(self)
         self.start_dialog.pack(fill="both", padx = (5,0), pady = 5, expand=True)
@@ -211,12 +211,14 @@ class imageFrame(ctk.CTkFrame):
 
     def startVideofeedWorker(self):
         # while (self.master.cam.is_open() and not self.is_pause):
-        while (not self.is_pause):
-            if (self.master.cam.wait_for_frame()):
-                #ждем пока прийдет новое изображение
-                self.updateCanvas(self.master.camera_feed_image)
-                time.sleep(0.08)
-
+        try:
+            while (not self.is_pause):
+                if (self.master.cam.wait_for_frame()):
+                    #ждем пока прийдет новое изображение
+                    self.updateCanvas(self.master.camera_feed_image)
+                    time.sleep(0.08)
+        except: 
+            print('Goddamn, I''m running out of creative ideas of how to handle exept''s associated with camera')
     def activateCamera(self):
         self.start_dialog.pack_forget()
         # self.image_canvas = tk.Canvas(self)
@@ -239,15 +241,21 @@ class imageFrame(ctk.CTkFrame):
         self.p1_real_coords = (0,0)
 
         self.clearPhoto()
+        self.man_we_just_switched_to_new_image  = True
 
 
     def drawLines(self, event):
         if (self.master.right_frame.photo_is_captured or self.master.right_frame.tabview.get() == 'Обработка'):
             if (event.type == '4'):
+                # TODO тут какая-то полная грязь с логикой. Я уже слишком пьян чтобы разобраться в этом дерьме
+                # фактически ифы ниже только для того, чтобы нормально отрабатывала логика сброса галки о том, 
+                # что оптимизация не нужна. Уверен, на трезвую голову ты справишься куда лучше
+                if (self.man_we_just_switched_to_new_image):
+                    self.man_we_just_switched_to_new_image = False
+                elif(len(self.master.image_data_container) != 0):
+                        self.master.image_data_container[index].image_has_been_analysed = False
+                        self.master.image_data_container[index].optimisation_needed = False
                 index = self.master.navigation_frame.image_index
-                if len(self.master.image_data_container) != 0:
-                    self.master.image_data_container[index].image_has_been_analysed = False
-                    self.master.image_data_container[index].optimisation_needed = False
                 self.master.right_frame.clearPlot()
                 tabview_handle = self.master.right_frame.tabview 
                 tabview_handle.check_var.set('on')
@@ -485,7 +493,7 @@ class RightFrame(ctk.CTkFrame):
             self.master.navigation_frame.image_index += 1
             
             self.logMessage('Данные записаны')
-            self.entry.configure(text = '')
+            self.entry.delete(0, 'end')
 
 
             self.master.image_frame.reset()
@@ -752,10 +760,8 @@ class App(ctk.CTk):
         width = int(0.8*screen_width)
         self.geometry(f"{width}x{height}")
 
-        self.image_path="D:\Photonics\KGW МУР\!18_o.tif"
-
-    
-        
+        # TODO Эти три строчки являются банальной заглушкой
+        self.image_path="D:\Photonics\KGW МУР\!18_o.tif"        
         self.camera_feed_image = Image.open(self.image_path).convert('L')
         self.current_image = self.camera_feed_image
 
@@ -783,9 +789,14 @@ class App(ctk.CTk):
 
     def initCamera(self):
         # По идее, начиная отсюда у нас заработает камера 
-        camera_thread = threading.Thread(target=self.cam.cameraFeed, args=(self.camera_feed_image,))
-        camera_thread.daemon = True  # Daemonize the thread to stop it when the main program exits
-        camera_thread.start()
+        try:
+            camera_thread = threading.Thread(target=self.cam.cameraFeed, args=(self.camera_feed_image,))
+            camera_thread.daemon = True  # Daemonize the thread to stop it when the main program exits
+            camera_thread.start()
+        except:
+            print('I fucking hate working without physical camera attached to my dying laptop')
+            print('If this error occured on stable version of mjolnir (stable? Heh, nevermind), please check out App.initCamera()')
+            print('Of course I have no ideas of what had I done to cause this shitshow in the first place')
  
 
     def toggleControl(self):

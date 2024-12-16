@@ -10,7 +10,7 @@ from constants import *
 
 class Camera():
     def __init__(self):
-    
+        self.cam = 0
         try:
             instruments = uc480.list_instruments()
             self.cam = uc480.UC480_Camera(instruments[0])
@@ -32,15 +32,23 @@ class Camera():
     def cameraFeed(self, shared_image):
         # camera = uc480.UC480_Camera()
         # camera.start_live_video(framerate=10)
+
+        # # TODO заглушка чтобы исключить выброс ошибки
+        # pass
         
         try:
             while True:
                 frame = self.cam.latest_frame()
                 shared_image['image'] = Image.fromarray(frame)
                 time.sleep(0.1)  # 10 Hz refresh rate
+        except:
+            print('Well, still no luck in Camera.cameraFeed(args), what a big surprise!')
         finally:
-            self.stop_live_video()
-            self.close()
+            try:
+                self.stop_live_video()
+                self.close()
+            except:
+                print('I think you know where the problem is, anyways, check out cameraFeed')
 
 
 # class Camera(uc480.UC480_Camera):
