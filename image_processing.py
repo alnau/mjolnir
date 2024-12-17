@@ -39,6 +39,9 @@ class ImageData():
         self.h_width = 0
         self.radius_mm = 0
 
+        self.line_was_built = False
+        self.radius_was_calculated = False
+
         self.optimisation_needed = True
         self.image_has_been_analysed = False
 
@@ -176,6 +179,7 @@ class ImageData():
 
         if (self.optimisation_needed):
             self.p0_new, self.p1_new = utility.getIntersections(self.p0_initial, self.p1_initial, self.initial_image)
+            self.line_was_built = True
 
 
         x0 = self.p0_new[0]
@@ -264,6 +268,7 @@ class ImageData():
         self.coords_of_max_intensity[1] = y_coords_index[max_index]*PIXEL_TO_MM
 
         self.radius_mm = self.getRadius()
+        self.radius_was_calculated = True
 
         
 

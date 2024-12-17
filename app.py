@@ -286,6 +286,22 @@ class imageFrame(ctk.CTkFrame):
         else:
             self.master.right_frame.logMessage("Необходимо сначала захватить изображение")
 
+    
+    def getCrossLineCoord(self, point, is_rising):
+            ret = 0
+            if (is_rising):
+                # /
+                p0 = (point[0]-const.CROSS_HALF_HEIGHT, point[1] + const.CROSS_HALF_HEIGHT)
+                p1 = (point[0]+const.CROSS_HALF_HEIGHT, point[1] - const.CROSS_HALF_HEIGHT)
+                ret = [p0,p1]
+            else:
+                #\
+                p0 = (point[0]-const.CROSS_HALF_HEIGHT, point[1] - const.CROSS_HALF_HEIGHT)
+                p1 = (point[0]+const.CROSS_HALF_HEIGHT, point[1] + const.CROSS_HALF_HEIGHT)
+                ret = [p0,p1]
+            return ret      
+
+
     def updateCanvas(self, shared_image):
         if 'image' in shared_image:
             img = shared_image['image']
@@ -301,16 +317,28 @@ class imageFrame(ctk.CTkFrame):
         # ВАЖНО: выглядит так, что я уже пофиксил это. Взгляни более трезвым взглядом
         tmp_image = self.image_resized.copy()
 
-        draw = ImageDraw.Draw(tmp_image)
+        self.draw = ImageDraw.Draw(tmp_image)
 
-        line_color = (255)  
-        line_width = 2  
-        circle_radius = 2
-        draw.ellipse(util.getCircleBound(self.start_coords, circle_radius), fill = line_color, width = line_width)
-        draw.ellipse(util.getCircleBound(self.tmp_coords, circle_radius), fill = line_color, width = line_width)
-        draw.line([self.start_coords, self.tmp_coords], fill = line_color, width = line_width)
+        self.draw.ellipse(util.getCircleBound(self.start_coords, const.CIRCLE_RADIUS), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
+        self.draw.ellipse(util.getCircleBound(self.tmp_coords, const.CIRCLE_RADIUS), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
+        self.draw.line([self.start_coords, self.tmp_coords], fill = const.LINE_COLOR, width = const.LINE_WIDTH)
+        if (self.master.right_frame.tabview.needed_active_pos_monitoring):
+            print("well, we are here")
+            point = self.master.right_frame.tabview.p0
+            print(self.getCrossLineCoord(point,True))
+            self.draw.line(self.getCrossLineCoord(point,True), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
+            self.draw.line(self.getCrossLineCoord(point,False), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
         return tmp_image
     
+    def callForDrawRefresh(self):
+        updated_image = self.updateLineOnPhoto()
+                
+        photo = ImageTk.PhotoImage(updated_image)
+
+        self.image_canvas.config(width=updated_image.width, height=updated_image.height)
+        self.image_canvas.image = photo
+        self.image_canvas.create_image(0,0,image=photo,anchor = 'nw')
+
     def clearPhoto(self):
         tmp_image = self.image_resized.copy()
 
@@ -556,10 +584,12 @@ class Tab(ctk.CTkTabview):
 
         self.pack(fill="x", expand = True)
 
-        self.p0 = (0,0)
+        self.p0 = (100,100)
         self.p1 = (0,0)
 
         self.angle_sec = -1
+
+        self.needed_active_pos_monitoring = False
 
         self.firstImage = 0
         self.secondImage = 0
@@ -652,12 +682,12 @@ class Tab(ctk.CTkTabview):
         if (self.get() == 'Захват'):
             self.main.navigation_frame.next_button.configure(state = 'disabled')
             self.main.navigation_frame.prev_button.configure(state = 'disabled')
-            self.p0 = (0,0)
+            # self.p0 = (0,0)
             self.p1 = (0,0)
         elif (self.get() == 'Обработка'):
             self.main.navigation_frame.next_button.configure(state = 'normal')
             self.main.navigation_frame.prev_button.configure(state = 'normal')
-            self.p0 = (0,0)
+            # self.p0 = (0,0)
             self.p1 = (0,0)
         elif (self.get() == 'Клиновидность'):
             self.resetReport()
@@ -671,28 +701,44 @@ class Tab(ctk.CTkTabview):
         angle_sec = angle_rad*180/np.pi/60/60 
         return angle_sec
         
+    def angleCalculationWorker(self):
+        while True:
+            # TODO: пока закомментил
+            # if (self.needed_active_pos_monitoring):
+            #     self.p1 = util.getCOM(self.main.getImage())
+            #     self.angle_sec = self.calculateAngleSec()
+
+            #     res = self.getParallelismReport(self.p0, self.p1, self.angle_sec)
+            #     for i in range(3):
+            #         self.resultsLabel[i].configure(text = res[i])
+            #     self.main.image_frame.callForDrawRefresh()
+            time.sleep(0.2)
 
     def setFirstPosition(self):
         self.firstImage = self.main.getImage()
-        self.p0 = util.getCOM(self.firstImage)
-        if (self.p1 != (0,0)):
-            self.angle_sec = self.calculateAngleSec()
-            # self.getParallelismReport(self.p0, self.p1, self.angle_sec)
-            
-            res = self.getParallelismReport(self.p0, self.p1, self.angle_sec)
-            for i in range(3):
-                self.resultsLabel[i].configure(text = res[i])
+        # self.p0 = util.getCOM(self.firstImage)
+        self.needed_active_pos_monitoring = True
+    
+        self.angle_sec = self.calculateAngleSec()
+        # self.getParallelismReport(self.p0, self.p1, self.angle_sec)
+        
+        res = self.getParallelismReport(self.p0, self.p1, self.angle_sec)
+        for i in range(3):
+            self.resultsLabel[i].configure(text = res[i])
+
+        threading.Thread(target=self.angleCalculationWorker, args=(), daemon=True).start()
 
 
 
     def setSecondPosition(self):
         self.secondImage = self.main.getImage()
         self.p1 = util.getCOM(self.secondImage)
-        if (self.p0 != (0,0)):
-            self.angle_sec = self.calculateAngleSec()
-            res = self.getParallelismReport(self.p0, self.p1, self.angle_sec)
-            for i in range(3):
-                self.resultsLabel[i].configure(text = res[i])
+
+        self.needed_active_pos_monitoring = False
+        self.angle_sec = self.calculateAngleSec()
+        res = self.getParallelismReport(self.p0, self.p1, self.angle_sec)
+        for i in range(3):
+            self.resultsLabel[i].configure(text = res[i])
 
 
     def analyseAll(self):
