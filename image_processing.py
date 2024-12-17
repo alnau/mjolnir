@@ -61,6 +61,9 @@ class ImageData():
 
         self.p0_new = (0,0)
         self.p1_new = (0,0)
+
+        self.p0_im_space = (0,0)
+        self.p1_im_space = (0,0)
     
     def getCOM(self):
 
@@ -141,14 +144,15 @@ class ImageData():
             if (right_val*intermediate_val < 0):
                 # величины меняют знак => ноль между ними
                 r0 = r_inter
-            elif(left_val*intermediate_val > 0):
-                r1 = r_inter
             else:
-                # TODO: ожидаю что нужна обработка ситуации где промежуточное значение попадает в ноль тестовой ф-ии
-                # потом починю, ну если сломается
-                # также, возможно, следует возвращать ошибку (хз зачем)
-                print("You're so fucked up. Check out boundary case of binarySearch")
-                print("I think you're able to handle this")
+                r1 = r_inter
+            # else:
+            #     # TODO: ожидаю что нужна обработка ситуации где промежуточное значение попадает в ноль тестовой ф-ии
+            #     # потом починю, ну если сломается
+            #     # также, возможно, следует возвращать ошибку (хз зачем)
+            #     # UPD d+1: вот твоя обработка, идиот
+            #     print("You're so fucked up. Check out boundary case of binarySearch")
+            #     print("I think you're able to handle this")
             iter_counter+=1
         return (r1+r0)/2
         

@@ -134,7 +134,8 @@ class NavigationFrame(ctk.CTkFrame):
         self.master.right_frame.updatePlotAfterAnalysis(self.image_index)
         self.master.right_frame.updatePrintedDataAfterAnalysis(self.image_index)
         self.master.image_frame.loadImage(self.master.image_data_container[self.image_index].norm_image, name = self.master.image_data_container[self.image_index].image_name)
-
+        # self.master.image_frame.callForDrawRefresh(self.master.image_data_container[self.image_index])
+        self.master.right_frame.updateWindowAfterAnalysis()
     def toggleControl(self):
         # if self.is_active:
         #     self.prev_button.configure(state = 'disabled')
@@ -257,7 +258,7 @@ class imageFrame(ctk.CTkFrame):
                     self.man_we_just_switched_to_new_image = False
                 elif(len(self.master.image_data_container) != 0):
                         self.master.image_data_container[index].image_has_been_analysed = False
-                        self.master.image_data_container[index].optimisation_needed = False
+                        self.master.image_data_container[index].optimisation_needed = True
                 self.master.right_frame.clearPlot()
                 tabview_handle = self.master.right_frame.tabview 
                 tabview_handle.check_var.set('on')
@@ -312,6 +313,32 @@ class imageFrame(ctk.CTkFrame):
         self.canvas.after(100, self.updateCanvas, shared_image)  # 10 Hz refresh rate
 
 
+    def updateDrawingsOnPhoto(self, image_data):
+        tmp_image = self.image_resized.copy()
+
+        self.draw = ImageDraw.Draw(tmp_image)
+        if (image_data.radius_was_calculated):
+            crop_x = self.master.crop_factor_x
+            crop_y = self.master.crop_factor_y
+
+            radius_px = image_data.radius_mm/const.PIXEL_TO_MM*crop_x
+            p_mm = image_data.getCOM()
+            p_px = (p_mm[0]*crop_x,p_mm[1]*crop_y)
+
+            self.draw.ellipse(util.getCircleBound(p_px, radius_px), outline = const.LINE_COLOR, width = const.LINE_WIDTH)
+        if(image_data.line_was_built):
+            start_coords = image_data.p0_im_space
+            end_coords = image_data.p1_im_space
+
+            self.draw.ellipse(util.getCircleBound(start_coords, const.CIRCLE_RADIUS), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
+            self.draw.ellipse(util.getCircleBound(end_coords, const.CIRCLE_RADIUS), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
+            self.draw.line([start_coords, end_coords], fill = const.LINE_COLOR, width = const.LINE_WIDTH)
+        if (self.master.right_frame.tabview.needed_active_pos_monitoring):
+            point = self.master.right_frame.tabview.p0
+            self.draw.line(self.getCrossLineCoord(point,True), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
+            self.draw.line(self.getCrossLineCoord(point,False), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
+        return tmp_image
+
     def updateLineOnPhoto(self):
         # TODO добавить флаг конца обработки и снимать его в случае, если пользователь изменил линию
         # ВАЖНО: выглядит так, что я уже пофиксил это. Взгляни более трезвым взглядом
@@ -323,15 +350,13 @@ class imageFrame(ctk.CTkFrame):
         self.draw.ellipse(util.getCircleBound(self.tmp_coords, const.CIRCLE_RADIUS), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
         self.draw.line([self.start_coords, self.tmp_coords], fill = const.LINE_COLOR, width = const.LINE_WIDTH)
         if (self.master.right_frame.tabview.needed_active_pos_monitoring):
-            print("well, we are here")
             point = self.master.right_frame.tabview.p0
-            print(self.getCrossLineCoord(point,True))
             self.draw.line(self.getCrossLineCoord(point,True), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
             self.draw.line(self.getCrossLineCoord(point,False), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
         return tmp_image
     
-    def callForDrawRefresh(self):
-        updated_image = self.updateLineOnPhoto()
+    def callForDrawRefresh(self, image_data):
+        updated_image = self.updateDrawingsOnPhoto(image_data)
                 
         photo = ImageTk.PhotoImage(updated_image)
 
@@ -361,9 +386,27 @@ class imageFrame(ctk.CTkFrame):
         self.image_canvas.create_image(0,0,image=self.photo,anchor = 'nw')
         index = self.master.navigation_frame.image_index
         self.master.right_frame.entry.configure(placeholder_text = name)
+        text = str(index + 1) 
+        self.L = ctk.CTkLabel(self.image_canvas, text = text, fg_color = 'transparent', width = 20, text_color = 'black')
+        self.L.place(x = 10,y = 10, anchor = 'nw')
+
+    def loadImageFromData(self, image_data, name = ''):
+        width = self.winfo_width()
+        height = self.winfo_height()
+        image = image_data.norm_image.copy()
+        
+        self.image_resized = image.resize((width, height))
+        self.photo = ImageTk.PhotoImage(self.image_resized)
+
+        self.image_canvas.config(width=self.image_resized.width, height=self.image_resized.height)
+        self.image_canvas.image = self.photo
+        self.image_canvas.create_image(0,0,image=self.photo,anchor = 'nw')
+        index = self.master.navigation_frame.image_index
+        self.master.right_frame.entry.configure(placeholder_text = name)
         text = str(index + 1) + "/" + str(len(self.master.image_data_container)+1)
         self.L = ctk.CTkLabel(self.image_canvas, text = text, fg_color = 'transparent', width = 20, text_color = 'black')
         self.L.place(x = 10,y = 10, anchor = 'nw')
+
 
     def switchImage(self, index):
         idata = self.master.image_data_container[index]
@@ -385,6 +428,8 @@ class imageFrame(ctk.CTkFrame):
         self.image_canvas.config(width=self.image_resized.width, height=self.image_resized.height)
         self.image_canvas.image = self.photo
         self.image_canvas.create_image(0,0,image=self.photo,anchor = 'nw')
+        self.master.crop_factor_x = width/self.master.current_image.width
+        self.master.crop_factor_y = height/self.master.current_image.height
 
 class RightFrame(ctk.CTkFrame):
     def __init__(self, master, camera_handle, **kwargs):
@@ -422,6 +467,7 @@ class RightFrame(ctk.CTkFrame):
         # ВАЖНО: Точно работает с "захваченными" кадрами, загруженные не проверял. Возможно, с ними факап 
         self.capture_button = ctk.CTkButton(self.entry_frame, text = 'Захватить', command= self.captureImage)
         self.capture_button.pack(side = 'left', pady = const.DEFAULT_PADY, padx = const.DEFAULT_PADX)
+        self.master.bind('<Return>', self.captureImageOnEvent)
     
 
 
@@ -491,7 +537,10 @@ class RightFrame(ctk.CTkFrame):
         self.master.image_frame.image_canvas.configure(highlightbackground="black")
         self.photo_is_captured = False
         self.master.image_frame.clearPhoto()
-        
+    
+    def captureImageOnEvent(self, event):
+        if (self.tabview.get() == 'Захват'):
+            self.captureImage()
 
     def captureImage(self):
         # отработка захвата или сброса текущего изображения
@@ -518,11 +567,28 @@ class RightFrame(ctk.CTkFrame):
             # ВАЖНО если работает класс Camera, то уже решено
             if (self.tabview.check_var.get() == 'on'):
                 self.image_data.optimisation_needed = False
+                self.image_data.line_was_built = True
+                self.image_data.p0_im_space = self.master.image_frame.start_coords
+                self.image_data.p1_im_space = self.master.image_frame.end_coords
+
+                crop_x = self.master.crop_factor_x
+                crop_y = self.master.crop_factor_y
+                p0_true = (self.master.image_frame.start_coords[0]/crop_x, self.master.image_frame.start_coords[1]/crop_y)
+                p1_true = (self.master.image_frame.end_coords[0]/crop_x, self.master.image_frame.end_coords[1]/crop_y)
+
+                self.image_data.p0_new = p0_true
+                self.image_data.p1_new = p1_true
+            
             
             self.tabview.check_var.set('off')
             self.entry.focus()
+            self.image_data.p0_new = self.master.image_frame.p0_real_coords
+            self.image_data.p1_new = self.master.image_frame.p1_real_coords
 
+            self.image_data.p0_im_space = self.master.image_frame.start_coords
+            self.image_data.p1_im_space = self.master.image_frame.end_coords
             self.master.image_data_container.append(self.image_data)
+            # TODO вероятно, эта строчка ответственна за ошибку после обработки изображений
             self.master.navigation_frame.image_index += 1
             
             self.logMessage('Данные записаны')
@@ -823,6 +889,9 @@ class App(ctk.CTk):
         self.image_path="D:\Photonics\KGW МУР\!18_o.tif"        
         self.camera_feed_image = Image.open(self.image_path).convert('L')
         self.current_image = self.camera_feed_image
+        
+        self.crop_factor_x = 0
+        self.crop_factor_y = 0
 
         self.setupGrid()
         
@@ -839,6 +908,7 @@ class App(ctk.CTk):
         self.image_frame.grid(row=0, column=0, rowspan = 1, sticky="nsew")
 
         self.widget_list = [self.menu, self.navigation_frame, self.right_frame, self.image_frame]
+
 
         self.toggleControl()
 
