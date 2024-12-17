@@ -89,17 +89,46 @@ class TitleMenu(CTkTitleMenu):
             self.master.navigation_frame.prev_button.configure(state = 'normal')
 
     def saveFile(self):
-        index = self.mastr.navigation_frame.image_index
+        index = self.master.navigation_frame.image_index
         image_data = self.master.image_data_container[index]
         image_data.plotBepis()
         
-        self.right_frame.logMessage("Данные", image_data.image_name, "сохранены в папке mjolnir")
+        self.master.right_frame.logMessage("Данные", image_data.image_name, "сохранены в папке mjolnir")
                         
     def saveAll(self):
+        new_names = []
+        width_data_d = []
+        width_data_o = []
+        counter = 0
         for image_data in self.master.image_data_container:
             image_data.plotBepis()
+
+            r_ref = 0
+            if (image_data.plotname!='control'):
+                number, test_for_d_o = image_data.plotname.rsplit("_",1)
+            # print(number,test_for_d_o)
             
-        self.right_frame.logMessage("Данные измерений сохранены в папке mjolnir")
+                if (test_for_d_o == "d"):
+                    width_data_d.append(image_data.radius_mm)
+                    new_names.append(number)
+                elif (test_for_d_o == "o"):
+                    width_data_o.append(image_data.radius_mm)
+            elif (image_data.plotname == 'control'):
+                r_ref = image_data.radius_mm
+
+        print("------------------")
+
+        if (len(new_names)!=len(width_data_d) or len(new_names)!=len(width_data_o) ):
+            print("error with files")
+    
+        num_of_images = len(self.master.image_data_container)
+        # util.printReportToCSV(new_names, width_data_d, width_data_o)
+        util.printReportToXLSX(new_names, width_data_d, width_data_o, r_ref)
+        self.master.right_frame.logMessage("Все файлы сохранены")
+
+
+                
+        self.master.right_frame.logMessage("Данные измерений сохранены в папке mjolnir")
 
 
 
@@ -260,46 +289,51 @@ class imageFrame(ctk.CTkFrame):
 
 
     def drawLines(self, event):
-        if (self.master.right_frame.photo_is_captured or self.master.right_frame.tabview.get() == 'Обработка'):
-            index = self.master.navigation_frame.image_index
-            if (event.type == '4'):
-                # TODO тут какая-то полная грязь с логикой. Я уже слишком пьян чтобы разобраться в этом дерьме
-                # фактически ифы ниже только для того, чтобы нормально отрабатывала логика сброса галки о том, 
-                # что оптимизация не нужна. Уверен, на трезвую голову ты справишься куда лучше
-                # 
-                # При этом, все работает
-                if (self.man_we_just_switched_to_new_image):
-                    self.man_we_just_switched_to_new_image = False
-                elif(len(self.master.image_data_container) != 0):
-                        self.master.image_data_container[index].image_has_been_analysed = False
-                        self.master.image_data_container[index].optimisation_needed = True
-                self.master.right_frame.clearPlot()
-                tabview_handle = self.master.right_frame.tabview 
-                tabview_handle.check_var.set('on')
-                self.tmp_coords = (0,0)
-                self.start_coords = (event.x, event.y)
-                tabview_handle.analyse_all_button.configure(state = 'normal')
-                tabview_handle.analyse_current_button.configure(state = 'normal')
-                self.clearPhoto()
-                
-            elif (event.type == '5'):
-                self.end_coords = (event.x, event.y)
-                self.tmp_coords = self.end_coords
-                self.p0_real_coords = (int(self.start_coords[0]*self.master.current_image.width/self.image_resized.width), int(self.start_coords[1]*self.master.current_image.height/self.image_resized.height))
-                self.p1_real_coords = (int(self.end_coords[0]*self.master.current_image.width/self.image_resized.width), int(self.end_coords[1]*self.master.current_image.height/self.image_resized.height))
-                self.right_frame_handle.updatePlot(self.p0_real_coords, self.p1_real_coords)
-            elif (event.type == '6'):
-                self.tmp_coords = (event.x, event.y)
-            if (self.tmp_coords != (0,0)):
-                updated_image = self.updateLineOnPhoto()
-                
-                photo = ImageTk.PhotoImage(updated_image)
 
-                self.image_canvas.config(width=updated_image.width, height=updated_image.height)
-                self.image_canvas.image = photo
-                self.image_canvas.create_image(0,0,image=photo,anchor = 'nw')
+        if (self.master.right_frame.tabview.get != "Захват"):
+            self.master.right_frame.logMessage("Это должно быть возможно, но временно функционал ограничен")
+            
         else:
-            self.master.right_frame.logMessage("Необходимо сначала захватить изображение")
+            if (self.master.right_frame.photo_is_captured or self.master.right_frame.tabview.get() == 'Обработка'):
+                index = self.master.navigation_frame.image_index
+                if (event.type == '4'):
+                    # TODO тут какая-то полная грязь с логикой. Я уже слишком пьян чтобы разобраться в этом дерьме
+                    # фактически ифы ниже только для того, чтобы нормально отрабатывала логика сброса галки о том, 
+                    # что оптимизация не нужна. Уверен, на трезвую голову ты справишься куда лучше
+                    # 
+                    # При этом, все работает
+                    if (self.man_we_just_switched_to_new_image):
+                        self.man_we_just_switched_to_new_image = False
+                    elif(len(self.master.image_data_container) != 0):
+                            self.master.image_data_container[index].image_has_been_analysed = False
+                            self.master.image_data_container[index].optimisation_needed = True
+                    self.master.right_frame.clearPlot()
+                    tabview_handle = self.master.right_frame.tabview 
+                    tabview_handle.check_var.set('on')
+                    self.tmp_coords = (0,0)
+                    self.start_coords = (event.x, event.y)
+                    tabview_handle.analyse_all_button.configure(state = 'normal')
+                    tabview_handle.analyse_current_button.configure(state = 'normal')
+                    self.clearPhoto()
+                    
+                elif (event.type == '5'):
+                    self.end_coords = (event.x, event.y)
+                    self.tmp_coords = self.end_coords
+                    self.p0_real_coords = (int(self.start_coords[0]*self.master.current_image.width/self.image_resized.width), int(self.start_coords[1]*self.master.current_image.height/self.image_resized.height))
+                    self.p1_real_coords = (int(self.end_coords[0]*self.master.current_image.width/self.image_resized.width), int(self.end_coords[1]*self.master.current_image.height/self.image_resized.height))
+                    self.right_frame_handle.updatePlot(self.p0_real_coords, self.p1_real_coords)
+                elif (event.type == '6'):
+                    self.tmp_coords = (event.x, event.y)
+                if (self.tmp_coords != (0,0)):
+                    updated_image = self.updateLineOnPhoto()
+                    
+                    photo = ImageTk.PhotoImage(updated_image)
+
+                    self.image_canvas.config(width=updated_image.width, height=updated_image.height)
+                    self.image_canvas.image = photo
+                    self.image_canvas.create_image(0,0,image=photo,anchor = 'nw')
+            else:
+                self.master.right_frame.logMessage("Необходимо сначала захватить изображение")
 
     
     def getCrossLineCoord(self, point, is_rising):
@@ -845,6 +879,7 @@ class Tab(ctk.CTkTabview):
         
         # TODO возникает какая-то сложная проблема с выходом за пределы массиве в функции, в которой нет массивов 
         # (см todo ~ 516)
+        self.after(1000, self.master.logMessage("Все изображения обработаны"))
         self.master.updateWindowAfterAnalysis()
 
 

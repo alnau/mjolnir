@@ -411,7 +411,7 @@ def analyseAll(path, start = 0):
         image_data.plotBepis()
         
         r_ref = 0
-        if (image_data.plotname!='контроль'):
+        if (image_data.plotname!='control'):
             number, test_for_d_o = image_data.plotname.rsplit("_",1)
         # print(number,test_for_d_o)
         
@@ -421,7 +421,7 @@ def analyseAll(path, start = 0):
             elif (test_for_d_o == "o"):
                 width_data_o.append(image_data.radius_mm)
             image.close()
-        else:
+        elif (image_data.plotname == 'control'):
             r_ref = image_data.radius_mm
 
         print("------------------")
