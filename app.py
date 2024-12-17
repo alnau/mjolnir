@@ -172,6 +172,10 @@ class NavigationFrame(ctk.CTkFrame):
         self.master.image_frame.loadImage(self.master.image_data_container[self.image_index].norm_image, name = self.master.image_data_container[self.image_index].image_name)
         # self.master.image_frame.callForDrawRefresh(self.master.image_data_container[self.image_index])
         self.master.right_frame.updateWindowAfterAnalysis()
+        self.master.image_frame.reset()
+
+
+
     def toggleControl(self):
         # if self.is_active:
         #     self.prev_button.configure(state = 'disabled')
@@ -292,7 +296,7 @@ class imageFrame(ctk.CTkFrame):
 
         if (self.master.right_frame.tabview.get != "Захват"):
             self.master.right_frame.logMessage("Это должно быть возможно, но временно функционал ограничен")
-            
+
         else:
             if (self.master.right_frame.photo_is_captured or self.master.right_frame.tabview.get() == 'Обработка'):
                 index = self.master.navigation_frame.image_index
@@ -868,7 +872,7 @@ class Tab(ctk.CTkTabview):
         
         # все изображения прошли базовую обработку и имеют полный набор данных (хотелось бы верить)
         # self.analyse_button.configure(state = 'disabled')
-    
+        self.master.logMessage("Обработка начата...")
         for image_data in self.main.image_data_container:
             image_data.analyseImage()
             name = image_data.image_name
