@@ -5,7 +5,7 @@ from PIL import Image, ImageTk
 import numpy as np
 from PIL import ImageDraw
 
-from camera_feed import Camera
+from camera_feed import Camera, isThorCameraConnected
 
 import constants as const
 
@@ -32,18 +32,25 @@ class TitleMenu(CTkTitleMenu):
         super().__init__(master)
 
         file_button = self.add_cascade("Файл")
+        reopen_camera_buttom = self.add_cascade("Изменить камеру", command = self.master.initUI)
 
-        dropdown1 = CustomDropdownMenu(widget=file_button)
+        file_dropdown = CustomDropdownMenu(widget=file_button)
 
-        open_sub_menu = dropdown1.add_submenu("Открыть")
+        open_sub_menu = file_dropdown.add_submenu("Открыть")
         open_sub_menu.add_option(option="Файл", command = self.openFile)
         open_sub_menu.add_option(option="Папку", command = self.openFolder)
 
-        dropdown1.add_separator()
+        file_dropdown.add_separator()
 
-        save_sub_menu = dropdown1.add_submenu("Экспортировать")
+        save_sub_menu = file_dropdown.add_submenu("Экспортировать")
         save_sub_menu.add_option(option = "Данные текущего изображения", command = self.saveFile)
         save_sub_menu.add_option(option = "Данные всех изображений", command = self.saveAll)
+
+        
+        # exterminate_button = self.add_cascade("DoW")
+        # geno_dropdown = CustomDropdownMenu(widget=exterminate_button)
+        # geno_dropdown.add_option(option = "NUKE EM, OPPIE!", command = self.master.initUI)
+    
         
 
     def toggleControl(self):
@@ -152,7 +159,7 @@ class NavigationFrame(ctk.CTkFrame):
 
 
 class imageFrame(ctk.CTkFrame):
-    def __init__(self, master, right_frame_handle, camera_handle, **kwargs):
+    def __init__(self, master, right_frame_handle, camera_handle, camera_list, **kwargs):
         super().__init__(master, **kwargs)
 
         self.right_frame_handle = right_frame_handle
@@ -176,14 +183,21 @@ class imageFrame(ctk.CTkFrame):
 
         self.start_dialog.grid_columnconfigure(0, weight = 3)
         self.start_dialog.grid_columnconfigure(1, weight = 1)
-        self.start_dialog.grid_columnconfigure(2, weight = 3)
+        self.start_dialog.grid_columnconfigure(2, weight = 1)
+        self.start_dialog.grid_columnconfigure(3, weight = 3)
 
         self.start_dialog.grid_rowconfigure(0, weight = 3)
         self.start_dialog.grid_rowconfigure(1, weight = 1)
-        self.start_dialog.grid_rowconfigure(2, weight = 3)
+        self.start_dialog.grid_rowconfigure(2, weight = 1)
+        self.start_dialog.grid_rowconfigure(3, weight = 3)
 
+        self.camera_list = camera_list
+        self.camera_selection = ctk.CTkComboBox(self.start_dialog, values = self.camera_list)
+        self.camera_selection.set('Камера...')
+        self.camera_selection.grid(row  =1, column = 1, padx = const.DEFAULT_PADX, sticky ='we')
+        
         self.start_button = ctk.CTkButton(self.start_dialog, text='Включить камеру', command = self.activateCamera)
-        self.start_button.grid(row = 1,column = 1, sticky = 'we')
+        self.start_button.grid(row = 1,column = 2, padx = const.DEFAULT_PADY, sticky = 'we')
 
 
         self.image_canvas = tk.Canvas(self, highlightbackground="black")
@@ -872,7 +886,9 @@ class App(ctk.CTk):
     def __init__(self):
         super().__init__()
 
+        self.initUI()
         
+    def initUI(self):
         self.image_data_container = []
 
         self.title("mjolnir")
@@ -895,6 +911,8 @@ class App(ctk.CTk):
 
         self.setupGrid()
         
+        self.camera_list = self.getCameraList()
+
         self.menu = TitleMenu(self)
         self.menu.grid()
 
@@ -904,7 +922,7 @@ class App(ctk.CTk):
         self.right_frame = RightFrame(self, camera_handle = self.cam)
         self.right_frame.grid(row=0, column=1, rowspan = 2, sticky="nsew")
         
-        self.image_frame = imageFrame(self, right_frame_handle= self.right_frame,camera_handle = self.cam)
+        self.image_frame = imageFrame(self, right_frame_handle= self.right_frame,camera_handle = self.cam, camera_list = self.camera_list)
         self.image_frame.grid(row=0, column=0, rowspan = 1, sticky="nsew")
 
         self.widget_list = [self.menu, self.navigation_frame, self.right_frame, self.image_frame]
@@ -915,6 +933,16 @@ class App(ctk.CTk):
         
         self.update_idletasks()
         self.mainloop()
+
+
+    def getCameraList(self):
+        tmp_camera_list = []
+        if (isThorCameraConnected()):
+            tmp_camera_list.append("ThorCam")
+        else:
+            pass
+        return ['ThorCam', 'USB - камера 1']
+        return tmp_camera_list
 
     def initCamera(self):
         # По идее, начиная отсюда у нас заработает камера 
@@ -952,28 +980,3 @@ class App(ctk.CTk):
 # Example usage
 if __name__ == "__main__":
     app = App()
-
-    # # Configure the grid for the main application window
-    # self.grid_columnconfigure(0, weight=2)  # Left frame is 2 times wider
-    # self.grid_columnconfigure(1, weight=1)  # Right frame is 1 time wider
-    # self.grid_rowconfigure(0, weight=1)     # Single row for the frames
-
-    # # Create the left frame
-    # image_frame = imageFrame(app, image_path="D:\Photonics\KGW МУР\!18_d.tif")
-    # image_frame.grid(row=0, column=0, sticky="nsew")
-
-    # # Create the right frame
-    # right_frame = RightFrame(app)
-    # right_frame.grid(row=0, column=1, sticky="nsew")
-
-    # # Ensure the frames resize correctly
-    # self.update_idletasks()  # Force an update to ensure the grid configuration is applied immediately
-
-    # # Debugging: Print frame sizes after 1 second
-    # def print_frame_sizes():
-    #     print(f"Left frame width: {image_frame.winfo_width()}")
-    #     print(f"Right frame width: {right_frame.winfo_width()}")
-
-    # self.after(1000, print_frame_sizes)
-
-    # self.mainloop()

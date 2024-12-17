@@ -50,6 +50,18 @@ class Camera():
             except:
                 print('I think you know where the problem is, anyways, check out cameraFeed')
 
+def isThorCameraConnected():
+    instruments =[]
+    try:
+        instruments = uc480.list_instruments()
+    except:
+        return False
+    
+    if (len(instruments) == 0):
+        return False
+    else:
+        return True
+
 
 # class Camera(uc480.UC480_Camera):
 #     # def __init__(self):
