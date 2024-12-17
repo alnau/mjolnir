@@ -665,9 +665,6 @@ class RightFrame(ctk.CTkFrame):
         self.canvas.draw()
 
     # TODO крашится как минимум начиная с этого момента. Вроде, не сильно драматично, но просто не оч
-    # TODO кстати, после анализа графики переключаются, но не отрисовываются линии, вдоль которых 
-    # проводился анализ. Должно быть что-то простое (или банально не реализованное). 
-    # Займись этим
     def updateWindowAfterAnalysis(self):
         try:
             self.after(100, self.tabview.configure(state = 'normal'))
