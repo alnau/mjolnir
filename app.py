@@ -5,7 +5,12 @@ from PIL import Image, ImageTk
 import numpy as np
 from PIL import ImageDraw
 
-from camera_feed import Camera, isThorCameraConnected
+import camera_feed_thorlabs as thor
+import camera_feed_generic as gen
+
+from camera_feed_thorlabs import ThorCamera
+from camera_feed_generic import GenericCamera
+
 
 import constants as const
 
@@ -138,7 +143,7 @@ class TitleMenu(CTkTitleMenu):
 
 
 class NavigationFrame(ctk.CTkFrame):
-    def __init__(self, master, camera_handle, **kwargs):
+    def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
 
         self.image_index = 0
@@ -197,7 +202,7 @@ class NavigationFrame(ctk.CTkFrame):
 
 
 class imageFrame(ctk.CTkFrame):
-    def __init__(self, master, right_frame_handle, camera_handle, camera_list, **kwargs):
+    def __init__(self, master, right_frame_handle, **kwargs):
         super().__init__(master, **kwargs)
 
         self.right_frame_handle = right_frame_handle
@@ -229,12 +234,12 @@ class imageFrame(ctk.CTkFrame):
         self.start_dialog.grid_rowconfigure(2, weight = 1)
         self.start_dialog.grid_rowconfigure(3, weight = 3)
 
-        self.camera_list = camera_list
-        self.camera_selection = ctk.CTkComboBox(self.start_dialog, values = self.camera_list)
+        self.camera_list = self.getCameraList()
+        self.camera_selection = ctk.CTkComboBox(self.start_dialog, values = self.camera_list, command = self.chooseCamera)
         self.camera_selection.set('Камера...')
         self.camera_selection.grid(row  =1, column = 1, padx = const.DEFAULT_PADX, sticky ='we')
         
-        self.start_button = ctk.CTkButton(self.start_dialog, text='Включить камеру', command = self.activateCamera)
+        self.start_button = ctk.CTkButton(self.start_dialog, text='Включить камеру', command = self.activateCamera, state = 'disabled')
         self.start_button.grid(row = 1,column = 2, padx = const.DEFAULT_PADY, sticky = 'we')
 
 
@@ -251,7 +256,28 @@ class imageFrame(ctk.CTkFrame):
         self.image_canvas.bind("<ButtonRelease-1>", self.drawLines )
         self.image_canvas.bind("<ButtonRelease-1>", self.drawLines )
 
+    def getCameraList(self):
+        tmp_camera_list = []
+        if (thor.isCameraConnected()):
+            tmp_camera_list.append("ThorCam")
+        for i in range(10):
+            if (gen.isCameraConnected(i)):
+                text = 'USB - камера ' + str(i) 
+                tmp_camera_list.append(text)
 
+        # TODO Заглушка. необходимо удалить перед боевым применением
+        return ['ThorCam', 'USB - камера 1']
+        return tmp_camera_list
+    
+    def chooseCamera(self, choise):
+        if (choise == 'ThorCam'):
+            self.cam = ThorCamera()
+            self.start_button.configure(state = 'normal')
+        elif(choise[:-2] == 'USB - камера'):
+            index = int(choise[-1])
+            self.cam = GenericCamera(index)
+            self.start_button.configure(state = 'normal')
+        
 
     def toggleControl(self):
         pass
@@ -265,19 +291,25 @@ class imageFrame(ctk.CTkFrame):
     def startVideoFeedWorker(self):
         # while (self.master.cam.is_open() and not self.is_pause):
         while (not self.is_pause):
-                # TODO Это cam.cam что-то совершенно безбожноею Сделай что-нибудь с названиями наконец 
-                if (self.master.cam.cam.wait_for_frame()):
+            try: 
+                if (self.cam.waitForFrame()):
                     #ждем пока прийдет новое изображение
                     self.updateCanvas(self.master.camera_feed_image)
                     time.sleep(0.1)
-        # try:
-        #     while (not self.is_pause):
-        #         if (self.master.cam.wait_for_frame()):
-        #             #ждем пока прийдет новое изображение
-        #             self.updateCanvas(self.master.camera_feed_image)
-        #             time.sleep(0.1)
-        # except: 
-        #     print('Goddamn, I''m running out of creative ideas of how to handle exept''s associated with camera')
+            except:
+                print('Goddamn, I''m running out of creative ideas of how to handle exeptions associated with camera')  
+       
+    def initCamera(self):
+        # По идее, начиная отсюда у нас заработает камера 
+        try:
+            camera_thread = threading.Thread(target=self.cam.cameraFeed, args=(self,))
+            camera_thread.daemon = True 
+            camera_thread.start()
+        except:
+            print('I fucking hate working without physical camera attached to my dying laptop')
+            print('If this error occured on stable version of mjolnir (stable? Heh, nevermind), please check out App.initCamera()')
+            print('Of course I have no ideas of what had I done to cause this shitshow in the first place')
+
     def activateCamera(self):
         self.start_dialog.pack_forget()
         # self.image_canvas = tk.Canvas(self)
@@ -287,7 +319,8 @@ class imageFrame(ctk.CTkFrame):
         self.resize_image(None)
         self.master.toggleControl()
 
-        self.master.initCamera()
+        # TODO: ОБЯЗАТЕЛЬНО РАСКОММЕНТИРУЙ СТРОКУ НИЖЕ, БЕЗ НЕЕ НИЧЕГО НЕ ЗАРАБОТАЕТ 
+        # self.initCamera()
 
         self.startVideoFeed()
         
@@ -515,7 +548,7 @@ class imageFrame(ctk.CTkFrame):
         self.master.crop_factor_y = height/self.master.current_image.height
 
 class RightFrame(ctk.CTkFrame):
-    def __init__(self, master, camera_handle, **kwargs):
+    def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
 
         self.photo_is_captured = False
@@ -558,7 +591,7 @@ class RightFrame(ctk.CTkFrame):
         self.thin_frame = ctk.CTkFrame(self, height=2, bg_color="gray")
         self.thin_frame.pack(fill="x", padx =10, pady=5,)
 
-        self.tabview = Tab(master = self, camera_handle=camera_handle, main=master)
+        self.tabview = Tab(master = self, main=master)
         self.tabview.pack(side = 'top', fill = 'x') 
         
         self.continue_button = ctk.CTkButton(master = self, command = self.nextImage, text = 'Продолжить', state = 'disabled')
@@ -718,7 +751,7 @@ class RightFrame(ctk.CTkFrame):
 
 
 class Tab(ctk.CTkTabview):
-    def __init__(self, master, camera_handle, main, **kwargs):
+    def __init__(self, master, main, **kwargs):
         super().__init__(master, **kwargs)
 
         self.main = main
@@ -957,13 +990,13 @@ class App(ctk.CTk):
 
         self.title("mjolnir")
 
-        # TODO: Не спасет от крушения
-        try:
-            self.camera_handle = Camera()
-        except:
-            print('Error during cam init')
+        # # TODO: Не спасет от крушения
+        # try:
+        #     self.camera_handle = thor.Camera()
+        # except:
+        #     print('Error during cam init')
 
-        self.cam = self.camera_handle
+        # self.cam = self.camera_handle
 
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
@@ -980,19 +1013,18 @@ class App(ctk.CTk):
         self.crop_factor_y = 0
 
         self.setupGrid()
-        
-        self.camera_list = self.getCameraList()
+
 
         self.menu = TitleMenu(self)
         self.menu.grid()
 
-        self.navigation_frame = NavigationFrame(self, camera_handle = self.cam)
+        self.navigation_frame = NavigationFrame(self)
         self.navigation_frame.grid(row=1, column=0, rowspan = 1, sticky="nsew")
         
-        self.right_frame = RightFrame(self, camera_handle = self.cam)
+        self.right_frame = RightFrame(self)
         self.right_frame.grid(row=0, column=1, rowspan = 2, sticky="nsew")
         
-        self.image_frame = imageFrame(self, right_frame_handle= self.right_frame,camera_handle = self.cam, camera_list = self.camera_list)
+        self.image_frame = imageFrame(self, right_frame_handle= self.right_frame)
         self.image_frame.grid(row=0, column=0, rowspan = 1, sticky="nsew")
 
         self.widget_list = [self.menu, self.navigation_frame, self.right_frame, self.image_frame]
@@ -1003,30 +1035,6 @@ class App(ctk.CTk):
         
         self.update_idletasks()
         self.mainloop()
-
-
-    def getCameraList(self):
-        tmp_camera_list = []
-        if (isThorCameraConnected()):
-            tmp_camera_list.append("ThorCam")
-        else:
-            pass
-        return ['ThorCam', 'USB - камера 1']
-        return tmp_camera_list
-
-    def initCamera(self):
-        # По идее, начиная отсюда у нас заработает камера 
-        camera_thread = threading.Thread(target=self.cam.cameraFeed, args=(self,))
-        camera_thread.daemon = True  # Daemonize the thread to stop it when the main program exits
-        camera_thread.start()
-        # try:
-        #     camera_thread = threading.Thread(target=self.cam.cameraFeed, args=(self.camera_feed_image,))
-        #     camera_thread.daemon = True  # Daemonize the thread to stop it when the main program exits
-        #     camera_thread.start()
-        # except:
-        #     print('I fucking hate working without physical camera attached to my dying laptop')
-        #     print('If this error occured on stable version of mjolnir (stable? Heh, nevermind), please check out App.initCamera()')
-        #     print('Of course I have no ideas of what had I done to cause this shitshow in the first place')
  
 
     def toggleControl(self):

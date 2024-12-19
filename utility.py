@@ -495,6 +495,7 @@ def checkIfInBounds(x,y, width, height):
         return False
     else:
         return True
+    
 
 
 def integrateOverPolar(image, x0, y0, r_max, r_min = 0, theta_min = 0, theta_max = 2*np.pi):
