@@ -23,7 +23,7 @@ from PIL import Image as img
 def getReport(name, radius, h_width, left_side_mm, right_side_mm, coords_of_max_intensity, coords_of_com, angle):
     str_name = "Имя файла: " + name + "\n"
     str_date = "Дата анализа: " + time.strftime("%d.%m.%Y") + "\n"
-    str_width = "Радиус 86.5% от интегральной энергии: " + str(round(radius,2)) + " (мм) \n"
+    str_width = "Диаметр 86.5% от интегральной энергии: " + str(round(2*radius,2)) + " (мм) \n"
     str_angle = "Угол поворота оси: " + str(round(angle,2)) + " (град) \n"
     str_max_I = "Координаты максимума интенсивности: " + str(round(coords_of_max_intensity[0],2)) + ", " + str(round(coords_of_max_intensity[1],2)) + " (мм) \n"
     str_COM = "Координаты центра масс пучка: " + str(round(coords_of_com[0],2)) + ", " + str(round(coords_of_com[1],2)) + " (мм) \n"
@@ -274,7 +274,7 @@ def printReportToCSV(new_names, width_data_d, width_data_o):
             writer.writerow([str(new_names[i]), str(width_data_d[i]), str(width_data_o[i])])
 
 def fillTitleLine(worksheet_handle, r_control):
-        first_line = ['№', 'радиус d (мм)', 'радиус o, (мм)','', 'контрольный радиус (мм)',r_control]
+        first_line = ['№', 'диаметр d (мм)', 'диаметр o, (мм)','', 'контрольный радиус (мм)',r_control]
         counter = 0
         for cols in first_line: 
             worksheet_handle.write(0,counter, cols)
@@ -311,8 +311,8 @@ def getBrightness(p1, p2, image):
 
     x_coords_index, y_coords_index = bresnanLine(p1,p2, width, height)
     brightness_values =[]
-    lenght = len(x_coords_index)-1
-    for i in range(lenght):
+    length = len(x_coords_index)-1
+    for i in range(length):
         brightness = tmp_image.getpixel((x_coords_index[i]-1, y_coords_index[i]-1))
         brightness_values.append(brightness)
 
@@ -322,7 +322,7 @@ def getBrightness(p1, p2, image):
   
     conversion_factor = PIXEL_TO_MM*1280/width
     len_of_line = 0
-    for i in range(lenght-1):
+    for i in range(length-1):
         dl = conversion_factor*np.sqrt((x_coords_index[i] - x_coords_index[i+1])**2 + (y_coords_index[i] - y_coords_index[i+1])**2)
         coords.append(len_of_line)
         len_of_line+=dl
@@ -344,35 +344,53 @@ def getIntegral(x1,y1,x2,y2,image, moment = 0):
         
         x_coords_index, y_coords_index = bresnanLine(p1,p2, width, height)
         
-
-        lenght = len(x_coords_index) - 1
-        if (lenght == 0):
+        if (len(x_coords_index) < 10):
             return -100000
+        
+        x_coords_index.pop()
+        y_coords_index.pop()
 
-        for i in range(lenght):
+        length = len(x_coords_index)
+
+        for i in range(length):
             try:
-                brightness  = image.getpixel((x_coords_index[i]-1, y_coords_index[i]-1))
+                brightness  = image.getpixel((x_coords_index[i] - 1, y_coords_index[i] - 1))
         
                 # brightness = pixel[0]
                 brightnessValues.append(brightness)
             except:
-                print("error in getIntegral")
+                print("error in getIntegral, possibly out of bounds")
+                print(length)
+
 
 
         integral = 0
         len_along_the_line = 0
-        for i in range(lenght-1):
-            try:
-                deltaLineCoord = PIXEL_TO_MM*np.sqrt((x_coords_index[i]-x_coords_index[i+1])**2 + (y_coords_index[i] - y_coords_index[i+1])**2)
-                # if (brightnessValues[i]/maximum > 1 - ENERGY_THRESHOLD):
-                if (moment == 0):
-                    # if (brightnessValues[i]/maximum > 0.05):
-                    integral += brightnessValues[i]*deltaLineCoord
-                else:
-                    integral += brightnessValues[i]*deltaLineCoord*len_along_the_line**moment
-                    len_along_the_line+=deltaLineCoord
-            except:
-                print("error in integral; i=", i, "length-1 =", lenght - 1)
+
+        
+        try:
+            np_x_coords_index = np.array(x_coords_index)
+            np_y_coords_index = np.array(y_coords_index)
+            np_brightness = np.array(brightnessValues)
+
+            distances = np.sqrt(np.diff(np_x_coords_index)**2 + np.diff(np_y_coords_index)**2)  
+            line_coordinates = np.insert(np.cumsum(distances), 0, 0)  
+
+
+            integral = PIXEL_TO_MM*np.trapz(np_brightness, line_coordinates)
+        except:
+            print(len(np_x_coords_index), len(np_brightness))
+
+        
+        # for i in range(length-1):
+        #     try:
+        #         deltaLineCoord = PIXEL_TO_MM*np.sqrt((x_coords_index[i]-x_coords_index[i+1])**2 + (y_coords_index[i] - y_coords_index[i+1])**2)
+        #         # if (brightnessValues[i]/maximum > 1 - ENERGY_THRESHOLD):
+        #             # if (brightnessValues[i]/maximum > 0.05):
+        #         integral += brightnessValues[i]*deltaLineCoord
+        #     except:
+        #         print("error in integral; i=", i, "length-1 =", length - 1)
+
         # print(integral)
         return integral
 

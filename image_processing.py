@@ -216,6 +216,7 @@ class ImageData():
 
         len_of_line = 0
         self.coord.append(0)
+        # TODO: Перевести на np.array и соответствующие методы обработки
         for i in range(lenght-1):
             dl = PIXEL_TO_MM*np.sqrt((x_coords_index[i] - x_coords_index[i+1])**2 + (y_coords_index[i] - y_coords_index[i+1])**2)
             self.coord.append(len_of_line)
@@ -355,7 +356,7 @@ class ImageData():
 
         line_color = 255  
         line_width = 1  # Width of the line
-        draw.line([self.p0_new, self.p1_new], fill = line_color, width = line_width)
+        # draw.line([self.p0_new, self.p1_new], fill = line_color, width = line_width)
         circle_radius = int(self.radius_mm/PIXEL_TO_MM)
         start_coords = (int(self.coords_of_com[0]/PIXEL_TO_MM),int(self.coords_of_com[1]/PIXEL_TO_MM))
         draw.ellipse(utility.getCircleBound(start_coords, circle_radius), outline = line_color, width = line_width)
@@ -381,7 +382,7 @@ class ImageData():
 
 
     
-def analyseAll(path, start = 0):
+def analyseAll(path, _start = 0):
     # path = image.path
     names = []
     for image_name in os.listdir(path):
@@ -396,8 +397,10 @@ def analyseAll(path, start = 0):
     counter = 0
 
     start = time.time()
+    d_ref = 0
+    
     for name in names:
-        if (counter < start):
+        if (counter < _start):
             counter+=1
             continue
         image = img.open(os.path.join(path, name)).convert('L')
@@ -410,19 +413,18 @@ def analyseAll(path, start = 0):
 
         image_data.plotBepis()
         
-        r_ref = 0
         if (image_data.plotname!='control'):
             number, test_for_d_o = image_data.plotname.rsplit("_",1)
         # print(number,test_for_d_o)
         
             if (test_for_d_o == "d"):
-                width_data_d.append(image_data.radius_mm)
+                width_data_d.append(2*image_data.radius_mm)
                 new_names.append(number)
             elif (test_for_d_o == "o"):
-                width_data_o.append(image_data.radius_mm)
+                width_data_o.append(2*image_data.radius_mm)
             image.close()
         elif (image_data.plotname == 'control'):
-            r_ref = image_data.radius_mm
+            d_ref = 2*image_data.radius_mm
 
         print("------------------")
     
@@ -432,7 +434,7 @@ def analyseAll(path, start = 0):
     
     num_of_images = len(names)
     utility.printReportToCSV(new_names, width_data_d, width_data_o)
-    utility.printReportToXLSX(new_names, width_data_d, width_data_o, r_ref)
+    utility.printReportToXLSX(new_names, width_data_d, width_data_o, d_ref)
     end = time.time()
 
     print("So whole journey took about", '{:.1f}'.format(end-start), 's. That''s about', '{:.1f}'.format((end-start)/num_of_images), 's per image. \nNot too shaby at all')

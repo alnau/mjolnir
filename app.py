@@ -14,6 +14,9 @@ import time
 from datetime import datetime
 
 import os
+import logging
+import sys
+import traceback
 
 import utility as util
 
@@ -74,11 +77,13 @@ class TitleMenu(CTkTitleMenu):
         if dir_path:          
             names = []
             for image_name in os.listdir(dir_path):
-                if (image_name.endswith(".tif")):
+                if (image_name.endswith('.tif')):
+                     
                     names.append(image_name)
             for name in names:
                 image = Image.open(os.path.join(dir_path, name)).convert('L')
                 pure_name,_ = os.path.splitext(name)
+                pure_name.removesuffix('.tif')
                 self.master.image_data_container.append(ip.ImageData(image, pure_name))
             
             self.master.image_frame.loadImage(self.master.image_data_container[0].norm_image, names[0])
@@ -253,20 +258,26 @@ class imageFrame(ctk.CTkFrame):
     
     def startVideoFeed(self):
         self.is_pause = False
-        update_image_thread = threading.Thread(target = self.startVideoFeedWorker, args = (self.master.camera_feed_image,))
+        update_image_thread = threading.Thread(target = self.startVideoFeedWorker, args = ())
         update_image_thread.daemon = True
         update_image_thread.start()
 
-    def startVideofeedWorker(self):
+    def startVideoFeedWorker(self):
         # while (self.master.cam.is_open() and not self.is_pause):
-        try:
-            while (not self.is_pause):
-                if (self.master.cam.wait_for_frame()):
+        while (not self.is_pause):
+                # TODO Это cam.cam что-то совершенно безбожноею Сделай что-нибудь с названиями наконец 
+                if (self.master.cam.cam.wait_for_frame()):
                     #ждем пока прийдет новое изображение
                     self.updateCanvas(self.master.camera_feed_image)
-                    time.sleep(0.08)
-        except: 
-            print('Goddamn, I''m running out of creative ideas of how to handle exept''s associated with camera')
+                    time.sleep(0.1)
+        # try:
+        #     while (not self.is_pause):
+        #         if (self.master.cam.wait_for_frame()):
+        #             #ждем пока прийдет новое изображение
+        #             self.updateCanvas(self.master.camera_feed_image)
+        #             time.sleep(0.1)
+        # except: 
+        #     print('Goddamn, I''m running out of creative ideas of how to handle exept''s associated with camera')
     def activateCamera(self):
         self.start_dialog.pack_forget()
         # self.image_canvas = tk.Canvas(self)
@@ -277,6 +288,8 @@ class imageFrame(ctk.CTkFrame):
         self.master.toggleControl()
 
         self.master.initCamera()
+
+        self.startVideoFeed()
         
         self.resize_image(None)
 
@@ -356,14 +369,24 @@ class imageFrame(ctk.CTkFrame):
 
 
     def updateCanvas(self, shared_image):
-        if 'image' in shared_image:
-            img = shared_image['image']
-            resized_img = img.resize((self.winfo_width(), self.winfo_height()), Image.ANTIALIAS)
-            photo = ImageTk.PhotoImage(resized_img)
-            self.canvas.create_image(0, 0, anchor=tk.NW, image=photo)
-            self.canvas.image = photo  # Keep a reference to avoid garbage collection
-        self.canvas.after(100, self.updateCanvas, shared_image)  # 10 Hz refresh rate
+        # try:
+        #     img = shared_image
+        #     resized_img = img.resize((self.winfo_width(), self.winfo_height()), Image.ANTIALIAS)
+        #     photo = ImageTk.PhotoImage(resized_img)
+        #     self.canvas.create_image(0, 0, anchor=tk.NW, image=photo)
+        #     self.canvas.image = photo  # Keep a reference to avoid garbage collection
+        #     self.canvas.after(100, self.updateCanvas, shared_image)  # 10 Hz refresh rate
+        # except:
+        #     print('Houston, we have some problems here (updateCanvas)')
 
+        img = shared_image.copy()
+        # img.show()
+        resized_img = img.resize((self.winfo_width(), self.winfo_height()), Image.ANTIALIAS)
+        photo = ImageTk.PhotoImage(resized_img)
+        self.image_canvas.config(width=resized_img.width, height=resized_img.height)
+        self.image_canvas.create_image(0,0,image=photo,anchor = 'nw')
+        self.image_canvas.image = photo
+        
 
     def updateDrawingsOnPhoto(self, image_data):
         tmp_image = self.image_resized.copy()
@@ -929,8 +952,9 @@ class App(ctk.CTk):
 
         self.title("mjolnir")
 
-        self.cam = Camera()
-        
+        self.camera_handle = Camera()
+        self.cam = self.camera_handle
+
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
         height = int(0.8*screen_height)
@@ -982,14 +1006,17 @@ class App(ctk.CTk):
 
     def initCamera(self):
         # По идее, начиная отсюда у нас заработает камера 
-        try:
-            camera_thread = threading.Thread(target=self.cam.cameraFeed, args=(self.camera_feed_image,))
-            camera_thread.daemon = True  # Daemonize the thread to stop it when the main program exits
-            camera_thread.start()
-        except:
-            print('I fucking hate working without physical camera attached to my dying laptop')
-            print('If this error occured on stable version of mjolnir (stable? Heh, nevermind), please check out App.initCamera()')
-            print('Of course I have no ideas of what had I done to cause this shitshow in the first place')
+        camera_thread = threading.Thread(target=self.cam.cameraFeed, args=(self,))
+        camera_thread.daemon = True  # Daemonize the thread to stop it when the main program exits
+        camera_thread.start()
+        # try:
+        #     camera_thread = threading.Thread(target=self.cam.cameraFeed, args=(self.camera_feed_image,))
+        #     camera_thread.daemon = True  # Daemonize the thread to stop it when the main program exits
+        #     camera_thread.start()
+        # except:
+        #     print('I fucking hate working without physical camera attached to my dying laptop')
+        #     print('If this error occured on stable version of mjolnir (stable? Heh, nevermind), please check out App.initCamera()')
+        #     print('Of course I have no ideas of what had I done to cause this shitshow in the first place')
  
 
     def toggleControl(self):
@@ -1012,7 +1039,6 @@ class App(ctk.CTk):
 
 
 
-
-# Example usage
 if __name__ == "__main__":
+    # example_function()
     app = App()

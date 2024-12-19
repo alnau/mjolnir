@@ -11,11 +11,12 @@ from constants import *
 class Camera():
     def __init__(self):
         self.cam = 0
+
         try:
             instruments = uc480.list_instruments()
             self.cam = uc480.UC480_Camera(instruments[0])
-            self.cam.start_live_video(framerate=10)
-            self.cam.set_auto_exposure(enable = False)
+            self.cam.start_live_video(framerate='10Hz', timeout = '0.3s')
+
         except:
             print('Error during cam init')
 
@@ -29,18 +30,16 @@ class Camera():
 
     
     
-    def cameraFeed(self, shared_image):
+    def cameraFeed(self, master_app):
         # camera = uc480.UC480_Camera()
         # camera.start_live_video(framerate=10)
-
-        # # TODO заглушка чтобы исключить выброс ошибки
-        # pass
-        
+        master_handle = master_app
         try:
             while True:
-                frame = self.cam.latest_frame()
-                shared_image['image'] = Image.fromarray(frame)
-                time.sleep(0.1)  # 10 Hz refresh rate
+                if (self.cam.wait_for_frame()):
+                    frame = self.cam.grab_image(timeout='100s', copy=True, exposure_time='3ms')
+                    master_app.camera_feed_image = Image.fromarray(frame)
+                    time.sleep(0.05)  # 10 Hz refresh rate
         except:
             print('Well, still no luck in Camera.cameraFeed(args), what a big surprise!')
         finally:
@@ -104,35 +103,34 @@ def isThorCameraConnected():
 #             self.close()
 
 
-# def cameraFeed():
-#     instruments = uc480.list_instruments()
-#     cam = uc480.UC480_Camera(instruments[0])
-#     cam.start_live_video(framerate = "10Hz")
+def cameraFeed():
+    instruments = uc480.list_instruments()
+    cam = uc480.UC480_Camera(instruments[0])
+    cam.start_live_video(framerate = "10Hz")
 
-#     while cam.is_open:
-     
-#         frame = cam.grab_image(timeout='100s', copy=True, exposure_time='10ms')
+    while cam.is_open:
+  
+                    
+        frame = cam.grab_image(timeout='100s', copy=True, exposure_time='3ms')
         
-#         frame1 = np.stack((frame,) * 3,-1) 
-#         frame1 = frame1.astype(np.uint8)
+        frame1 = np.stack((frame,) * 3,-1) 
+        frame1 = frame1.astype(np.uint8)
 
-#         gray = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
 
-#         cv2.imshow('Camera', gray)
-
-#         events = [i for i in dir(cv2) if 'EVENT' in i]
-#         if (len(events)!=0):
-#             print( events )
+        cv2.imshow('Camera', gray)
 
         
-#         if cv2.waitKey(30) & 0xFF == ord('q'):
-#             break
+        if cv2.waitKey(30) & 0xFF == ord('q'):
+            break
 
-#     cam.close()
-#     cv2.destroyAllWindows()
+    cam.close()
+    cv2.destroyAllWindows()
+
+# cameraFeed()
 
 def getImage(cam):
-    frame = cam.grab_image(timeout='100s', copy=True, exposure_time='10ms')
+    frame = cam.grab_image(timeout='0.3s', copy=True, exposure_time='10ms')
         
     frame1 = np.stack((frame,) * 3,-1) 
     frame1 = frame1.astype(np.uint8)
@@ -141,7 +139,7 @@ def getImage(cam):
 
     return gray
     
-
+cameraFeed()
 
 # def initCamera():
 #     # cv2.setMouseCallback('image',draw_circle)
