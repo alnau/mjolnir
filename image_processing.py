@@ -1,22 +1,18 @@
 import numpy as np
 import os
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import time
 import csv
-
 from scipy.stats import norm
+
 
 from PIL import Image as img
 from PIL import ImageDraw
 
+
 import utility
-
 from constants import *
-
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-
-
-
 
 
 
@@ -66,7 +62,6 @@ class ImageData():
         self.p1_im_space = (0,0)
     
     def getCOM(self):
-
         arr_image = np.array(self.norm_image)
         arr_image[arr_image < CUTOFF_THRESHOLD] = 0
 
@@ -90,7 +85,6 @@ class ImageData():
 
 
     def getRadius(self):
-        
         print('Radius evaluation algorithm has been initiated...')
         print('Damned math inbound! \n(god save our souls)')
         start = time.time()
@@ -99,35 +93,22 @@ class ImageData():
         self.coords_of_com[0] = com_xy[0]*PIXEL_TO_MM
         self.coords_of_com[1] = com_xy[1]*PIXEL_TO_MM
 
-        # arr_image = np.array(self.norm_image)
         r_max = self.getRMax(com_xy)
 
         full_integral, error_full_integral = utility.integrateOverPolar(self.norm_image, com_xy[0], com_xy[1], r_max)
 
         radius_mm = 0
-        r_for_test = np.arange(10, r_max,10)
-
-        # for r in r_for_test:
-        #     integral, error = utility.integrateOverPolar(self.norm_image, com_xy[0],  com_xy[1], r)
-        #     # print(integral, error)
-        #     if (integral/full_integral >= ENERGY_THRESHOLD):
-        #         radius_mm = r*PIXEL_TO_MM
-        #         break
 
         radius_px = self.binarySearch(2, com_xy, r_max, full_integral)
         end = time.time()
         radius_mm = radius_px*PIXEL_TO_MM
         print('That wasn''t too hard, but, man, it still hurts. Time per execution =', '{:.1f}'.format(end-start),'s')
-        
-        # print(self.norm_image.getpixel(com_xy))
-        # self.verification(radius_mm/PIXEL_TO_MM)
+
         return radius_mm
 
     def binarySearch(self, epsilon, com, r_max, full_integral):
         r0 = 0
         r1 = r_max
-        result = 0
-        delta = (r1 - r0)/2
 
 
         left_val = 0
@@ -147,18 +128,17 @@ class ImageData():
             else:
                 r1 = r_inter
             # else:
+            #     # UPD d+1: вот твоя обработка, идиот
+            #     
             #     # TODO: ожидаю что нужна обработка ситуации где промежуточное значение попадает в ноль тестовой ф-ии
             #     # потом починю, ну если сломается
             #     # также, возможно, следует возвращать ошибку (хз зачем)
-            #     # UPD d+1: вот твоя обработка, идиот
             #     print("You're so fucked up. Check out boundary case of binarySearch")
             #     print("I think you're able to handle this")
             iter_counter+=1
         return (r1+r0)/2
         
 
-
-    
     def verification(self, radius):
         print('verification started, grab a beer, it may take a while...')
         start = time.time()
@@ -174,17 +154,14 @@ class ImageData():
                         I_in+=brightness
         end = time.time()
 
-
         print(I_in/I_sum, ";", end-start,"s")
 
     
 
     def calculateNumbers(self):
-
         if (self.optimisation_needed):
             self.p0_new, self.p1_new = utility.getIntersections(self.p0_initial, self.p1_initial, self.initial_image)
             self.line_was_built = True
-
 
         x0 = self.p0_new[0]
         y0 = self.p0_new[1]
@@ -230,9 +207,7 @@ class ImageData():
         except:
             print('initial points: ', self.p0_initial, self.p1_initial)
             print('new: ', self.p0_new, self.p1_new)
-            # print(x0,y0,x1,y1)
             print(self.brightness_values)
-
         
         max_tmp = 0
         max_index = 0
@@ -250,10 +225,7 @@ class ImageData():
         for i in range(lenght):
             self.normalized_brightness_values.append(self.brightness_values[i]/self.maximum)
         
-
-        COM_index = 0
         self.integral = utility.getIntegral(x0,y0,x1,y1,self.norm_image)
-        
 
         # Найдем полуширину и максимум интенсивности
         for i in range(lenght-1):
@@ -280,24 +252,6 @@ class ImageData():
         self.modified_image = self.getModifiedImage()
 
         self.h_width = (self.right_side_mm - self.left_side_mm)/2
-        
-        # integration_len = 0
-        # # и координаты центра масс вдоль выбранного направления
-        # try:
-        #     for i in range(lenght-1):
-        #         dl = np.sqrt((x_coords_index[i] - x_coords_index[i+1])**2 + (y_coords_index[i] - y_coords_index[i+1])**2)
-        #         if (self.brightness_values[i]/max_tmp > 1 - ENERGY_THRESHOLD):
-        #             COM_index += integration_len*dl*self.brightness_values[i]*(PIXEL_TO_MM/self.integral)
-        #         integration_len+= dl
-        # except:
-        #     print("error in COM calculations")
-        # self.coords_of_com[0] = x_coords_index[int(COM_index)]*PIXEL_TO_MM
-        # self.coords_of_com[1] = y_coords_index[int(COM_index)]*PIXEL_TO_MM
-
-        # com_xy = self.getCOM()
-
-        # self.coords_of_com[0] = com_xy[0]*PIXEL_TO_MM
-        # self.coords_of_com[1] = com_xy[1]*PIXEL_TO_MM
         
         try:
             _, tail= os.path.split(self.image_name)
@@ -352,8 +306,6 @@ class ImageData():
 
         draw = ImageDraw.Draw(tmp_image)
 
-        # print(point0, point1)
-
         line_color = 255  
         line_width = 1  # Width of the line
         # draw.line([self.p0_new, self.p1_new], fill = line_color, width = line_width)
@@ -377,9 +329,6 @@ class ImageData():
 
         self.calculateNumbers()
 
-        # self.plotBepis(optimisation_needed)
-
-
 
     
 def analyseAll(path, _start = 0):
@@ -388,8 +337,6 @@ def analyseAll(path, _start = 0):
     for image_name in os.listdir(path):
         if (image_name.endswith(".tif")):
             names.append(image_name)
-    
-
     
     new_names = []
     width_data_d = []
@@ -408,14 +355,11 @@ def analyseAll(path, _start = 0):
         pure_name,_ = name.split('.')
         image_data = ImageData(image, pure_name)
         
-        
         image_data.analyseImage()
-
         image_data.plotBepis()
         
         if (image_data.plotname!='control'):
             number, test_for_d_o = image_data.plotname.rsplit("_",1)
-        # print(number,test_for_d_o)
         
             if (test_for_d_o == "d"):
                 width_data_d.append(2*image_data.radius_mm)
@@ -425,10 +369,8 @@ def analyseAll(path, _start = 0):
             image.close()
         elif (image_data.plotname == 'control'):
             d_ref = 2*image_data.radius_mm
-
         print("------------------")
-    
-    # integral = getIntegral(x0,y0,x1,y1,image)
+
     if (len(new_names)!=len(width_data_d) or len(new_names)!=len(width_data_o) ):
         print("error with files")
     
@@ -446,12 +388,9 @@ def analyseFile(path,name):
         image_data = ImageData(image, pure_name)
         
         image_data.analyseImage()
-
         image_data.plotBepis()
-        
 
         number, _ , test_for_d_o = image_data.plotname.partition("_")
-        
         
         image.close()
 

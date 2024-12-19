@@ -1,39 +1,31 @@
 import customtkinter as ctk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk,ImageDraw
 import numpy as np
-from PIL import ImageDraw
-
-import camera_feed_thorlabs as thor
-import camera_feed_generic as gen
-
-from camera_feed_thorlabs import ThorCamera
-from camera_feed_generic import GenericCamera
-
-
-import constants as const
-
 import threading
 import time
 from datetime import datetime
-
+import tkinter as tk
+from  tkinter import filedialog
+from CTkMenuBar import *
 import os
 import logging
 import sys
 import traceback
 
+import camera_feed_thorlabs as thor
+from camera_feed_thorlabs import ThorCamera
+import camera_feed_generic as gen
+from camera_feed_generic import GenericCamera
+import constants as const
 import utility as util
-
-import tkinter as tk
-from  tkinter import filedialog
-
 import image_processing as ip
 
-from CTkMenuBar import *
 
-ctk.set_appearance_mode("Dark")  # Modes: "System" (standard), "Dark", "Light"
-ctk.set_default_color_theme("dark-blue")  # Themes: "blue" (standard), "green", "dark-blue"
+
+ctk.set_appearance_mode("Dark")  
+ctk.set_default_color_theme("dark-blue")  
 
 class TitleMenu(CTkTitleMenu):
     def __init__(self, master):
@@ -53,11 +45,10 @@ class TitleMenu(CTkTitleMenu):
         save_sub_menu = file_dropdown.add_submenu("Экспортировать")
         save_sub_menu.add_option(option = "Данные текущего изображения", command = self.saveFile)
         save_sub_menu.add_option(option = "Данные всех изображений", command = self.saveAll)
-
-        
-        # exterminate_button = self.add_cascade("DoW")
-        # geno_dropdown = CustomDropdownMenu(widget=exterminate_button)
-        # geno_dropdown.add_option(option = "NUKE EM, OPPIE!", command = self.master.initUI)
+     
+        exterminate_button = self.add_cascade("DoW")
+        geno_dropdown = CustomDropdownMenu(widget=exterminate_button)
+        geno_dropdown.add_option(option = "NUKE EM, OPPIE!", command = self.master.initUI)
     
         
 
@@ -77,13 +68,13 @@ class TitleMenu(CTkTitleMenu):
                 print("Error during image import")
 
     def openFolder(self):
+        self.master.right_frame.logMessage('Начат импорт файлов...')
         self.master.image_data_container = []
         dir_path = filedialog.askdirectory()
         if dir_path:          
             names = []
             for image_name in os.listdir(dir_path):
                 if (image_name.endswith('.tif')):
-                     
                     names.append(image_name)
             for name in names:
                 image = Image.open(os.path.join(dir_path, name)).convert('L')
@@ -109,15 +100,12 @@ class TitleMenu(CTkTitleMenu):
         new_names = []
         width_data_d = []
         width_data_o = []
-        counter = 0
         for image_data in self.master.image_data_container:
             image_data.plotBepis()
 
             r_ref = 0
             if (image_data.plotname!='control'):
                 number, test_for_d_o = image_data.plotname.rsplit("_",1)
-            # print(number,test_for_d_o)
-            
                 if (test_for_d_o == "d"):
                     width_data_d.append(image_data.radius_mm)
                     new_names.append(number)
@@ -130,14 +118,8 @@ class TitleMenu(CTkTitleMenu):
 
         if (len(new_names)!=len(width_data_d) or len(new_names)!=len(width_data_o) ):
             print("error with files")
-    
-        num_of_images = len(self.master.image_data_container)
-        # util.printReportToCSV(new_names, width_data_d, width_data_o)
-        util.printReportToXLSX(new_names, width_data_d, width_data_o, r_ref)
-        self.master.right_frame.logMessage("Все файлы сохранены")
 
-
-                
+        util.printReportToXLSX(new_names, width_data_d, width_data_o, r_ref)             
         self.master.right_frame.logMessage("Данные измерений сохранены в папке mjolnir")
 
 
@@ -147,10 +129,7 @@ class NavigationFrame(ctk.CTkFrame):
         super().__init__(master, **kwargs)
 
         self.image_index = 0
-        # self.right_frame_handle = right_frame_handle
-
         self.is_active = True
-        # self.cam = camera_handle
 
         self.button_frame = ctk.CTkFrame(self)
         self.button_frame.pack(fill="x", pady=10, padx = const.DEFAULT_PADX, side = 'top')
@@ -160,12 +139,11 @@ class NavigationFrame(ctk.CTkFrame):
         self.prev_button = ctk.CTkButton(self.button_frame, text="<", 
                                         command = lambda: self.switch('back'))
         self.prev_button.grid(row = 0, column = 0, sticky = 'e', padx = const.DEFAULT_PADX, pady = 5)
-        # self.button1.pack(side="left", padx=10, pady=5)
+
 
         self.next_button = ctk.CTkButton(self.button_frame, text=">", 
                                         command = lambda: self.switch("fwd"))
         self.next_button.grid(row = 0, column = 1, sticky = 'w', padx = const.DEFAULT_PADX, pady = 5)
-        # self.button2.pack(side="right", padx=10, pady=5)
 
     # посылает сигнал о переключении картинок
     def switch(self, btn):
@@ -180,7 +158,6 @@ class NavigationFrame(ctk.CTkFrame):
         self.master.right_frame.updatePlotAfterAnalysis(self.image_index)
         self.master.right_frame.updatePrintedDataAfterAnalysis(self.image_index)
         self.master.image_frame.loadImage(self.master.image_data_container[self.image_index].norm_image, name = self.master.image_data_container[self.image_index].image_name)
-        # self.master.image_frame.callForDrawRefresh(self.master.image_data_container[self.image_index])
         self.master.right_frame.updateWindowAfterAnalysis()
         self.master.image_frame.reset()
 
@@ -219,10 +196,8 @@ class imageFrame(ctk.CTkFrame):
 
         self.man_we_just_switched_to_new_image = False
 
-
         self.start_dialog = ctk.CTkFrame(self)
         self.start_dialog.pack(fill="both", padx = (5,0), pady = 5, expand=True)
-
 
         self.start_dialog.grid_columnconfigure(0, weight = 3)
         self.start_dialog.grid_columnconfigure(1, weight = 1)
@@ -244,12 +219,6 @@ class imageFrame(ctk.CTkFrame):
 
 
         self.image_canvas = tk.Canvas(self, highlightbackground="black")
-        # self.image_canvas.pack(fill="both", padx = (5,0), pady = 5, expand=True)
-
-        
-        # self.bind("<Configure>", self.resize_image)
-
-        # Bind the <Configure> event to resize the image
         
         self.image_canvas.bind("<ButtonPress-1>", self.drawLines )
         self.image_canvas.bind("<B1-Motion>", self.drawLines )
@@ -289,7 +258,6 @@ class imageFrame(ctk.CTkFrame):
         update_image_thread.start()
 
     def startVideoFeedWorker(self):
-        # while (self.master.cam.is_open() and not self.is_pause):
         while (not self.is_pause):
             try: 
                 if (self.cam.waitForFrame()):
@@ -312,11 +280,9 @@ class imageFrame(ctk.CTkFrame):
 
     def activateCamera(self):
         self.start_dialog.pack_forget()
-        # self.image_canvas = tk.Canvas(self)
         self.image_canvas.pack(fill="both", padx = (5,0), pady = 5, expand=True)
-        # self.image = Image.open(self.image_path)
-        self.bind("<Configure>", self.resize_image)
-        self.resize_image(None)
+        self.bind("<Configure>", self.resizeImage)
+        self.resizeImage(None)
         self.master.toggleControl()
 
         # TODO: ОБЯЗАТЕЛЬНО РАСКОММЕНТИРУЙ СТРОКУ НИЖЕ, БЕЗ НЕЕ НИЧЕГО НЕ ЗАРАБОТАЕТ 
@@ -324,7 +290,7 @@ class imageFrame(ctk.CTkFrame):
 
         self.startVideoFeed()
         
-        self.resize_image(None)
+        self.resizeImage(None)
 
     def reset(self):
         self.start_coords = (0,0)
@@ -402,18 +368,8 @@ class imageFrame(ctk.CTkFrame):
 
 
     def updateCanvas(self, shared_image):
-        # try:
-        #     img = shared_image
-        #     resized_img = img.resize((self.winfo_width(), self.winfo_height()), Image.ANTIALIAS)
-        #     photo = ImageTk.PhotoImage(resized_img)
-        #     self.canvas.create_image(0, 0, anchor=tk.NW, image=photo)
-        #     self.canvas.image = photo  # Keep a reference to avoid garbage collection
-        #     self.canvas.after(100, self.updateCanvas, shared_image)  # 10 Hz refresh rate
-        # except:
-        #     print('Houston, we have some problems here (updateCanvas)')
 
         img = shared_image.copy()
-        # img.show()
         resized_img = img.resize((self.winfo_width(), self.winfo_height()), Image.ANTIALIAS)
         photo = ImageTk.PhotoImage(resized_img)
         self.image_canvas.config(width=resized_img.width, height=resized_img.height)
@@ -530,20 +486,21 @@ class imageFrame(ctk.CTkFrame):
             name = idata.image_name
         self.loadImage(idata.modified_image, name)
 
-    def resize_image(self, event):
+    def resizeImage(self, event):
         width = self.winfo_width()
         height = self.winfo_height()
 
-        # Load and resize the image to fit the frame
+        # загрузим изображение, отмасштабируем и конвертируем его
         image = self.master.current_image
         self.image_resized = image.resize((width, height))
         self.photo = ImageTk.PhotoImage(self.image_resized)
 
-        # Update the label with the resized image
+        # обновим холст
         self.image_canvas.config(width=self.image_resized.width, height=self.image_resized.height)
         self.image_canvas.create_image(0,0,image=self.photo,anchor = 'nw')
         self.image_canvas.image = self.photo
         
+        # ... и данные по кропу
         self.master.crop_factor_x = width/self.master.current_image.width
         self.master.crop_factor_y = height/self.master.current_image.height
 
@@ -552,26 +509,20 @@ class RightFrame(ctk.CTkFrame):
         super().__init__(master, **kwargs)
 
         self.photo_is_captured = False
-        # self.image = Image.open("D:\Photonics\KGW МУР\!18_o.tif").convert('L')
 
         self.plot_width = 5
         self.plot_height = 3
 
         self.is_active = True
 
-        # self.cam = camera_handle
+
         self.fig, self.ax = plt.subplots(figsize=(self.plot_width, self.plot_height))  
-        # self.ax.plot([1, 2, 3], [4, 5, 6])
-        # self.ax.text(self.plot_width/2, self.plot_height/2, 'Нет данных'
-        #             ,horizontalalignment='center', verticalalignment='center', transform = self.ax.transAxes)
         self.ax.set_aspect('auto', adjustable='box')
 
-        # Create a canvas to embed the plot
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(fill="x", padx = const.DEFAULT_PADX, pady = (5,0), side = "top")
 
-        # Add an entry field just under the plot
         self.entry_frame = ctk.CTkFrame(self, )
         self.entry_frame.pack(fill="x", pady=(10, 5), side = 'top')
         
@@ -579,15 +530,10 @@ class RightFrame(ctk.CTkFrame):
         self.entry.pack(fill="x", side = 'left', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY, expand = True)
         self.entry.focus()
         
-        # TODO необходимо подгружать имена текущих файлов в entry
-        # ВАЖНО: Точно работает с "захваченными" кадрами, загруженные не проверял. Возможно, с ними факап 
         self.capture_button = ctk.CTkButton(self.entry_frame, text = 'Захватить', command= self.captureImage)
         self.capture_button.pack(side = 'left', pady = const.DEFAULT_PADY, padx = const.DEFAULT_PADX)
         self.master.bind('<Return>', self.captureImageOnEvent)
     
-
-
-        # Add a thin frame just under the entry field
         self.thin_frame = ctk.CTkFrame(self, height=2, bg_color="gray")
         self.thin_frame.pack(fill="x", padx =10, pady=5,)
 
@@ -626,9 +572,9 @@ class RightFrame(ctk.CTkFrame):
             r = 255
             g = 25*i
             b = 25*i
-            color = f'#{r:02x}{g:02x}{b:02x}'  # Convert to hex color
-            self.status.configure( text_color=color)  # Update label color
-            time.sleep(0.05)  # Sleep for 50ms (0.5 seconds total) 
+            color = f'#{r:02x}{g:02x}{b:02x}'  
+            self.status.configure( text_color=color)  
+            time.sleep(0.05) 
 
 
     def lockCamera(self):
@@ -636,7 +582,7 @@ class RightFrame(ctk.CTkFrame):
         
         self.master.image_frame.is_pause = True
         self.capture_button.configure(text = 'Отмена')
-        self.continue_button.configure(state = 'enabled')
+        self.continue_button.configure(state = 'normal')
         self.master.image_frame.image_canvas.configure(highlightbackground="red")
         self.photo_is_captured = True
         self.master.image_frame.loadImage(self.master.current_image)
@@ -755,8 +701,8 @@ class Tab(ctk.CTkTabview):
         super().__init__(master, **kwargs)
 
         self.main = main
-        # self.cam = camera_handle
-        self.configure(command = self.handleTab)
+
+        self.configure(command = self.tabHandler)
 
         self.pack(fill="x", expand = True)
 
@@ -802,7 +748,7 @@ class Tab(ctk.CTkTabview):
         self.analyse_current_button = ctk.CTkButton(self.analysis_frame, text = 'Обработать текущий', command=self.analyseCurrent)
         self.analyse_current_button.grid(row = 0, column = 0, sticky = 'ew', padx = const.DEFAULT_PADX)
 
-        #################     Обработка   #########################
+        #################   Клиновидность   #########################
         self.analyse_tab = self.add("Клиновидность")
 
         self.base_entry_frame = ctk.CTkFrame(self.analyse_tab, )
@@ -833,7 +779,7 @@ class Tab(ctk.CTkTabview):
             self.resultsLabel[i].pack(fill = 'x', expand = True, side = 'top', pady = 2)
             self.resultsLabel[i].cget("font").configure(size=15)
 
-        self.handleTab()
+        self.tabHandler()
 
 
     def resetReport(self):
@@ -854,16 +800,14 @@ class Tab(ctk.CTkTabview):
 
 
     # TODO: вероятно, не самый "умный" подход к названию, путается с handle, которые передаются от родительского класса
-    def handleTab(self):
+    def tabHandler(self):
         if (self.get() == 'Захват'):
             self.main.navigation_frame.next_button.configure(state = 'disabled')
             self.main.navigation_frame.prev_button.configure(state = 'disabled')
-            # self.p0 = (0,0)
             self.p1 = (0,0)
         elif (self.get() == 'Обработка'):
             self.main.navigation_frame.next_button.configure(state = 'normal')
             self.main.navigation_frame.prev_button.configure(state = 'normal')
-            # self.p0 = (0,0)
             self.p1 = (0,0)
         elif (self.get() == 'Клиновидность'):
             self.resetReport()
@@ -890,6 +834,7 @@ class Tab(ctk.CTkTabview):
             #     self.main.image_frame.callForDrawRefresh()
             time.sleep(0.2)
 
+    # TODO: Надо понять какие строки закомментированы временно
     def setFirstPosition(self):
         self.firstImage = self.main.getImage()
         # self.p0 = util.getCOM(self.firstImage)
@@ -957,7 +902,8 @@ class Tab(ctk.CTkTabview):
         
         self.master.updateWindowAfterAnalysis()
     
-
+    # TODO: добавить проверку в начале, а то выглядит так, что 
+    # проверка на пересвет проводится только при изменении состояния слайдера
     def sliderEvent(self, val):
         try:
             self.main.cam.setExposure(exposure_time_ms = val)
@@ -973,10 +919,6 @@ class Tab(ctk.CTkTabview):
         if (brightest_pixel_value == 255):
             self.master.capture_button.configure(state = 'disabled', fg_color = 'red')
             self.slider.configure(button_color = 'red', button_hover_color = 'red', progress_color = 'red' )
-            
-
-
-
 
 
 class App(ctk.CTk):    
@@ -989,14 +931,6 @@ class App(ctk.CTk):
         self.image_data_container = []
 
         self.title("mjolnir")
-
-        # # TODO: Не спасет от крушения
-        # try:
-        #     self.camera_handle = thor.Camera()
-        # except:
-        #     print('Error during cam init')
-
-        # self.cam = self.camera_handle
 
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
@@ -1014,7 +948,6 @@ class App(ctk.CTk):
 
         self.setupGrid()
 
-
         self.menu = TitleMenu(self)
         self.menu.grid()
 
@@ -1029,9 +962,7 @@ class App(ctk.CTk):
 
         self.widget_list = [self.menu, self.navigation_frame, self.right_frame, self.image_frame]
 
-
         self.toggleControl()
-
         
         self.update_idletasks()
         self.mainloop()

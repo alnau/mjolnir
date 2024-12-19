@@ -1,13 +1,8 @@
 
-import numpy as np
 from PIL import Image
-
-
 import pylablib.devices.uc480 as pll
 
-
 from constants import * 
-
 
 class ThorCamera():
     def __init__(self):
