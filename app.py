@@ -307,7 +307,7 @@ class imageFrame(ctk.CTkFrame):
 
     def drawLines(self, event):
 
-        if (self.master.right_frame.tabview.get != "Захват"):
+        if (self.master.right_frame.tabview.get() != "Захват"):
             self.master.right_frame.logMessage("Это должно быть возможно, но временно функционал ограничен")
 
         else:
@@ -557,9 +557,6 @@ class RightFrame(ctk.CTkFrame):
         # Add a thin frame just under the entry field
         self.thin_frame = ctk.CTkFrame(self, height=2, bg_color="gray")
         self.thin_frame.pack(fill="x", padx =10, pady=5,)
-
-        # self.empty_frame = ctk.CTkFrame(self, fg_color='transparent')
-        # self.empty_frame.pack(fill="x", expand = True)
 
         self.tabview = Tab(master = self, camera_handle=camera_handle, main=master)
         self.tabview.pack(side = 'top', fill = 'x') 
@@ -1054,4 +1051,5 @@ class App(ctk.CTk):
 
 if __name__ == "__main__":
     # example_function()
+    
     app = App()

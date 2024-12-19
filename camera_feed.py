@@ -1,6 +1,5 @@
 
 import numpy as np
-import time
 from PIL import Image
 
 
@@ -23,16 +22,11 @@ class Camera():
 
         self.cam.start_acquisition()
 
-
-
-
     def setExposure(self, exposure_time_ms):
         try:
             self.cam.set_exposure(min(exposure_time_ms, MAX_EXPOSURE_MS)/1000)
         except:
             print('Error during exposure set')
-
-    
     
     def cameraFeed(self, master_app):
         while True:
@@ -53,13 +47,13 @@ class Camera():
                     print('I think you know where the problem is, anyways, check out cameraFeed on exit')
 
 def isThorCameraConnected():
-    instruments =[]
+    instruments = 0 
     try:
-        instruments = pll.uc480.list_cameras()
+        instruments = pll.uc480.get_cameras_number()
     except:
         return False
     
-    if (len(instruments) == 0):
+    if (instruments == 0):
         return False
     else:
         return True
