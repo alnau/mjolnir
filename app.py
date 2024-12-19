@@ -347,8 +347,8 @@ class imageFrame(ctk.CTkFrame):
                     photo = ImageTk.PhotoImage(updated_image)
 
                     self.image_canvas.config(width=updated_image.width, height=updated_image.height)
-                    self.image_canvas.image = photo
                     self.image_canvas.create_image(0,0,image=photo,anchor = 'nw')
+                    self.image_canvas.image = photo
             else:
                 self.master.right_frame.logMessage("Необходимо сначала захватить изображение")
 
@@ -384,6 +384,11 @@ class imageFrame(ctk.CTkFrame):
         resized_img = img.resize((self.winfo_width(), self.winfo_height()), Image.ANTIALIAS)
         photo = ImageTk.PhotoImage(resized_img)
         self.image_canvas.config(width=resized_img.width, height=resized_img.height)
+
+        # AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        # AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        # AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        # AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
         self.image_canvas.create_image(0,0,image=photo,anchor = 'nw')
         self.image_canvas.image = photo
         
@@ -436,8 +441,8 @@ class imageFrame(ctk.CTkFrame):
         photo = ImageTk.PhotoImage(updated_image)
 
         self.image_canvas.config(width=updated_image.width, height=updated_image.height)
-        self.image_canvas.image = photo
         self.image_canvas.create_image(0,0,image=photo,anchor = 'nw')
+        self.image_canvas.image = photo
 
     def clearPhoto(self):
         tmp_image = self.image_resized.copy()
@@ -445,8 +450,8 @@ class imageFrame(ctk.CTkFrame):
         photo = ImageTk.PhotoImage(tmp_image)
 
         self.image_canvas.config(width=tmp_image.width, height=tmp_image.height)
-        self.image_canvas.image = photo
         self.image_canvas.create_image(0,0,image=photo,anchor = 'nw')
+        self.image_canvas.image = photo
 
 
     def loadImage(self, image, name = ''):
@@ -457,8 +462,9 @@ class imageFrame(ctk.CTkFrame):
         self.photo = ImageTk.PhotoImage(self.image_resized)
 
         self.image_canvas.config(width=self.image_resized.width, height=self.image_resized.height)
-        self.image_canvas.image = self.photo
         self.image_canvas.create_image(0,0,image=self.photo,anchor = 'nw')
+        self.image_canvas.image = self.photo
+        
         index = self.master.navigation_frame.image_index
         self.master.right_frame.entry.configure(placeholder_text = name)
         text = str(index + 1) 
@@ -474,8 +480,9 @@ class imageFrame(ctk.CTkFrame):
         self.photo = ImageTk.PhotoImage(self.image_resized)
 
         self.image_canvas.config(width=self.image_resized.width, height=self.image_resized.height)
-        self.image_canvas.image = self.photo
         self.image_canvas.create_image(0,0,image=self.photo,anchor = 'nw')
+        self.image_canvas.image = self.photo
+        
         index = self.master.navigation_frame.image_index
         self.master.right_frame.entry.configure(placeholder_text = name)
         text = str(index + 1) + "/" + str(len(self.master.image_data_container)+1)
@@ -501,8 +508,9 @@ class imageFrame(ctk.CTkFrame):
 
         # Update the label with the resized image
         self.image_canvas.config(width=self.image_resized.width, height=self.image_resized.height)
-        self.image_canvas.image = self.photo
         self.image_canvas.create_image(0,0,image=self.photo,anchor = 'nw')
+        self.image_canvas.image = self.photo
+        
         self.master.crop_factor_x = width/self.master.current_image.width
         self.master.crop_factor_y = height/self.master.current_image.height
 
@@ -952,7 +960,12 @@ class App(ctk.CTk):
 
         self.title("mjolnir")
 
-        self.camera_handle = Camera()
+        # TODO: Не спасет от крушения
+        try:
+            self.camera_handle = Camera()
+        except:
+            print('Error during cam init')
+
         self.cam = self.camera_handle
 
         screen_width = self.winfo_screenwidth()

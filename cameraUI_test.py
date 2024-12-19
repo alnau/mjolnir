@@ -4,7 +4,7 @@ import cv2
 from PIL import Image, ImageTk 
   
 # Define a video capture object 
-vid = cv2.VideoCapture(1) 
+vid = cv2.VideoCapture(0) 
   
 # Declare the width and height in variables 
 width, height = 1280, 1024
