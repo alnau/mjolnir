@@ -1,12 +1,14 @@
 
 from PIL import Image
 import pylablib.devices.uc480 as pll
-
+import time
+import numpy as np
 from constants import * 
 
 class ThorCamera():
     def __init__(self):
         # TODO: класс имеет метод __init__, т.е. можно переписать через наследование
+        self.frame_is_ready = False
         try:
             self.cam = pll.uc480.UC480Camera(backend = "uc480")
             self.cam.open()
@@ -17,6 +19,8 @@ class ThorCamera():
             self.cam.set_exposure(0.003)
 
             self.cam.start_acquisition()
+            self.counter = 0
+
         except:
             print('Error occured during ThorCam initialisation')
     def setExposure(self, exposure_time_ms):
@@ -26,31 +30,34 @@ class ThorCamera():
             print('Error during exposure set')
     
     def cameraFeed(self, master_app):
-        while True:
-            try:
-                if(self.cam.wait_for_frame()):
-                    arr_img = self.cam.read_newest_image()
+        try:
+            while (not self.cam.wait_for_frame()):
+                time.sleep(0.05)
 
-                    master_app.camera_feed_image = Image.fromarray(arr_img) 
-                else:
-                    print('still not ready')
-            except:
-                print('Well, still no luck in Camera.cameraFeed(args), what a big surprise!')
-            finally:
-                try:
-                    self.cam.stop_acquisition()
-                    self.cam.close()
-                except:
-                    print('I think you know where the problem is, anyways, check out cameraFeed on exit')
+            arr_img = np.array(self.cam.read_newest_image())
+
+            master_app.master.camera_feed_image = Image.fromarray(arr_img.astype('uint8'),'L')
+
+            self.frame_is_ready =True
+            self.counter+=1
+
+            time.sleep(0.05)
+        except:
+            print('I fucking hate working without physical camera attached to my dying laptop')
+            print('If this error occured on stable version of mjolnir (stable? Heh, nevermind), please check out ThorCamera.cameraFeed')
+            print('Of course I have no ideas of what had I done to cause this shitshow in the first place')
+            # except:
+            #     print('Well, still no luck in Camera.cameraFeed(args), what a big surprise!')
 
     def waitForFrame(self):
-        ret = False
-        try:
-            ret = self.cam.wait_for_frame()
-        except:
-            pass
+        ret = self.frame_is_ready
+        self.frame_is_ready = False
         return ret
 
+    def getExposureFrac(self):
+        exposure_ms = self.cam.get_exposure()/1000
+        return exposure_ms/MAX_EXPOSURE_MS
+    
 def isCameraConnected(index = 0):
     instruments = 0 
     try:

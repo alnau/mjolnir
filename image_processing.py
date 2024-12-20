@@ -317,6 +317,10 @@ class ImageData():
 
     def analyseImage(self):
         
+        ZERO = (0,0)
+        if (self.p0_initial == ZERO or self.p1_initial == ZERO):
+            self.optimisation_needed = True
+
         print("Optimisation needed = ", self.optimisation_needed)
         
         if (self.optimisation_needed):

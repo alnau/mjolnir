@@ -189,7 +189,7 @@ class imageFrame(ctk.CTkFrame):
         self.end_coords = (0,0)
 
         # Если True останавливает обновление картинки с камеры
-        self.is_pause = True
+        self.is_pause = False
 
         self.p0_real_coords = (0,0)
         self.p1_real_coords = (0,0)
@@ -234,9 +234,9 @@ class imageFrame(ctk.CTkFrame):
                 text = 'USB - камера ' + str(i) 
                 tmp_camera_list.append(text)
 
-        # TODO Заглушка. необходимо удалить перед боевым применением
-        return ['ThorCam', 'USB - камера 1']
         return tmp_camera_list
+        # # TODO Заглушка. необходимо удалить перед боевым применением
+        # return ['ThorCam', 'USB - камера 1']
     
     def chooseCamera(self, choise):
         if (choise == 'ThorCam'):
@@ -251,32 +251,33 @@ class imageFrame(ctk.CTkFrame):
     def toggleControl(self):
         pass
     
-    def startVideoFeed(self):
-        self.is_pause = False
-        update_image_thread = threading.Thread(target = self.startVideoFeedWorker, args = ())
-        update_image_thread.daemon = True
-        update_image_thread.start()
+    # def startVideoFeed(self):
+    #     self.is_pause = False
+    #     update_image_thread = threading.Thread(target = self.startVideoFeedWorker, args = ())
+    #     update_image_thread.daemon = True
 
-    def startVideoFeedWorker(self):
-        while (not self.is_pause):
-            try: 
-                if (self.cam.waitForFrame()):
-                    #ждем пока прийдет новое изображение
-                    self.updateCanvas(self.master.camera_feed_image)
-                    time.sleep(0.1)
-            except:
-                print('Goddamn, I''m running out of creative ideas of how to handle exeptions associated with camera')  
-       
-    def initCamera(self):
+    #     self.master.after(2000, self.startCameraFeed)
+
+
+    def startCameraFeed(self):
         # По идее, начиная отсюда у нас заработает камера 
-        try:
-            camera_thread = threading.Thread(target=self.cam.cameraFeed, args=(self,))
-            camera_thread.daemon = True 
-            camera_thread.start()
-        except:
-            print('I fucking hate working without physical camera attached to my dying laptop')
-            print('If this error occured on stable version of mjolnir (stable? Heh, nevermind), please check out App.initCamera()')
-            print('Of course I have no ideas of what had I done to cause this shitshow in the first place')
+        self.is_pause = False
+        camera_thread = threading.Thread(target=self.cameraFeedWorker, args=())
+        camera_thread.daemon = True 
+        self.master.after(2000, camera_thread.start)
+    
+    def cameraFeedWorker(self):
+
+        while True:
+            if (not self.is_pause):
+                    self.cam.cameraFeed(master_app=self)
+                    self.master.updateImage()
+                    self.updateCanvas(self.master.current_image)
+                    self.master.right_frame.tabview.checkForOverexposure()
+            time.sleep(0.05)
+            
+            # self.updateCanvas(self.master.current_image)
+
 
     def activateCamera(self):
         self.start_dialog.pack_forget()
@@ -284,13 +285,14 @@ class imageFrame(ctk.CTkFrame):
         self.bind("<Configure>", self.resizeImage)
         self.resizeImage(None)
         self.master.toggleControl()
-
-        # TODO: ОБЯЗАТЕЛЬНО РАСКОММЕНТИРУЙ СТРОКУ НИЖЕ, БЕЗ НЕЕ НИЧЕГО НЕ ЗАРАБОТАЕТ 
-        # self.initCamera()
-
-        self.startVideoFeed()
-        
         self.resizeImage(None)
+        self.master.right_frame.tabview.slider.set(self.cam.getExposureFrac())
+        # TODO: ОБЯЗАТЕЛЬНО РАСКОММЕНТИРУЙ СТРОКУ НИЖЕ, БЕЗ НЕЕ НИЧЕГО НЕ ЗАРАБОТАЕТ 
+        
+        # self.startVideoFeed()
+        self.startCameraFeed()
+
+        
 
     def reset(self):
         self.start_coords = (0,0)
@@ -532,7 +534,7 @@ class RightFrame(ctk.CTkFrame):
         
         self.capture_button = ctk.CTkButton(self.entry_frame, text = 'Захватить', command= self.captureImage)
         self.capture_button.pack(side = 'left', pady = const.DEFAULT_PADY, padx = const.DEFAULT_PADX)
-        self.master.bind('<Return>', self.captureImageOnEvent)
+        self.master.bind('<Return>', self.captureImageOnEnter)
     
         self.thin_frame = ctk.CTkFrame(self, height=2, bg_color="gray")
         self.thin_frame.pack(fill="x", padx =10, pady=5,)
@@ -597,7 +599,7 @@ class RightFrame(ctk.CTkFrame):
         self.photo_is_captured = False
         self.master.image_frame.clearPhoto()
     
-    def captureImageOnEvent(self, event):
+    def captureImageOnEnter(self, event):
         if (self.tabview.get() == 'Захват'):
             self.captureImage()
 
@@ -608,12 +610,16 @@ class RightFrame(ctk.CTkFrame):
             # переход к живой камере
             self.unlockCamera()
             self.logMessage('Фото сброшено')
+            # чисто на всякий пожарный снимем все возможные триггеры на пропуск оптимизации 
+            self.master.image_frame.start_coords = (0,0)
+            self.master.image_frame.end_coords = (0,0)
+            self.tabview.check_var.set('off')
         elif(len(self.entry.get())!=0) :
             # Показать картинку, сохранить в буффер
             self.lockCamera()
             self.image_data = ip.ImageData(self.master.current_image, self.entry.get())
         else:
-                self.logMessage('Введите имя файла')
+            self.logMessage('Введите имя файла')
 
         
 
@@ -798,8 +804,6 @@ class Tab(ctk.CTkTabview):
         text3 = 'Угол клиновидности: ' + str(round(angle,0)) + '"'
         return [text1,text2,text3]
 
-
-    # TODO: вероятно, не самый "умный" подход к названию, путается с handle, которые передаются от родительского класса
     def tabHandler(self):
         if (self.get() == 'Захват'):
             self.main.navigation_frame.next_button.configure(state = 'disabled')
@@ -905,20 +909,23 @@ class Tab(ctk.CTkTabview):
     # TODO: добавить проверку в начале, а то выглядит так, что 
     # проверка на пересвет проводится только при изменении состояния слайдера
     def sliderEvent(self, val):
-        try:
-            self.main.cam.setExposure(exposure_time_ms = val)
-        except:
-            print('Error. cannot set exposure')
-            self.master.logMessage('Ошибка, не  могу установить экспозицию')
         
-        image_array = np.array(self.master.image)
+        self.main.image_frame.cam.setExposure(exposure_time_ms = val)
+
+        self.checkForOverexposure()
+
+    def checkForOverexposure(self):
+        image_array = np.array(self.main.current_image)
         brightest_pixel_value = np.max(image_array)
 
-        self.slider.configure(button_color = const.FG_COLOR , progress_color= const.PROGRESS_COLOR, button_hover_color = const.HOVER_COLOR)
-        self.master.capture_button.configure(state = 'normal', fg_color = const.FG_COLOR)
-        if (brightest_pixel_value == 255):
+        if (brightest_pixel_value < 250):
+            self.slider.configure(button_color = const.FG_COLOR , progress_color= const.PROGRESS_COLOR, button_hover_color = const.HOVER_COLOR)
+            self.master.capture_button.configure(state = 'normal', fg_color = const.FG_COLOR)
+            return False
+        else:
             self.master.capture_button.configure(state = 'disabled', fg_color = 'red')
             self.slider.configure(button_color = 'red', button_hover_color = 'red', progress_color = 'red' )
+            return True
 
 
 class App(ctk.CTk):    
@@ -979,7 +986,8 @@ class App(ctk.CTk):
         self.grid_rowconfigure(1, weight = 0)
     
     def getImage(self):
-        return self.camera_feed_image
+        copy = self.camera_feed_image.copy()
+        return copy
 
     def updateImage(self):
         self.current_image = self.getImage()

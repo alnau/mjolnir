@@ -42,6 +42,10 @@ class GenericCamera():
             pass
         return ret
 
+    def getExposureFrac(self):
+        # TODO поднять ошибку или вывести в строку логов
+        return 1
+
 def isCameraConnected(index):
         ret = False
         try:
