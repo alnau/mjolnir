@@ -235,8 +235,6 @@ class imageFrame(ctk.CTkFrame):
                 tmp_camera_list.append(text)
 
         return tmp_camera_list
-        # # TODO Заглушка. необходимо удалить перед боевым применением
-        # return ['ThorCam', 'USB - камера 1']
     
     def chooseCamera(self, choise):
         if (choise == 'ThorCam'):
@@ -286,8 +284,7 @@ class imageFrame(ctk.CTkFrame):
         self.resizeImage(None)
         self.master.toggleControl()
         self.resizeImage(None)
-        self.master.right_frame.tabview.slider.set(self.cam.getExposureFrac())
-        # TODO: ОБЯЗАТЕЛЬНО РАСКОММЕНТИРУЙ СТРОКУ НИЖЕ, БЕЗ НЕЕ НИЧЕГО НЕ ЗАРАБОТАЕТ 
+        self.master.right_frame.tabview.slider.set(self.cam.getExposureFrac()) 
         
         # self.startVideoFeed()
         self.startCameraFeed()
@@ -411,8 +408,6 @@ class imageFrame(ctk.CTkFrame):
         return tmp_image
 
     def updateLineOnPhoto(self):
-        # TODO добавить флаг конца обработки и снимать его в случае, если пользователь изменил линию
-        # ВАЖНО: выглядит так, что я уже пофиксил это. Взгляни более трезвым взглядом
         tmp_image = self.image_resized.copy()
 
         self.draw = ImageDraw.Draw(tmp_image)
@@ -628,8 +623,6 @@ class RightFrame(ctk.CTkFrame):
 
             self.unlockCamera()
 
-            # TODO запись данных, возобновление трансляции
-            # ВАЖНО если работает класс Camera, то уже решено
             if (self.tabview.check_var.get() == 'on'):
                 self.image_data.optimisation_needed = False
                 self.image_data.line_was_built = True
@@ -889,7 +882,7 @@ class Tab(ctk.CTkTabview):
             self.after(100, self.master.logMessage(text))
         
         # TODO возникает какая-то сложная проблема с выходом за пределы массиве в функции, в которой нет массивов 
-        # (см todo ~ 516)
+        # (см todo ~ 516 (вероятно, уже ~ 649?))
         self.after(1000, self.master.logMessage("Все изображения обработаны"))
         self.master.updateWindowAfterAnalysis()
 
@@ -906,8 +899,6 @@ class Tab(ctk.CTkTabview):
         
         self.master.updateWindowAfterAnalysis()
     
-    # TODO: добавить проверку в начале, а то выглядит так, что 
-    # проверка на пересвет проводится только при изменении состояния слайдера
     def sliderEvent(self, val):
         
         self.main.image_frame.cam.setExposure(exposure_time_ms = val)
@@ -945,7 +936,7 @@ class App(ctk.CTk):
         width = int(0.8*screen_width)
         self.geometry(f"{width}x{height}")
 
-        # TODO Эти три строчки являются банальной заглушкой
+        # TODO Изменить заглушку
         self.image_path="D:\Photonics\KGW МУР\!18_o.tif"        
         self.camera_feed_image = Image.open(self.image_path).convert('L')
         self.current_image = self.camera_feed_image

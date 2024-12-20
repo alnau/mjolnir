@@ -7,7 +7,6 @@ from constants import *
 
 class ThorCamera():
     def __init__(self):
-        # TODO: класс имеет метод __init__, т.е. можно переписать через наследование
         self.frame_is_ready = False
         try:
             self.cam = pll.uc480.UC480Camera(backend = "uc480")

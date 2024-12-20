@@ -127,14 +127,7 @@ class ImageData():
                 r0 = r_inter
             else:
                 r1 = r_inter
-            # else:
-            #     # UPD d+1: вот твоя обработка, идиот
-            #     
-            #     # TODO: ожидаю что нужна обработка ситуации где промежуточное значение попадает в ноль тестовой ф-ии
-            #     # потом починю, ну если сломается
-            #     # также, возможно, следует возвращать ошибку (хз зачем)
-            #     print("You're so fucked up. Check out boundary case of binarySearch")
-            #     print("I think you're able to handle this")
+                
             iter_counter+=1
         return (r1+r0)/2
         
