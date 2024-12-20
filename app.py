@@ -182,6 +182,7 @@ class imageFrame(ctk.CTkFrame):
     def __init__(self, master, right_frame_handle, **kwargs):
         super().__init__(master, **kwargs)
 
+        self.cam = 0
         self.right_frame_handle = right_frame_handle
 
         self.start_coords = (0,0)
@@ -199,15 +200,11 @@ class imageFrame(ctk.CTkFrame):
         self.start_dialog = ctk.CTkFrame(self)
         self.start_dialog.pack(fill="both", padx = (5,0), pady = 5, expand=True)
 
-        self.start_dialog.grid_columnconfigure(0, weight = 3)
-        self.start_dialog.grid_columnconfigure(1, weight = 1)
-        self.start_dialog.grid_columnconfigure(2, weight = 1)
-        self.start_dialog.grid_columnconfigure(3, weight = 3)
+        self.start_dialog.grid_columnconfigure((0,3), weight = 3)
+        self.start_dialog.grid_columnconfigure((1,2), weight = 1)
 
-        self.start_dialog.grid_rowconfigure(0, weight = 3)
-        self.start_dialog.grid_rowconfigure(1, weight = 1)
-        self.start_dialog.grid_rowconfigure(2, weight = 1)
-        self.start_dialog.grid_rowconfigure(3, weight = 3)
+        self.start_dialog.grid_rowconfigure((0,3), weight = 3)
+        self.start_dialog.grid_rowconfigure((1,2), weight = 1)
 
         self.camera_list = self.getCameraList()
         self.camera_selection = ctk.CTkComboBox(self.start_dialog, values = self.camera_list, command = self.chooseCamera)
@@ -958,7 +955,12 @@ class App(ctk.CTk):
         self.mainloop()
  
     def onClosing(self):
-        del self.image_frame.cam
+        # if (self.image_frame cam!= 0):
+        #     try:
+        #         del self.image_frame.cam
+        #     except: 
+        #         print('Possibly there is still no cam object')
+        self.destroy()
 
     def toggleControl(self):
         for widget in self.widget_list:
