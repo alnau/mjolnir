@@ -56,6 +56,10 @@ class ThorCamera():
     def getExposureFrac(self):
         exposure_ms = self.cam.get_exposure()/1000
         return exposure_ms/MAX_EXPOSURE_MS
+
+    def __del__(self):
+        self.cam.stop_acquisition()
+        self.cam.close()
     
 def isCameraConnected(index = 0):
     instruments = 0 

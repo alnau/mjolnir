@@ -17,22 +17,12 @@ class GenericCamera():
         print('Generic cameras usually don''t have ability to contol their exposure')
     
     def cameraFeed(self, master_app):
-        while True:
-            try:
-                ret, frame = self.cam.read() 
-                if (ret):
-                    arr_img = cv2.cvtColor(frame, cv2.cv.COLOR_RGB2GRAY) 
-                    master_app.camera_feed_image = Image.fromarray(arr_img) 
-                else:
-                    print('still not ready')
-            except:
-                print('Well, still no luck in Camera.cameraFeed(args), what a big surprise!')
-            finally:
-                try:
-                    self.cam.release()
-                    cv2.destroyAllWindows()
-                except:
-                    print('I think you know where the problem is, anyways, check out cameraFeed on exit')
+        ret, frame = self.cam.read()
+        while(not ret):
+            ret, frame = self.cam.read()
+        arr_img = cv2.cvtColor(frame, cv2.cv.COLOR_RGB2GRAY) 
+        master_app.camera_feed_image = Image.fromarray(arr_img) 
+
 
     def waitForFrame(self):
         ret = False
@@ -45,7 +35,10 @@ class GenericCamera():
     def getExposureFrac(self):
         # TODO поднять ошибку или вывести в строку логов
         return 1
-
+    
+    def __del__(self):
+        self.cam.release()
+        cv2.destroyAllWindows()
 def isCameraConnected(index):
         ret = False
         try:
@@ -56,6 +49,7 @@ def isCameraConnected(index):
         except:
             pass
         return ret
+
 
 
 

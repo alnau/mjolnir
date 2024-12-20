@@ -245,17 +245,8 @@ class imageFrame(ctk.CTkFrame):
             self.cam = GenericCamera(index)
             self.start_button.configure(state = 'normal')
         
-
     def toggleControl(self):
         pass
-    
-    # def startVideoFeed(self):
-    #     self.is_pause = False
-    #     update_image_thread = threading.Thread(target = self.startVideoFeedWorker, args = ())
-    #     update_image_thread.daemon = True
-
-    #     self.master.after(2000, self.startCameraFeed)
-
 
     def startCameraFeed(self):
         # По идее, начиная отсюда у нас заработает камера 
@@ -962,9 +953,12 @@ class App(ctk.CTk):
 
         self.toggleControl()
         
+        self.protocol("WM_DELETE_WINDOW", self.onClosing)
         self.update_idletasks()
         self.mainloop()
  
+    def onClosing(self):
+        del self.image_frame.cam
 
     def toggleControl(self):
         for widget in self.widget_list:
