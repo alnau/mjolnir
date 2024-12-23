@@ -51,6 +51,15 @@ def deleteOldFolders(base_path, days=3):
             if folder_creation_time < cutoff_time:
                 print(f"Deleting old folder '{folder_path}'...")
                 shutil.rmtree(folder_path)
+
+def getBackupFoldersNames(base_path):
+    # folder_list = []
+    sub_folders = [name for name in os.listdir(base_path) if name.endswith("_tmp")]
+    # print(sub_folders)
+    return sub_folders
+    # for folder in os.listdir(base_path):
+
+
     
 
 def getReport(name, radius, h_width, left_side_mm, right_side_mm, coords_of_max_intensity, coords_of_com, angle):

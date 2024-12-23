@@ -20,7 +20,7 @@ class GenericCamera():
         ret, frame = self.cam.read()
         while(not ret):
             ret, frame = self.cam.read()
-        arr_img = cv2.cvtColor(frame, cv2.cv.COLOR_RGB2GRAY) 
+        arr_img = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY) 
         master_app.camera_feed_image = Image.fromarray(arr_img) 
 
 

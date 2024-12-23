@@ -28,17 +28,25 @@ ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("dark-blue")  
 
 class TitleMenu(CTkTitleMenu):
-    def __init__(self, master):
+    def __init__(self, master, folders_names):
         super().__init__(master)
 
+        self.backup_folders = folders_names
+        self.data_is_external = False
         file_button = self.add_cascade("Файл")
         reopen_camera_buttom = self.add_cascade("Изменить камеру", command = self.master.initUI)
-
+        
         file_dropdown = CustomDropdownMenu(widget=file_button)
 
         open_sub_menu = file_dropdown.add_submenu("Открыть")
         open_sub_menu.add_option(option="Файл", command = self.openFile)
         open_sub_menu.add_option(option="Папку", command = self.openFolder)
+
+        recover_sub_menu  = file_dropdown.add_submenu("Восстановить сессию")
+
+        for folder in self.backup_folders:
+            recover_sub_menu.add_option(option = folder, command = lambda: self.recoverFromFolder(folder))
+
 
         file_dropdown.add_separator()
 
@@ -50,7 +58,31 @@ class TitleMenu(CTkTitleMenu):
         geno_dropdown = CustomDropdownMenu(widget=exterminate_button)
         geno_dropdown.add_option(option = "NUKE EM, OPPIE!", command = self.master.initUI)
     
-        
+    def recoverFromFolder(self, folder_name):
+        dir_path = self.master.base_path + folder_name
+        print(dir_path)
+        names = []
+        self.master.image_data_container = []
+
+        for image_name in os.listdir(dir_path):
+            if (image_name.endswith('.tif')):
+                names.append(image_name)
+        for name in names:
+            image = Image.open(os.path.join(dir_path, name)).convert('L')
+            pure_name,_ = os.path.splitext(name)
+            pure_name.removesuffix('.tif')
+            self.master.image_data_container.append(ip.ImageData(image, pure_name))
+
+        # TODO: здесь ломается подгрузка: архивные изображения высвечиваются, но сменяются 
+        # на дефолтную заглушку. Ожидаю что openFile и openFolder будут иметь ту-же проблему. Разберись на трезвую голову
+        self.master.image_frame.loadImage(self.master.image_data_container[0].norm_image, names[0])
+        text = "Восстановлено " + str(len(self.master.image_data_container)) + " изображений. Вы можете продолжить работу"
+        self.master.right_frame.logMessage(text)
+        self.master.right_frame.tabview.set('Обработка')
+        self.master.navigation_frame.next_button.configure(state = 'normal')
+        self.master.navigation_frame.prev_button.configure(state = 'normal')
+        self.master.image_frame.is_pause = True
+        self.data_is_external = True
 
     def toggleControl(self):
         pass
@@ -64,6 +96,7 @@ class TitleMenu(CTkTitleMenu):
                 image = Image.open(file_path)
                 pure_name,_ = os.path.splitext(plotname)
                 self.image_data_container.append(ip.ImageData(image, pure_name))
+                self.data_is_external = True
             except Exception as e:
                 print("Error during image import")
 
@@ -83,11 +116,12 @@ class TitleMenu(CTkTitleMenu):
                 self.master.image_data_container.append(ip.ImageData(image, pure_name))
             
             self.master.image_frame.loadImage(self.master.image_data_container[0].norm_image, names[0])
-            text = "Импортировано " + str(len(self.master.image_data_container)) + " изображений. Вы можете приступиить к их обработке"
+            text = "Импортировано " + str(len(self.master.image_data_container)) + " изображений. Вы можете приступить к их обработке"
             self.master.right_frame.logMessage(text)
             self.master.right_frame.tabview.set('Обработка')
             self.master.navigation_frame.next_button.configure(state = 'normal')
             self.master.navigation_frame.prev_button.configure(state = 'normal')
+            self.data_is_external = True
 
     def saveFile(self):
         index = self.master.navigation_frame.image_index
@@ -263,9 +297,11 @@ class imageFrame(ctk.CTkFrame):
             #     self.updateCanvas(self.master.image_data_container[index].modified_image)
             self.cam.cameraFeed(master_app=self)
             self.master.updateImage()
-            if (not self.master.is_pause and not self.master.right_frame.tabview.needed_active_pos_monitoring):
-                    self.updateCanvas(self.master.current_image)
-                    self.master.right_frame.tabview.checkForOverexposure()
+            if (self.master.is_pause or self.master.right_frame.tabview.needed_active_pos_monitoring):
+                pass
+            else:
+                self.updateCanvas(self.master.current_image)
+                self.master.right_frame.tabview.checkForOverexposure()
             time.sleep(0.05)
             
             # self.updateCanvas(self.master.current_image)
@@ -971,8 +1007,8 @@ class App(ctk.CTk):
         self.base_path = 'tmp/'
         current_date = util.getCurrentDateStr() 
         self.backup_path = self.base_path + current_date + '_tmp/'
-        self.organiseBackup()
-
+        # self.organiseBackup() # TODO: НЕ ЗАБЫТЬ УБРАТЬ. закомментил на время тестирования
+        self.backup_folders_names = util.getBackupFoldersNames(self.base_path)
         self.crop_factor_x = 0
         self.crop_factor_y = 0
 
@@ -980,7 +1016,7 @@ class App(ctk.CTk):
 
         self.setupGrid()
 
-        self.menu = TitleMenu(self)
+        self.menu = TitleMenu(self, folders_names= self.backup_folders_names)
         self.menu.grid()
 
         self.navigation_frame = NavigationFrame(self)
