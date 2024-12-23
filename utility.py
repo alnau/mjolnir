@@ -387,7 +387,6 @@ def optimisation(image_name, image):
 
 
 def interpolateFknHard(image_data, x,y):
-    # TODO: не уверен, что это вообще нужно
     if len(image_data.shape) != 2:
         raise ValueError("Image must be a 2D grayscale image")
 
@@ -422,7 +421,6 @@ def integrateOverPolar(image, x0, y0, r_max, r_min = 0, theta_min = 0, theta_max
     arr_image = np.array(image)
     arr_image[arr_image < CUTOFF_THRESHOLD] = 0
     
-    # TODO: в очереди на удаление
     if len(arr_image.shape) != 2:
         raise ValueError("Image must be a 2D grayscale image")
 

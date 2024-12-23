@@ -690,7 +690,7 @@ class RightFrame(ctk.CTkFrame):
             self.image_data.p0_im_space = self.master.image_frame.start_coords
             self.image_data.p1_im_space = self.master.image_frame.end_coords
             self.master.image_data_container.append(self.image_data)
-            # TODO вероятно, эта строчка ответственна за ошибку после обработки изображений
+ 
             self.master.navigation_frame.image_index += 1
             
             backup_path = self.master.backup_path
@@ -873,7 +873,6 @@ class Tab(ctk.CTkTabview):
         
     def angleCalculationWorker(self):
         while True:
-            # TODO: пока закомментил
             if (self.needed_active_pos_monitoring):
                 self.p1 = util.getCOM(self.main.getImage())
                 self.angle_sec = self.calculateAngleSec()
@@ -884,7 +883,6 @@ class Tab(ctk.CTkTabview):
                 self.main.image_frame.callForCrossesRefresh()
             time.sleep(0.2)
 
-    # TODO: Надо понять какие строки закомментированы временно
     def setFirstPosition(self):
         self.firstImage = self.main.getImage()
         self.p0 = util.getCOM(self.firstImage)
