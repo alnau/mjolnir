@@ -657,6 +657,10 @@ class RightFrame(ctk.CTkFrame):
             # TODO вероятно, эта строчка ответственна за ошибку после обработки изображений
             self.master.navigation_frame.image_index += 1
             
+            backup_path = self.master.backup_path
+            file_name = self.entry.get() + '.tif'
+            self.image_data.initial_image.save(os.path.join(backup_path, file_name))
+
             self.logMessage('Данные записаны')
             self.entry.delete(0, 'end')
 
@@ -963,6 +967,12 @@ class App(ctk.CTk):
         self.camera_feed_image = Image.open(self.image_path).convert('L')
         self.current_image = self.camera_feed_image
         
+
+        self.base_path = 'tmp/'
+        current_date = util.getCurrentDateStr() 
+        self.backup_path = self.base_path + current_date + '_tmp/'
+        self.organiseBackup()
+
         self.crop_factor_x = 0
         self.crop_factor_y = 0
 
@@ -989,7 +999,10 @@ class App(ctk.CTk):
         self.protocol("WM_DELETE_WINDOW", self.onClosing)
         self.update_idletasks()
         self.mainloop()
- 
+    
+    def organiseBackup(self):
+        util.deleteOldFolders(self.base_path)
+        util.createOrCleanFolder(self.backup_path)
     def onClosing(self):
         # if (self.image_frame cam!= 0):
         #     try:

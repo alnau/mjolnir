@@ -10,10 +10,48 @@ from scipy.interpolate import griddata
 from scipy.integrate import dblquad
 from scipy import integrate 
 from PIL import Image as img
+import os
+import shutil
+from datetime import datetime, timedelta
 
 from constants import *
 
+def getCurrentDateStr():
+    # Возвращает UTS+7
+    utc_now = datetime.utcnow() + timedelta(hours=7)
+    return utc_now.strftime('%d.%m.%y')
 
+# вызывается при инициализации программы
+def createOrCleanFolder(folder_name):
+    if os.path.exists(folder_name):
+        # если папка существует, очистим содержимое
+        print(f"Folder '{folder_name}' already exists. Deleting its contents...")
+        for filename in os.listdir(folder_name):
+            file_path = os.path.join(folder_name, filename)
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+    else:
+        # Если папки не существует, создаем...
+        print(f"Creating folder '{folder_name}'...")
+        os.makedirs(folder_name)
+
+def deleteOldFolders(base_path, days=3):
+    # узнаем текущее время
+    now = datetime.now()
+    cutoff_time = now - timedelta(days=days)
+
+    # пробежимся по названиям...
+    for folder in os.listdir(base_path):
+        folder_path = os.path.join(base_path, folder)
+        if os.path.isdir(folder_path):
+            # проверим дату создания
+            folder_creation_time = datetime.fromtimestamp(os.path.getctime(folder_path))
+            if folder_creation_time < cutoff_time:
+                print(f"Deleting old folder '{folder_path}'...")
+                shutil.rmtree(folder_path)
+    
 
 def getReport(name, radius, h_width, left_side_mm, right_side_mm, coords_of_max_intensity, coords_of_com, angle):
     str_name = "Имя файла: " + name + "\n"
