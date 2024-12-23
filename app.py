@@ -190,7 +190,7 @@ class imageFrame(ctk.CTkFrame):
         self.end_coords = (0,0)
 
         # Если True останавливает обновление картинки с камеры
-        self.is_pause = False
+        # self.is_pause = False
 
         self.p0_real_coords = (0,0)
         self.p1_real_coords = (0,0)
@@ -247,7 +247,7 @@ class imageFrame(ctk.CTkFrame):
 
     def startCameraFeed(self):
         # По идее, начиная отсюда у нас заработает камера 
-        self.is_pause = False
+        self.master.is_pause = False
         camera_thread = threading.Thread(target=self.cameraFeedWorker, args=())
         camera_thread.daemon = True 
         self.master.after(2000, camera_thread.start)
@@ -255,9 +255,15 @@ class imageFrame(ctk.CTkFrame):
     def cameraFeedWorker(self):
 
         while True:
-            if (not self.is_pause):
-                    self.cam.cameraFeed(master_app=self)
-                    self.master.updateImage()
+
+            # index = self.master.navigation_frame.image_index
+            # is_analysed = self.master.image_data_container[index].image_has_been_analysed
+
+            # if (self.master.right_frame.tabview.get() == "Обработка" and is_analysed):
+            #     self.updateCanvas(self.master.image_data_container[index].modified_image)
+            self.cam.cameraFeed(master_app=self)
+            self.master.updateImage()
+            if (not self.master.is_pause and not self.master.right_frame.tabview.needed_active_pos_monitoring):
                     self.updateCanvas(self.master.current_image)
                     self.master.right_frame.tabview.checkForOverexposure()
             time.sleep(0.05)
@@ -357,9 +363,9 @@ class imageFrame(ctk.CTkFrame):
     def updateCanvas(self, shared_image):
 
         img = shared_image.copy()
-        resized_img = img.resize((self.winfo_width(), self.winfo_height()), Image.ANTIALIAS)
-        photo = ImageTk.PhotoImage(resized_img)
-        self.image_canvas.config(width=resized_img.width, height=resized_img.height)
+        self.image_resized = img.resize((self.winfo_width(), self.winfo_height()), Image.ANTIALIAS)
+        photo = ImageTk.PhotoImage(self.image_resized)
+        self.image_canvas.config(width=self.image_resized.width, height=self.image_resized.height)
 
         # AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
         # AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
@@ -394,7 +400,7 @@ class imageFrame(ctk.CTkFrame):
             self.draw.line(self.getCrossLineCoord(point,True), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
             self.draw.line(self.getCrossLineCoord(point,False), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
         return tmp_image
-
+    
     def updateLineOnPhoto(self):
         tmp_image = self.image_resized.copy()
 
@@ -409,14 +415,28 @@ class imageFrame(ctk.CTkFrame):
             self.draw.line(self.getCrossLineCoord(point,False), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
         return tmp_image
     
-    def callForDrawRefresh(self, image_data):
-        updated_image = self.updateDrawingsOnPhoto(image_data)
-                
-        photo = ImageTk.PhotoImage(updated_image)
+    def callForCrossesRefresh(self):
+        width = self.winfo_width()
+        height = self.winfo_height()
 
-        self.image_canvas.config(width=updated_image.width, height=updated_image.height)
+        master_image = self.master.getImage().copy()
+        tmp_image = master_image.copy()
+        tmp_image = tmp_image.resize((width,height))
+
+        self.draw = ImageDraw.Draw(tmp_image)
+        
+        if (self.master.right_frame.tabview.needed_active_pos_monitoring):
+            point = self.master.right_frame.tabview.p0
+            point = (point[0]*self.master.crop_factor_x, point[1]*self.master.crop_factor_y)
+            self.draw.line(self.getCrossLineCoord(point,True), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
+            self.draw.line(self.getCrossLineCoord(point,False), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
+                
+        photo = ImageTk.PhotoImage(tmp_image)
+
+        self.image_canvas.config(width=tmp_image.width, height=tmp_image.height)
         self.image_canvas.create_image(0,0,image=photo,anchor = 'nw')
         self.image_canvas.image = photo
+
 
     def clearPhoto(self):
         tmp_image = self.image_resized.copy()
@@ -565,7 +585,7 @@ class RightFrame(ctk.CTkFrame):
     def lockCamera(self):
         self.master.updateImage()
         
-        self.master.image_frame.is_pause = True
+        self.master.is_pause = True
         self.capture_button.configure(text = 'Отмена')
         self.continue_button.configure(state = 'normal')
         self.master.image_frame.image_canvas.configure(highlightbackground="red")
@@ -575,7 +595,7 @@ class RightFrame(ctk.CTkFrame):
         self.logMessage('Фото захвачено')
 
     def unlockCamera(self):
-        self.master.image_frame.is_pause = False
+        self.master.is_pause = False
         self.capture_button.configure(text = 'Захватить')
         self.continue_button.configure(state = 'disabled')
         self.master.image_frame.image_canvas.configure(highlightbackground="black")
@@ -787,42 +807,47 @@ class Tab(ctk.CTkTabview):
 
     def tabHandler(self):
         if (self.get() == 'Захват'):
+            self.main.is_pause = False
+            self.needed_active_pos_monitoring = False
             self.main.navigation_frame.next_button.configure(state = 'disabled')
             self.main.navigation_frame.prev_button.configure(state = 'disabled')
             self.p1 = (0,0)
         elif (self.get() == 'Обработка'):
+            self.needed_active_pos_monitoring = False
+            self.main.is_pause = True
             self.main.navigation_frame.next_button.configure(state = 'normal')
             self.main.navigation_frame.prev_button.configure(state = 'normal')
             self.p1 = (0,0)
         elif (self.get() == 'Клиновидность'):
+            self.main.is_pause = False
             self.resetReport()
 
     def calculateAngleSec(self):
         dist_px  = np.sqrt((self.p0[0]-self.p1[0])**2 + (self.p0[1]-self.p1[1])**2)
         dist_mm = const.PIXEL_TO_MM*dist_px
-        base_mm = float(self.base_entry.get())*100
+        base_mm = float(self.base_entry.get())*10
 
-        angle_rad = dist_mm/base_mm/(const.KGW_REFRACTION_INDEX-1)
-        angle_sec = angle_rad*180/np.pi/60/60 
+        angle_rad = np.arctan(dist_mm/2/base_mm)/(const.KGW_REFRACTION_INDEX-1)
+        angle_sec = angle_rad*180/np.pi*60*60 
         return angle_sec
         
     def angleCalculationWorker(self):
         while True:
             # TODO: пока закомментил
-            # if (self.needed_active_pos_monitoring):
-            #     self.p1 = util.getCOM(self.main.getImage())
-            #     self.angle_sec = self.calculateAngleSec()
+            if (self.needed_active_pos_monitoring):
+                self.p1 = util.getCOM(self.main.getImage())
+                self.angle_sec = self.calculateAngleSec()
 
-            #     res = self.getParallelismReport(self.p0, self.p1, self.angle_sec)
-            #     for i in range(3):
-            #         self.resultsLabel[i].configure(text = res[i])
-            #     self.main.image_frame.callForDrawRefresh()
+                res = self.getParallelismReport(self.p0, self.p1, self.angle_sec)
+                for i in range(3):
+                    self.resultsLabel[i].configure(text = res[i])
+                self.main.image_frame.callForCrossesRefresh()
             time.sleep(0.2)
 
     # TODO: Надо понять какие строки закомментированы временно
     def setFirstPosition(self):
         self.firstImage = self.main.getImage()
-        # self.p0 = util.getCOM(self.firstImage)
+        self.p0 = util.getCOM(self.firstImage)
         self.needed_active_pos_monitoring = True
     
         self.angle_sec = self.calculateAngleSec()
@@ -858,6 +883,12 @@ class Tab(ctk.CTkTabview):
 
     def analyseAllWorker(self):
         
+        # TODO Костыль, который закрывает баг в nextImage: для начала обработки
+        # надо сначала зафиксировать последнее изображение (nextImage), 
+        # при этом к индексу картинки автоматически прибавляется 1, 
+        # пусть даже следующее изображение не захватывается
+        self.main.navigation_frame.image_index = max(0, self.main.navigation_frame.image_index-1)
+        
         # все изображения прошли базовую обработку и имеют полный набор данных (хотелось бы верить)
         # self.analyse_button.configure(state = 'disabled')
         self.master.logMessage("Обработка начата...")
@@ -871,8 +902,10 @@ class Tab(ctk.CTkTabview):
         
         # TODO возникает какая-то сложная проблема с выходом за пределы массиве в функции, в которой нет массивов 
         # (см todo ~ 516 (вероятно, уже ~ 649?))
+        self.main.is_pause = True
         self.after(1000, self.master.logMessage("Все изображения обработаны"))
         self.master.updateWindowAfterAnalysis()
+
 
 
     def analyseCurrentWorker(self):
@@ -884,6 +917,7 @@ class Tab(ctk.CTkTabview):
 
         text = "Обработка " + name + " закончена"
         self.after(100, self.master.logMessage(text))
+        self.main.is_pause = True
         
         self.master.updateWindowAfterAnalysis()
     
@@ -931,6 +965,8 @@ class App(ctk.CTk):
         
         self.crop_factor_x = 0
         self.crop_factor_y = 0
+
+        self.is_pause = False
 
         self.setupGrid()
 

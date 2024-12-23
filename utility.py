@@ -176,6 +176,8 @@ def getCOM(image):
     if minval != maxval:
         arr -= (minval)
         arr *= (255.0/(maxval-minval))
+    
+    arr[arr < CUTOFF_THRESHOLD] = 0
 
 
     x = np.sum(np.sum(arr, axis=0) * np.arange(width)) / np.sum(arr)
