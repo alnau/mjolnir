@@ -389,7 +389,7 @@ class imageFrame(ctk.CTkFrame):
                 p1 = (point[0]+const.CROSS_HALF_HEIGHT, point[1] - const.CROSS_HALF_HEIGHT)
                 ret = [p0,p1]
             else:
-                #\
+                # \
                 p0 = (point[0]-const.CROSS_HALF_HEIGHT, point[1] - const.CROSS_HALF_HEIGHT)
                 p1 = (point[0]+const.CROSS_HALF_HEIGHT, point[1] + const.CROSS_HALF_HEIGHT)
                 ret = [p0,p1]
