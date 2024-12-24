@@ -1,11 +1,13 @@
 from PIL import Image
 import cv2
+import time
 
 from constants import * 
 
 
 class GenericCamera():
     def __init__(self, camera_index = 0):
+        self.counter = 0
         try:
             self.camera_index = camera_index
             self.cam = cv2.VideoCapture(camera_index) 
@@ -21,7 +23,13 @@ class GenericCamera():
         while(not ret):
             ret, frame = self.cam.read()
         arr_img = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY) 
-        master_app.camera_feed_image = Image.fromarray(arr_img) 
+        # Тупой баг. Программа пыталась достучаться до image_frame.camera_feed_image, а не до  app.camera_feed_image
+        # следствие тупого рефакторинга. Идиот
+        master_app.master.camera_feed_image = Image.fromarray(arr_img.astype('uint8'),'L') 
+
+        self.frame_is_ready =True
+
+        time.sleep(0.05)
 
 
     def waitForFrame(self):

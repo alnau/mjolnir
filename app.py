@@ -421,20 +421,23 @@ class imageFrame(ctk.CTkFrame):
 
             radius_px = image_data.radius_mm/const.PIXEL_TO_MM*crop_x
             p_mm = image_data.getCOM()
-            p_px = (p_mm[0]*crop_x,p_mm[1]*crop_y)
+            p_px = (p_mm[0]*crop_x, p_mm[1]*crop_y)
 
             self.draw.ellipse(util.getCircleBound(p_px, radius_px), outline = const.LINE_COLOR, width = const.LINE_WIDTH)
         if(image_data.line_was_built):
+            # im_space = image space. Учитываем то, что изод=бражение кропнуто
             start_coords = image_data.p0_im_space
             end_coords = image_data.p1_im_space
 
             self.draw.ellipse(util.getCircleBound(start_coords, const.CIRCLE_RADIUS), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
             self.draw.ellipse(util.getCircleBound(end_coords, const.CIRCLE_RADIUS), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
             self.draw.line([start_coords, end_coords], fill = const.LINE_COLOR, width = const.LINE_WIDTH)
-        if (self.master.right_frame.tabview.needed_active_pos_monitoring):
-            point = self.master.right_frame.tabview.p0
-            self.draw.line(self.getCrossLineCoord(point,True), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
-            self.draw.line(self.getCrossLineCoord(point,False), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
+        # TODO: как мне кажется, это история неа должна реализовываться по постановке. 
+        # Удалить если выйдет иначе
+        # if (self.master.right_frame.tabview.needed_active_pos_monitoring):
+        #     point = self.master.right_frame.tabview.p0
+        #     self.draw.line(self.getCrossLineCoord(point,True), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
+        #     self.draw.line(self.getCrossLineCoord(point,False), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
         return tmp_image
     
     def updateLineOnPhoto(self):
@@ -460,7 +463,7 @@ class imageFrame(ctk.CTkFrame):
         tmp_image = tmp_image.resize((width,height))
 
         self.draw = ImageDraw.Draw(tmp_image)
-        
+        # Взможно здесь следует временно выводить изображение как RGB, чтобы выделить точку цветом
         if (self.master.right_frame.tabview.needed_active_pos_monitoring):
             point = self.master.right_frame.tabview.p0
             point = (point[0]*self.master.crop_factor_x, point[1]*self.master.crop_factor_y)

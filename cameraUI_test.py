@@ -6,16 +6,16 @@ from PIL import Image, ImageTk
 # Define a video capture object 
 vid = cv2.VideoCapture(0) 
   
-# Declare the width and height in variables 
-width, height = 1280, 1024
+# # Declare the width and height in variables 
+# width, height = 1280, 1024
   
-# Set the width and height 
-vid.set(cv2.CAP_PROP_FRAME_WIDTH, width) 
-vid.set(cv2.CAP_PROP_FRAME_HEIGHT, height) 
-# time.sleep(2)
+# # Set the width and height 
+# vid.set(cv2.CAP_PROP_FRAME_WIDTH, width) 
+# vid.set(cv2.CAP_PROP_FRAME_HEIGHT, height) 
+# # time.sleep(2)
 
-vid.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
-vid.set(cv2.CAP_PROP_EXPOSURE , 10)
+# vid.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
+# vid.set(cv2.CAP_PROP_EXPOSURE , 10)
   
 # Create a GUI app 
 app = Tk() 
