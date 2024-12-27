@@ -34,9 +34,11 @@ class ImageData():
         self.right_side_mm = 0
         self.h_width = 0
         self.radius_mm = 0
+        self.parallelism_angle_s = 0
 
         self.line_was_built = False
         self.radius_was_calculated = False
+        self.parallelism_has_been_calculated = False
 
         self.optimisation_needed = True
         self.image_has_been_analysed = False
@@ -254,8 +256,16 @@ class ImageData():
             self.image_name = 'none'
             plotname = 'none'
         self.angle = np.degrees(np.arctan(np.abs((self.p1_new[1]-self.p0_new[1])/(self.p1_new[0]-self.p0_new[0]))))
-
-        self.report = utility.getReport(plotname, self.radius_mm, self.h_width, self.left_side_mm, self.right_side_mm, self.coords_of_max_intensity, self.coords_of_com, self.angle)
+        if (self.parallelism_has_been_calculated):
+            self.report = utility.getReport(plotname, self.radius_mm, 
+                                            self.h_width, self.left_side_mm, 
+                                            self.right_side_mm, self.coords_of_max_intensity, 
+                                            self.coords_of_com, self.angle, self.parallelism_angle_s)
+        else:
+            self.report = utility.getReport(plotname, self.radius_mm, 
+                                            self.h_width, self.left_side_mm, 
+                                            self.right_side_mm, self.coords_of_max_intensity, 
+                                            self.coords_of_com, self.angle)
 
 
 

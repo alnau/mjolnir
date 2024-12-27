@@ -131,6 +131,13 @@ class TitleMenu(CTkTitleMenu):
         self.master.right_frame.logMessage("Данные", image_data.image_name, "сохранены в папке mjolnir")
                         
     def saveAll(self):
+        saving_thread = threading.Thread(target=self.saveAllWorker, args=())
+        saving_thread.daemon = True 
+        saving_thread.start()
+        
+        
+
+    def saveAllWorker(self):
         new_names = []
         width_data_d = []
         width_data_o = []
@@ -937,6 +944,8 @@ class Tab(ctk.CTkTabview):
         self.needed_active_pos_monitoring = False
         self.angle_sec = self.calculateAngleSec()
         res = self.getParallelismReport(self.p0, self.p1, self.angle_sec)
+        self.master.image_data.parallelism_has_been_calculated = True 
+        self.master.image_data.parallelism_angle_s = self.angle_sec
         for i in range(3):
             self.resultsLabel[i].configure(text = res[i])
 
