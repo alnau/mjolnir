@@ -284,29 +284,27 @@ class imageFrame(ctk.CTkFrame):
         self.master.is_pause = False
         camera_thread = threading.Thread(target=self.cameraFeedWorker, args=())
         camera_thread.daemon = True 
+        # Дадим паузу в 2с чтобы интерфейс адаптировался к изображению с камеры
         self.master.after(2000, camera_thread.start)
     
     def cameraFeedWorker(self):
 
         while True:
-
-            # index = self.master.navigation_frame.image_index
-            # is_analysed = self.master.image_data_container[index].image_has_been_analysed
-
-            # if (self.master.right_frame.tabview.get() == "Обработка" and is_analysed):
-            #     self.updateCanvas(self.master.image_data_container[index].modified_image)
-            self.cam.cameraFeed(master_app=self)
+            # запросим последнее изображение с камеры и загрузим его в app.camera_feed_image
+            self.cam.cameraFeed(master_app=self) 
+            # подменим app.current_image TODO: возможно, безопаснее будет засунуть это под else до update_canvas
             self.master.updateImage()
             if (self.master.is_pause or self.master.right_frame.tabview.needed_active_pos_monitoring):
+                # Если изображение захвачено (is_pause == True) или мы измеряем клиновидность, отключить автоообновление
+                # картинки с камеры
                 pass
             else:
                 self.updateCanvas(self.master.current_image)
                 self.master.right_frame.tabview.checkForOverexposure()
             time.sleep(0.05)
-            
-            # self.updateCanvas(self.master.current_image)
 
-
+    # вызываетя после выбора камеры. Убивает диалоговое окно с выбором и переключает на живую 
+    # трансляцию
     def activateCamera(self):
         self.start_dialog.pack_forget()
         self.image_canvas.pack(fill="both", padx = (5,0), pady = 5, expand=True)
@@ -319,8 +317,7 @@ class imageFrame(ctk.CTkFrame):
         # self.startVideoFeed()
         self.startCameraFeed()
 
-        
-
+    # обновляет данные при переходе к новому изображению
     def reset(self):
         self.start_coords = (0,0)
         self.tmp_coords = (0,0)
@@ -723,16 +720,16 @@ class RightFrame(ctk.CTkFrame):
 
     # TODO крашится как минимум начиная с этого момента. Вроде, не сильно драматично, но просто не оч
     def updateWindowAfterAnalysis(self):
-        try:
-            self.after(100, self.tabview.configure(state = 'normal'))
-            index = self.master.navigation_frame.image_index
-            self.updatePlotAfterAnalysis(index)
-            self.updatePrintedDataAfterAnalysis(index)
-            self.master.image_frame.switchImage(index)
-            self.tabview.analyse_all_button.configure(state = 'disabled')
-            self.tabview.analyse_current_button.configure(state = 'disabled')
-        except:
-            print('You know, I''m just hanging around, anyways, checkout updateWidndowAfterAnalysis()')
+        # try:
+        self.after(100, self.tabview.configure(state = 'normal'))
+        index = self.master.navigation_frame.image_index
+        self.updatePlotAfterAnalysis(index)
+        self.updatePrintedDataAfterAnalysis(index)
+        self.master.image_frame.switchImage(index)
+        self.tabview.analyse_all_button.configure(state = 'disabled')
+        self.tabview.analyse_current_button.configure(state = 'disabled')
+        # except:
+        #     print('You know, I''m just hanging around, anyways, checkout updateWidndowAfterAnalysis()')
 
     def updatePlotAfterAnalysis(self, index):
         idata = self.master.image_data_container[index]
@@ -743,7 +740,7 @@ class RightFrame(ctk.CTkFrame):
         self.canvas.draw()
 
     def updatePrintedDataAfterAnalysis(self, index):
-        pass
+        self.tabview.displayReport()
 
 
 class Tab(ctk.CTkTabview):
@@ -792,11 +789,19 @@ class Tab(ctk.CTkTabview):
         self.analysis_frame = ctk.CTkFrame(self.analyse_tab)
         self.analysis_frame.pack(fill = 'x', side = 'top')
         self.analysis_frame.grid_columnconfigure((0,1), weight = 1)
+        self.analysis_frame.grid_rowconfigure(0, weight = 0)
+        self.analysis_frame.grid_rowconfigure(1, weight = 2)
+
 
         self.analyse_all_button = ctk.CTkButton(self.analysis_frame, text = 'Обработать все', command=self.analyseAll)
-        self.analyse_all_button.grid(row = 0, column = 1, sticky = 'ew', padx = const.DEFAULT_PADX)
+        self.analyse_all_button.grid(row = 0, column = 1, sticky = 'ew', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
         self.analyse_current_button = ctk.CTkButton(self.analysis_frame, text = 'Обработать текущий', command=self.analyseCurrent)
-        self.analyse_current_button.grid(row = 0, column = 0, sticky = 'ew', padx = const.DEFAULT_PADX)
+        self.analyse_current_button.grid(row = 0, column = 0, sticky = 'ew', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
+
+        self.report_textbox = ctk.CTkTextbox(self.analysis_frame)
+        self.report_textbox.insert('0.0', 'Данные не обработаны')
+        self.report_textbox.configure(state = 'disabled')
+        self.report_textbox.grid(row = 1, column = 0, columnspan = 2, sticky = 'new', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
 
         #################   Клиновидность   #########################
         self.analyse_tab = self.add("Клиновидность")
@@ -831,6 +836,28 @@ class Tab(ctk.CTkTabview):
 
         self.tabHandler()
 
+    def displayReport(self):
+        data_was_analysed = False
+        index = 0
+        tmp_image_data = 0
+        try:
+            index = self.main.navigation_frame.image_index
+            tmp_image_data = self.main.image_data_container[index]
+            data_was_analysed = tmp_image_data.radius_was_calculated
+        except:
+            print('well, no luck on report printout side. Possibly, there is nothing inside image_data_container')
+            if (tmp_image_data == 0):
+                print('Yeah, just checked, seems like it. Try to find workaround, godspeed')
+        
+        self.report_textbox.configure(state = 'normal')
+        self.report_textbox.delete('0.0', 'end')
+        if (data_was_analysed and self.get() == 'Обработка'):
+            report_text = tmp_image_data.report
+            self.report_textbox.insert('0.0', report_text)
+        else:
+            self.report_textbox.insert('0.0', 'Данные не обработаны')
+        self.report_textbox.configure(state = 'disabled')
+
 
     def resetReport(self):
         res = self.getParallelismReport((0,0), (0,0), 0)
@@ -861,6 +888,7 @@ class Tab(ctk.CTkTabview):
             self.main.navigation_frame.next_button.configure(state = 'normal')
             self.main.navigation_frame.prev_button.configure(state = 'normal')
             self.p1 = (0,0)
+            self.displayReport()
         elif (self.get() == 'Клиновидность'):
             self.main.is_pause = False
             self.resetReport()
@@ -1008,7 +1036,7 @@ class App(ctk.CTk):
         self.base_path = 'tmp/'
         current_date = util.getCurrentDateStr() 
         self.backup_path = self.base_path + current_date + '_tmp/'
-        # self.organiseBackup() # TODO: НЕ ЗАБЫТЬ УБРАТЬ. закомментил на время тестирования
+        self.organiseBackup() # TODO: НЕ ЗАБЫТЬ УБРАТЬ. закомментил на время тестирования
         self.backup_folders_names = util.getBackupFoldersNames(self.base_path)
         self.crop_factor_x = 0
         self.crop_factor_y = 0
