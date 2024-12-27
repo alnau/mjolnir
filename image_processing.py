@@ -164,7 +164,7 @@ class ImageData():
         x1 = self.p1_new[0]
         y1 = self.p1_new[1]
 
-        x_coords_index, y_coords_index = utility.bresnanLine(self.p0_new, self.p1_new, self.width, self.height)
+        x_coords_index, y_coords_index = utility.bresenhamLine(self.p0_new, self.p1_new, self.width, self.height)
 
         lenght = len(x_coords_index) - 1
 

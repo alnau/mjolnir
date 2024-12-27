@@ -84,7 +84,7 @@ def getCircleBound(point, r):
     return (point[0]-r,point[1]-r, point[0]+r, point[1]+r)
 
 
-def bresnanLine(p1, p2, width, height):
+def bresenhamLine(p1, p2, width, height):
     x1, y1 = p1
     x2, y2 = p2
 
@@ -294,7 +294,7 @@ def getBrightness(p1, p2, image):
     tmp_image.convert('L')
     width, height = getSize(image)
 
-    x_coords_index, y_coords_index = bresnanLine(p1,p2, width, height)
+    x_coords_index, y_coords_index = bresenhamLine(p1,p2, width, height)
     brightness_values =[]
     length = len(x_coords_index)-1
     for i in range(length):
@@ -326,7 +326,7 @@ def getIntegral(x1,y1,x2,y2,image, moment = 0):
         p1 = (x1,y1)
         p2 = (x2,y2)
         
-        x_coords_index, y_coords_index = bresnanLine(p1,p2, width, height)
+        x_coords_index, y_coords_index = bresenhamLine(p1,p2, width, height)
         
         if (len(x_coords_index) < 10):
             return -100000
