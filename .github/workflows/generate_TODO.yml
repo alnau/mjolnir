@@ -1,5 +1,8 @@
 name: Generate TODO List
 
+permissions:
+  contents: write  # Allows the workflow to write to the repository
+  
 on:
   push:
     branches:
@@ -7,6 +10,8 @@ on:
   pull_request:
     branches:
       - main  # Change this to your default branch if different
+  workflow_dispatch:
+
 
 jobs:
   generate-todo:
