@@ -553,8 +553,8 @@ class RightFrame(ctk.CTkFrame):
 
         self.photo_is_captured = False
 
-        self.plot_width = 5
-        self.plot_height = 3
+        self.plot_width = 4.5
+        self.plot_height = 2.7
 
         self.is_active = True
 
