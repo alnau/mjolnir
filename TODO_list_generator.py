@@ -6,12 +6,12 @@ def find_todo_comments(directory):
     # Walk through the directory
     for dirpath, _, filenames in os.walk(directory):
         for filename in filenames:
-            if filename.endswith('.py'):
+            if filename.endswith('.py') and filename != 'TODO_list_generator.py':
                 file_path = os.path.join(dirpath, filename)
                 with open(file_path, 'r', encoding='utf-8') as file:
                     for line_number, line in enumerate(file, start=1):
                         if 'TODO' in line:
-                            todo_comments.append(f"{file_path}:{line_number}: {line.strip()}")
+                            todo_comments.append(f"{filename}:{line_number}: {line.strip()}")
     
     return todo_comments
 
