@@ -23,6 +23,8 @@ def getCurrentDateStr():
 
 # вызывается при инициализации программы
 def createOrCleanFolder(folder_name):
+    # Пока убрал очистку папки в случае, если она существует. Убивает весь смысл бэкапа
+    # но направление мысли верное: TODO: нужно делить сессии, возможно, делать это по времени
     if os.path.exists(folder_name):
         # если папка существует, очистим содержимое
         print(f"Folder '{folder_name}' already exists. Deleting its contents...")

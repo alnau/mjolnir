@@ -22,7 +22,6 @@ import constants as const
 import utility as util
 import image_processing as ip
 
-# TODO TEST TEST TEST
 
 
 ctk.set_appearance_mode("Dark")  
@@ -347,7 +346,7 @@ class imageFrame(ctk.CTkFrame):
             if (self.master.right_frame.photo_is_captured or self.master.right_frame.tabview.get() == 'Обработка'):
                 index = self.master.navigation_frame.image_index
                 if (event.type == '4'):
-                    # TODO тут какая-то полная грязь с логикой. Я уже слишком пьян чтобы разобраться в этом дерьме
+                    # тут какая-то полная грязь с логикой. Я уже слишком пьян чтобы разобраться в этом дерьме
                     # фактически ифы ниже только для того, чтобы нормально отрабатывала логика сброса галки о том, 
                     # что оптимизация не нужна. Уверен, на трезвую голову ты справишься куда лучше
                     # 
@@ -437,12 +436,7 @@ class imageFrame(ctk.CTkFrame):
             self.draw.ellipse(util.getCircleBound(start_coords, const.CIRCLE_RADIUS), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
             self.draw.ellipse(util.getCircleBound(end_coords, const.CIRCLE_RADIUS), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
             self.draw.line([start_coords, end_coords], fill = const.LINE_COLOR, width = const.LINE_WIDTH)
-        # TODO: как мне кажется, это история неа должна реализовываться по постановке. 
-        # Удалить если выйдет иначе
-        # if (self.master.right_frame.tabview.needed_active_pos_monitoring):
-        #     point = self.master.right_frame.tabview.p0
-        #     self.draw.line(self.getCrossLineCoord(point,True), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
-        #     self.draw.line(self.getCrossLineCoord(point,False), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
+
         return tmp_image
     
     def updateLineOnPhoto(self):
@@ -726,7 +720,6 @@ class RightFrame(ctk.CTkFrame):
         self.ax.plot(coords, brightness)
         self.canvas.draw()
 
-    # TODO крашится как минимум начиная с этого момента. Вроде, не сильно драматично, но просто не оч
     def updateWindowAfterAnalysis(self):
         # try:
         self.after(100, self.tabview.configure(state = 'normal'))
@@ -962,7 +955,7 @@ class Tab(ctk.CTkTabview):
 
     def analyseAllWorker(self):
         
-        # TODO Костыль, который закрывает баг в nextImage: для начала обработки
+        # Костыль, который закрывает баг в nextImage: для начала обработки
         # надо сначала зафиксировать последнее изображение (nextImage), 
         # при этом к индексу картинки автоматически прибавляется 1, 
         # пусть даже следующее изображение не захватывается
@@ -979,8 +972,6 @@ class Tab(ctk.CTkTabview):
             text = "Обработка " + name + " закончена"
             self.after(100, self.master.logMessage(text))
         
-        # TODO возникает какая-то сложная проблема с выходом за пределы массиве в функции, в которой нет массивов 
-        # (см todo ~ 516 (вероятно, уже ~ 649?))
         self.main.is_pause = True
         self.after(1000, self.master.logMessage("Все изображения обработаны"))
         self.master.updateWindowAfterAnalysis()
@@ -1046,7 +1037,7 @@ class App(ctk.CTk):
         self.base_path = 'tmp/'
         current_date = util.getCurrentDateStr() 
         self.backup_path = self.base_path + current_date + '_tmp/'
-        self.organiseBackup() # TODO: НЕ ЗАБЫТЬ УБРАТЬ. закомментил на время тестирования
+        self.organiseBackup() 
         self.backup_folders_names = util.getBackupFoldersNames(self.base_path)
         self.crop_factor_x = 0
         self.crop_factor_y = 0
