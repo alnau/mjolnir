@@ -3,7 +3,6 @@ import os
 def find_todo_comments(directory):
     todo_comments = []
     
-    # Walk through the directory
     for dirpath, _, filenames in os.walk(directory):
         for filename in filenames:
             if filename.endswith('.py') and filename != 'TODO_list_generator.py':
@@ -25,8 +24,8 @@ def write_todo_list(todo_comments, output_file):
             file.write("# TODO List\n\nNo TODO comments found.\n")
 
 def main():
-    directory = os.getcwd()  # Get the current working directory
-    output_file = os.path.join(directory, 'TODO_list.md')  # Ensure the output file is in the same directory
+    directory = os.getcwd()  
+    output_file = os.path.join(directory, 'TODO_list.md')  
     
     todo_comments = find_todo_comments(directory)
     write_todo_list(todo_comments, output_file)

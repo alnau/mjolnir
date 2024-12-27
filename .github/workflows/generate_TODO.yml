@@ -1,15 +1,17 @@
 name: Generate TODO List
 
+# работает по ручному триггеру, но отказывается работать при коммите
+
 permissions:
-  contents: write  # Allows the workflow to write to the repository
-  
+  contents: write  
+
 on:
   push:
     branches:
-      - main  # Change this to your default branch if different
+      - main  
   pull_request:
     branches:
-      - main  # Change this to your default branch if different
+      - main  
   workflow_dispatch:
 
 
@@ -24,7 +26,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.x'  # Use the version you prefer
+          python-version: '3.x'  
 
       - name: Install dependencies
         run: |
