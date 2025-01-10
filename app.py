@@ -75,8 +75,7 @@ class TitleMenu(CTkTitleMenu):
             pure_name.removesuffix('.tif')
             self.master.image_data_container.append(ip.ImageData(image, pure_name))
 
-        # TODO: здесь ломается подгрузка: архивные изображения высвечиваются, но сменяются 
-        # TODO: на дефолтную заглушку. Ожидаю что openFile и openFolder будут иметь ту-же проблему. Разберись на трезвую голову
+        # TODO: здесь ломается подгрузка: архивные изображения высвечиваются, но сменяются на дефолтную заглушку. Ожидаю что openFile и openFolder будут иметь ту-же проблему. Разберись на трезвую голову
         self.master.image_frame.loadImage(self.master.image_data_container[0].norm_image, names[0])
         text = "Восстановлено " + str(len(self.master.image_data_container)) + " изображений. Вы можете продолжить работу"
         self.master.right_frame.logMessage(text)
@@ -137,11 +136,9 @@ class TitleMenu(CTkTitleMenu):
         saving_thread.daemon = True 
         saving_thread.start()
         
-# TODO : добавить предупреждение о несохраненных файлах при выходе
-# TODO : добавить опцию сохраниения в директорию по выбору
+# TODO : добавить предупреждение о несохраненных файлах при выходе. Добавить опцию сохраниения в директорию по выбору
     def saveAllWorker(self):
-        # TODO: при выделении o,d нужно делить название не по всем '_', а только по последнему '_'
-        # TODO: также можно добавить проверку на этапе создания названия 
+        # TODO: при выделении o,d нужно делить название не по всем '_', а только по последнему '_'. также можно добавить проверку на этапе создания названия 
         new_names = []
         width_data_d = []
         width_data_o = []
