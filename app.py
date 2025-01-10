@@ -76,7 +76,7 @@ class TitleMenu(CTkTitleMenu):
             self.master.image_data_container.append(ip.ImageData(image, pure_name))
 
         # TODO: здесь ломается подгрузка: архивные изображения высвечиваются, но сменяются 
-        # на дефолтную заглушку. Ожидаю что openFile и openFolder будут иметь ту-же проблему. Разберись на трезвую голову
+        # TODO: на дефолтную заглушку. Ожидаю что openFile и openFolder будут иметь ту-же проблему. Разберись на трезвую голову
         self.master.image_frame.loadImage(self.master.image_data_container[0].norm_image, names[0])
         text = "Восстановлено " + str(len(self.master.image_data_container)) + " изображений. Вы можете продолжить работу"
         self.master.right_frame.logMessage(text)
