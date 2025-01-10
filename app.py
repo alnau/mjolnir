@@ -1,4 +1,3 @@
-import customtkinter as ctk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from PIL import Image, ImageTk,ImageDraw
@@ -6,9 +5,12 @@ import numpy as np
 import threading
 import time
 from datetime import datetime
+
+import customtkinter as ctk
 import tkinter as tk
 from  tkinter import filedialog
 from CTkMenuBar import *
+import CTkMessagebox as msg
 import os
 import logging
 import sys
@@ -135,9 +137,11 @@ class TitleMenu(CTkTitleMenu):
         saving_thread.daemon = True 
         saving_thread.start()
         
-        
-
+# TODO : добавить предупреждение о несохраненных файлах при выходе
+# TODO : добавить опцию сохраниения в директорию по выбору
     def saveAllWorker(self):
+        # TODO: при выделении o,d нужно делить название не по всем '_', а только по последнему '_'
+        # TODO: также можно добавить проверку на этапе создания названия 
         new_names = []
         width_data_d = []
         width_data_o = []
@@ -148,12 +152,12 @@ class TitleMenu(CTkTitleMenu):
             if (image_data.plotname!='control'):
                 number, test_for_d_o = image_data.plotname.rsplit("_",1)
                 if (test_for_d_o == "d"):
-                    width_data_d.append(image_data.radius_mm)
+                    width_data_d.append(round(2*image_data.radius_mm, 2))
                     new_names.append(number)
                 elif (test_for_d_o == "o"):
-                    width_data_o.append(image_data.radius_mm)
+                    width_data_o.append(round(2*image_data.radius_mm,2))
             elif (image_data.plotname == 'control'):
-                r_ref = image_data.radius_mm
+                r_ref = round(2*image_data.radius_mm,2)
 
         print("------------------")
 
@@ -162,6 +166,7 @@ class TitleMenu(CTkTitleMenu):
 
         util.printReportToXLSX(new_names, width_data_d, width_data_o, r_ref)             
         self.master.right_frame.logMessage("Данные измерений сохранены в папке mjolnir")
+        self.master.files_are_unsaved = False
 
 
 
@@ -952,7 +957,7 @@ class Tab(ctk.CTkTabview):
         self.configure(state = 'disabled')
         threading.Thread(target=self.analyseCurrentWorker, args=(), daemon=True).start()
 
-
+    # TODO: Добавить бегущий статус-бар при обработке (возможно, при любом вызове analyseImage)
     def analyseAllWorker(self):
         
         # Костыль, который закрывает баг в nextImage: для начала обработки
@@ -975,6 +980,7 @@ class Tab(ctk.CTkTabview):
         self.main.is_pause = True
         self.after(1000, self.master.logMessage("Все изображения обработаны"))
         self.master.updateWindowAfterAnalysis()
+        self.main.files_are_unsaved = True
 
 
 
@@ -1042,6 +1048,8 @@ class App(ctk.CTk):
         self.crop_factor_x = 0
         self.crop_factor_y = 0
 
+        self.files_are_unsaved = False
+
         self.is_pause = False
 
         self.setupGrid()
@@ -1069,13 +1077,23 @@ class App(ctk.CTk):
     def organiseBackup(self):
         util.deleteOldFolders(self.base_path)
         util.createOrCleanFolder(self.backup_path)
+
+    
     def onClosing(self):
+        if (self.files_are_unsaved == True):
+            message = msg.CTkMessagebox(title = 'Внимание', message = "Результаты анализа не были сохранены \n сохранить перед закрытием?",
+                              icon = 'warning', option_1 = 'Да', option_2 = 'Нет', option_3 = "Отмена",)
+            if (message.get() == 'Да'):
+                self.menu.saveAll()
+            elif(message.get() == 'Нет'):
+                self.destroy()
         # if (self.image_frame cam!= 0):
         #     try:
         #         del self.image_frame.cam
         #     except: 
         #         print('Possibly there is still no cam object')
-        self.destroy()
+        else:
+            self.destroy()
 
     def toggleControl(self):
         for widget in self.widget_list:
