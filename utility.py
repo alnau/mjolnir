@@ -20,10 +20,12 @@ from constants import *
 def resourcePath(relative_path):
     """ Получает абсолютный путь к ресурсам, включая при сборке в .exe """
     try:
-        # PyInstaller создает временную папку и сохраняет путь в _MEIPASS
-        base_path = sys._MEIPASS
+        # # PyInstaller создает временную папку и сохраняет путь в _MEIPASS
+        # base_path = sys._MEIPASS
+        base_path = os.path.dirname(sys.argv[0])
     except Exception:
-        base_path = os.path.abspath(".")
+        print("You're in the world of pain" )
+        # base_path = os.path.abspath(".")
 
     return os.path.join(base_path, relative_path)
 
