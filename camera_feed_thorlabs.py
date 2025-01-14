@@ -5,6 +5,8 @@ import time
 import numpy as np
 from constants import * 
 
+import logging
+
 class ThorCamera():
     def __init__(self):
         self.frame_is_ready = False
@@ -20,12 +22,15 @@ class ThorCamera():
             self.cam.start_acquisition()
             self.counter = 0
 
-        except:
+        except Exception as e:
+            logging.error('Error occured during ThorCam initialisation;', e)
             print('Error occured during ThorCam initialisation')
+    
     def setExposure(self, exposure_time_ms):
         try:
             self.cam.set_exposure(min(exposure_time_ms, MAX_EXPOSURE_MS)/1000)
-        except:
+        except Exception as e:
+            logging('Error during exposure set;', e)
             print('Error during exposure set')
     
     def cameraFeed(self, master_app):
@@ -41,7 +46,10 @@ class ThorCamera():
             self.counter+=1
 
             time.sleep(0.05)
-        except:
+        except Exception as e:
+            logging.error('I fucking hate working without physical camera attached to my dying laptop \ n',
+                          'If this error occured on stable version of mjolnir (stable? Heh, nevermind), please check out ThorCamera.cameraFeed\n',
+                          'Of course I have no ideas of what had I done to cause this shitshow in the first place')
             print('I fucking hate working without physical camera attached to my dying laptop')
             print('If this error occured on stable version of mjolnir (stable? Heh, nevermind), please check out ThorCamera.cameraFeed')
             print('Of course I have no ideas of what had I done to cause this shitshow in the first place')

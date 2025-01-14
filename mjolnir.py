@@ -6,6 +6,9 @@ import utility
 import matplotlib.pyplot as plt
 import numpy as np
 
+from app import App
+import utility 
+
 import csv
 
 from PIL import Image
@@ -17,7 +20,7 @@ import traceback
 
 
 logging.basicConfig(
-    filename='tmp\mjolnir.log',  
+    filename=utility.resourcePath('tmp\mjolnir.log'),  
     level=logging.ERROR,        
     format='%(asctime)s - %(levelname)s - %(message)s'  
 )
@@ -27,6 +30,7 @@ def log_exception(exc_type, exc_value, exc_traceback):
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
         return
     
+    print("Uncaught exception", exc_type, exc_value, exc_traceback)
     logging.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
 
 
@@ -35,11 +39,13 @@ def test():
 
 def main():
     # cameraHandler()
+    # TODO!!!: Проблемы с путями файлов при сборке даже с учетом добавления utility.resoursePath(). 
+    # Ломается на логгере, но, думаю, и на всех других путях будет ровно та-же проблема. Кидает в ...AppData/Temp/...
     sys.excepthook = log_exception
     # test()
-    path = "D:\Photonics\\8pcs ВОМЗ"
-    names = ["90_62_d.tif"]  
-
+    # path = "D:\Photonics\\8pcs ВОМЗ"
+    # names = ["90_62_d.tif"]  
+    app = App()
     
     # ip.analyseAll(path)
     # ip.analyseFile(path,name)

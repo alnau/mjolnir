@@ -16,6 +16,8 @@ import logging
 import sys
 import traceback
 
+
+# import error as e
 import camera_feed_thorlabs as thor
 from camera_feed_thorlabs import ThorCamera
 import camera_feed_generic as gen
@@ -56,12 +58,42 @@ class TitleMenu(CTkTitleMenu):
         save_sub_menu.add_option(option = "Данные текущего изображения", command = self.saveFile)
         save_sub_menu.add_option(option = "Данные всех изображений", command = self.saveAll)
      
-        exterminate_button = self.add_cascade("DoW")
-        geno_dropdown = CustomDropdownMenu(widget=exterminate_button)
+
+
+        self.exterminate_button = self.add_cascade("DoW")
+        self.exterminate_button.configure(state = 'disabled')
+
+        geno_dropdown = CustomDropdownMenu(widget=self.exterminate_button)
         geno_dropdown.add_option(option = "NUKE EM, OPPIE!", command = self.master.initUI)
+        geno_dropdown.add_option(option = "SHOOT YOUR OWN FOOT!", command = self.shotYourself)
+
+        self.master.bind("<Control-Up>", self.onControl_UpPress)
+        self.master.bind("<Control_L>", self.onControlPress)
+        
+        
+        # self.bind("<ControlRelease>", self.onCtrlRelease)
     
+    def onControlPress(self, event):
+        self.exterminate_button.configure(state = 'disabled')
+
+    def onControl_UpPress(self,event):
+        print('CTRL')
+        self.exterminate_button.configure(state = 'normal')
+        # self.master.after(1000, self.exterminate_button.configure(state = 'disabled'))
+
+
+    def shotYourself(self):
+
+        try: 
+            a = 1/0
+        except Exception as e:
+            # Логируем исключение
+            logging.error("Leg had been shot successfully:", str(e))
+            print("Leg had been shot successfully:", str(e))
+
+
     def recoverFromFolder(self, folder_name):
-        dir_path = self.master.base_path + folder_name
+        dir_path = util.resourcePath(self.master.base_path + folder_name)
         print(dir_path)
         names = []
         self.master.image_data_container = []
@@ -99,7 +131,9 @@ class TitleMenu(CTkTitleMenu):
                 self.image_data_container.append(ip.ImageData(image, pure_name))
                 self.data_is_external = True
             except Exception as e:
-                print("Error during image import")
+            # Логируем исключение
+                logging.error("Error during image import", str(e))
+                print("Error during image import;:", str(e))
 
     def openFolder(self):
         self.master.right_frame.logMessage('Начат импорт файлов...')
@@ -124,26 +158,27 @@ class TitleMenu(CTkTitleMenu):
             self.master.navigation_frame.prev_button.configure(state = 'normal')
             self.data_is_external = True
 
-    def saveFile(self):
+    def saveFile(self, path = ''):
         index = self.master.navigation_frame.image_index
         image_data = self.master.image_data_container[index]
-        image_data.plotBepis()
+        image_data.plotBepis(path)
         
-        self.master.right_frame.logMessage("Данные", image_data.image_name, "сохранены в папке mjolnir")
+        self.master.right_frame.logMessage("Данные", image_data.image_name, "сохранены в папке")
                         
-    def saveAll(self):
-        saving_thread = threading.Thread(target=self.saveAllWorker, args=())
+    def saveAll(self, path =''):
+        dir_path = filedialog.askdirectory(title='Выберете папку для сохранения файлов')
+        saving_thread = threading.Thread(target=self.saveAllWorker, args=(dir_path,))
         saving_thread.daemon = True 
         saving_thread.start()
         
 # TODO : добавить предупреждение о несохраненных файлах при выходе. Добавить опцию сохраниения в директорию по выбору
-    def saveAllWorker(self):
+    def saveAllWorker(self, path):
         # TODO: при выделении o,d нужно делить название не по всем '_', а только по последнему '_' (проверить что это вообще ошибка (мне очень лень сейчас)). также можно добавить проверку на этапе создания названия 
         new_names = []
         width_data_d = []
         width_data_o = []
         for image_data in self.master.image_data_container:
-            image_data.plotBepis()
+            image_data.plotBepis(path)
 
             r_ref = 0
             if (image_data.plotname!='control'):
@@ -161,8 +196,11 @@ class TitleMenu(CTkTitleMenu):
         if (len(new_names)!=len(width_data_d) or len(new_names)!=len(width_data_o) ):
             print("error with files")
 
-        util.printReportToXLSX(new_names, width_data_d, width_data_o, r_ref)             
-        self.master.right_frame.logMessage("Данные измерений сохранены в папке mjolnir")
+        util.printReportToXLSX(new_names, width_data_d, width_data_o, r_ref, path)  
+        path_printout = '/lastResults'
+        if (path != ''):
+            path_printout = path           
+        self.master.right_frame.logMessage("Данные измерений сохранены в папке " + str(path_printout))
         self.master.files_are_unsaved = False
 
 
@@ -201,7 +239,8 @@ class NavigationFrame(ctk.CTkFrame):
         self.master.right_frame.updatePlotAfterAnalysis(self.image_index)
         self.master.right_frame.updatePrintedDataAfterAnalysis(self.image_index)
         self.master.image_frame.loadImage(self.master.image_data_container[self.image_index].norm_image, name = self.master.image_data_container[self.image_index].image_name)
-        self.master.right_frame.updateWindowAfterAnalysis()
+        self.master.image_frame.switchImage(self.image_index)
+        # self.master.right_frame.updateWindowAfterAnalysis()
         self.master.image_frame.reset()
 
 
@@ -322,6 +361,7 @@ class imageFrame(ctk.CTkFrame):
         self.master.toggleControl()
         self.resizeImage(None)
         self.master.right_frame.tabview.slider.set(self.cam.getExposureFrac()) 
+        self.master.right_frame.tabview.slider2.set(self.cam.getExposureFrac()) 
         
         # self.startVideoFeed()
         self.startCameraFeed()
@@ -356,6 +396,7 @@ class imageFrame(ctk.CTkFrame):
                     if (self.man_we_just_switched_to_new_image):
                         self.man_we_just_switched_to_new_image = False
                     elif(len(self.master.image_data_container) != 0):
+                            print(index)
                             self.master.image_data_container[index].image_has_been_analysed = False
                             self.master.image_data_container[index].optimisation_needed = True
                     self.master.right_frame.clearPlot()
@@ -529,7 +570,10 @@ class imageFrame(ctk.CTkFrame):
         name = ''
         if (idata != 'None'):
             name = idata.image_name
-        self.loadImage(idata.modified_image, name)
+        if (idata.image_has_been_analysed):
+            self.loadImage(idata.modified_image, name)
+        else:
+            self.loadImage(idata.norm_image, name)
 
     def resizeImage(self, event):
         width = self.winfo_width()
@@ -697,9 +741,9 @@ class RightFrame(ctk.CTkFrame):
  
             self.master.navigation_frame.image_index += 1
             
-            backup_path = self.master.backup_path
+
             file_name = self.entry.get() + '.tif'
-            self.image_data.initial_image.save(os.path.join(backup_path, file_name))
+            self.image_data.initial_image.save(os.path.join(self.master.backup_path, file_name))
 
             self.logMessage('Данные записаны')
             self.entry.delete(0, 'end')
@@ -721,6 +765,13 @@ class RightFrame(ctk.CTkFrame):
         self.ax.clear()
         self.ax.plot(coords, brightness)
         self.canvas.draw()
+
+    # def updateWidowOnSwitch(self):
+    #     self.after(100, self.tabview.configure(state = 'normal'))
+    #     index = self.master.navigation_frame.image_index
+    #     self.updatePlotAfterAnalysis(index)
+    #     self.updatePrintedDataAfterAnalysis(index)
+    #     self.master.image_frame.switchImage(index)
 
     def updateWindowAfterAnalysis(self):
         # try:
@@ -778,6 +829,9 @@ class Tab(ctk.CTkTabview):
         self.slider = ctk.CTkSlider(self.slider_frame, from_ = 0,to = const.MAX_EXPOSURE_MS, command = self.sliderEvent)
         self.slider.pack(fill = 'x', side = 'left', expand = True) 
 
+        self.max_exposure_label = ctk.CTkLabel(self.slider_frame, text = '')
+        self.max_exposure_label.pack(side = 'left')
+
         self.option_frame = ctk.CTkFrame(self.capture_tab, fg_color='transparent')
         self.option_frame.pack(side = 'top', fill = 'x', pady = (10,0))
         
@@ -807,9 +861,21 @@ class Tab(ctk.CTkTabview):
         self.report_textbox.grid(row = 1, column = 0, columnspan = 2, sticky = 'new', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
 
         #################   Клиновидность   #########################
-        self.analyse_tab = self.add("Клиновидность")
+        self.parallelism_tab = self.add("Клиновидность")
 
-        self.base_entry_frame = ctk.CTkFrame(self.analyse_tab, )
+        self.slider_frame2 = ctk.CTkFrame(self.parallelism_tab, fg_color='transparent')
+        self.slider_frame2.pack(fill = 'x', side = 'top')
+
+
+        self.slider_label2 = ctk.CTkLabel(self.slider_frame2, text='Экспозиция    ')
+        self.slider_label2.pack(side = 'left')
+        self.slider2 = ctk.CTkSlider(self.slider_frame2, from_ = 0,to = const.MAX_EXPOSURE_MS, command = self.sliderEvent)
+        self.slider2.pack(fill = 'x', side = 'left', expand = True) 
+
+        self.max_exposure_label2 = ctk.CTkLabel(self.slider_frame2, text = '')
+        self.max_exposure_label.pack(side = 'left')
+        
+        self.base_entry_frame = ctk.CTkFrame(self.parallelism_tab, )
         self.base_entry_frame.pack(fill="x", pady=(10, 5), side = 'top')
         
         self.base_label = ctk.CTkLabel(self.base_entry_frame, text = 'База (см)')
@@ -820,7 +886,7 @@ class Tab(ctk.CTkTabview):
         
         self.base_entry.insert(0, str(const.DEFAULT_BASE_CM))
 
-        self.parallelism_button_frame = ctk.CTkFrame(self.analyse_tab)
+        self.parallelism_button_frame = ctk.CTkFrame(self.parallelism_tab)
         self.parallelism_button_frame.pack(fill = 'x', side = 'top')
         self.parallelism_button_frame.grid_columnconfigure((0,1), weight = 1)
 
@@ -833,7 +899,7 @@ class Tab(ctk.CTkTabview):
         res = self.getParallelismReport((0,0), (0,0), 0)
         self.resultsLabel = []
         for i in range(3):
-            self.resultsLabel.append(ctk.CTkLabel(self.analyse_tab, text = res[i], anchor= 'nw'))
+            self.resultsLabel.append(ctk.CTkLabel(self.parallelism_tab, text = res[i], anchor= 'nw'))
             self.resultsLabel[i].pack(fill = 'x', expand = True, side = 'top', pady = 2)
             self.resultsLabel[i].cget("font").configure(size=15)
 
@@ -847,10 +913,14 @@ class Tab(ctk.CTkTabview):
             index = self.main.navigation_frame.image_index
             tmp_image_data = self.main.image_data_container[index]
             data_was_analysed = tmp_image_data.radius_was_calculated
-        except:
-            print('well, no luck on report printout side. Possibly, there is nothing inside image_data_container')
+        except Exception as e:
+            
+            logging.error("well, no luck on report printout side. Possibly, there is nothing inside image_data_container;", str(e))
+            print("well, no luck on report printout side. Possibly, there is nothing inside image_data_container;", str(e))
+
             if (tmp_image_data == 0):
                 print('Yeah, just checked, seems like it. Try to find workaround, godspeed')
+                logging.error('Yeah, just checked, seems like it. Try to find workaround, godspeed')
         
         self.report_textbox.configure(state = 'normal')
         self.report_textbox.delete('0.0', 'end')
@@ -996,6 +1066,7 @@ class Tab(ctk.CTkTabview):
     
     def sliderEvent(self, val):
         
+        
         self.main.image_frame.cam.setExposure(exposure_time_ms = val)
 
         self.checkForOverexposure()
@@ -1004,13 +1075,20 @@ class Tab(ctk.CTkTabview):
         image_array = np.array(self.main.current_image)
         brightest_pixel_value = np.max(image_array)
 
+        self.max_exposure_label2.configure(text = brightest_pixel_value)
+        self.max_exposure_label.configure(text = brightest_pixel_value)
+
         if (brightest_pixel_value < 250):
             self.slider.configure(button_color = const.FG_COLOR , progress_color= const.PROGRESS_COLOR, button_hover_color = const.HOVER_COLOR)
+            self.slider2.configure(button_color = const.FG_COLOR , progress_color= const.PROGRESS_COLOR, button_hover_color = const.HOVER_COLOR)
+            
             self.master.capture_button.configure(state = 'normal', fg_color = const.FG_COLOR)
             return False
         else:
             self.master.capture_button.configure(state = 'disabled', fg_color = 'red')
             self.slider.configure(button_color = 'red', button_hover_color = 'red', progress_color = 'red' )
+            self.slider2.configure(button_color = 'red', button_hover_color = 'red', progress_color = 'red' )
+            
             return True
 
 
@@ -1032,12 +1110,12 @@ class App(ctk.CTk):
         self.geometry(f"{width}x{height}")
 
         # TODO Изменить заглушку
-        self.image_path="D:\Photonics\KGW МУР\!18_o.tif"        
+        self.image_path= util.resourcePath('mockup.tif')        
         self.camera_feed_image = Image.open(self.image_path).convert('L')
         self.current_image = self.camera_feed_image
         
 
-        self.base_path = 'tmp/'
+        self.base_path = util.resourcePath('tmp/')
         current_date = util.getCurrentDateStr() 
         self.backup_path = self.base_path + current_date + '_tmp/'
         self.organiseBackup() 
@@ -1113,7 +1191,7 @@ class App(ctk.CTk):
 
 
 
-if __name__ == "__main__":
-    # example_function()
+# if __name__ == "__main__":
+#     # example_function()
     
-    app = App()
+#     app = App()

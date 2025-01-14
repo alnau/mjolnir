@@ -11,10 +11,22 @@ from scipy.integrate import dblquad
 from scipy import integrate 
 from PIL import Image as img
 import os
+import sys
 import shutil
+import logging
 from datetime import datetime, timedelta
-
 from constants import *
+
+def resourcePath(relative_path):
+    """ Получает абсолютный путь к ресурсам, включая при сборке в .exe """
+    try:
+        # PyInstaller создает временную папку и сохраняет путь в _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
 
 def getCurrentDateStr():
     # Возвращает UTS+7
@@ -27,17 +39,29 @@ def createOrCleanFolder(folder_name):
     # но направление мысли верное: TODO: нужно делить сессии, возможно, делать это по времени
     if os.path.exists(folder_name):
         # если папка существует, очистим содержимое
-        print(f"Folder '{folder_name}' already exists. Deleting its contents...")
-        for filename in os.listdir(folder_name):
-            file_path = os.path.join(folder_name, filename)
-            if os.path.isfile(file_path):
-                os.remove(file_path)
-            elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)
+        # print(f"Folder '{folder_name}' already exists. Deleting its contents...")
+        print(f"Folder '{folder_name}' already exists")
+        # for filename in os.listdir(folder_name):
+        #     file_path = os.path.join(folder_name, filename)
+        #     if os.path.isfile(file_path):
+        #         os.remove(file_path)
+        #     elif os.path.isdir(file_path):
+        #         shutil.rmtree(file_path)
     else:
         # Если папки не существует, создаем...
         print(f"Creating folder '{folder_name}'...")
         os.makedirs(folder_name)
+
+def initialiseWorkspace():
+    log_path_rel = '\tmp'
+    result_path_rel = '\lastResults'
+
+    log_path = resourcePath(log_path_rel)
+    if os.path.exists(log_path):
+        pass
+    else:
+        os.makedirs(log_path)
+        print('Log folder was created')
 
 def deleteOldFolders(base_path, days=3):
     # узнаем текущее время
@@ -46,7 +70,8 @@ def deleteOldFolders(base_path, days=3):
 
     # пробежимся по названиям...
     for folder in os.listdir(base_path):
-        folder_path = os.path.join(base_path, folder)
+        folder_path_rel = os.path.join(base_path, folder)
+        folder_path = resourcePath(folder_path_rel)
         if os.path.isdir(folder_path):
             # проверим дату создания
             folder_creation_time = datetime.fromtimestamp(os.path.getctime(folder_path))
@@ -250,8 +275,13 @@ def thresholdImage(image, threshold):
     return ret_image
 
 
-def printReportToCSV(new_names, width_data_d, width_data_o):
-    csv_name = "lastResults/" + time.strftime("%d-%m-%Y_", time.gmtime()) + "data.csv"
+def printReportToCSV(new_names, width_data_d, width_data_o, path = ''):
+    if (path == ''):
+        csv_name_rel = "lastResults/" + time.strftime("%d-%m-%Y_", time.gmtime()) + "data.csv"
+        csv_name = resourcePath(csv_name_rel)
+    else:
+        csv_name = os.path.join(path, time.strftime("%d-%m-%Y_", time.gmtime()) + "data.xlsx")
+
     with open(csv_name, 'w', newline='') as file:
         writer = csv.writer(file)
         field = ["name", "d, mm", "o, mm"]
@@ -270,8 +300,13 @@ def fillTitleLine(worksheet_handle, r_control):
         worksheet_handle.write(0,counter, cols)
         counter+=1
 
-def printReportToXLSX(names, r_d, r_o, r_ref = 0.337):
-    xlsx_name = "lastResults/" + time.strftime("%d-%m-%Y_", time.gmtime()) + "data.xlsx"
+def printReportToXLSX(names, r_d, r_o, r_ref = 0.337, path =''):
+    if (path == ''):
+        xlsx_name_rel = "lastResults/" + time.strftime("%d-%m-%Y_", time.gmtime()) + "data.xlsx"
+        xlsx_name = resourcePath(xlsx_name_rel)
+    else:
+        xlsx_name = os.path.join(path, time.strftime("%d-%m-%Y_", time.gmtime()) + "data.xlsx")
+
     workbook = xlsx.Workbook(xlsx_name)
     worksheet = workbook.add_worksheet()
 
@@ -342,7 +377,9 @@ def getIntegral(x1,y1,x2,y2,image, moment = 0):
         
                 # brightness = pixel[0]
                 brightnessValues.append(brightness)
-            except:
+            except Exception as e:
+            
+                logging.error("error in getIntegral, possibly out of bounds", str(e))
                 print("error in getIntegral, possibly out of bounds")
                 print(length)
 
@@ -356,7 +393,8 @@ def getIntegral(x1,y1,x2,y2,image, moment = 0):
             line_coordinates = np.insert(np.cumsum(distances), 0, 0)  
 
             integral = PIXEL_TO_MM*np.trapz(np_brightness, line_coordinates)
-        except:
+        except Exception as e:
+            logging.error("Error in get Integral", e,'\n', len(np_x_coords_index), len(np_brightness) )
             print(len(np_x_coords_index), len(np_brightness))
 
         return integral

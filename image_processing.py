@@ -10,9 +10,11 @@ from scipy.stats import norm
 from PIL import Image as img
 from PIL import ImageDraw
 
+import logging
 
 import utility
 from constants import *
+
 
 
 
@@ -25,6 +27,7 @@ class ImageData():
 
         self.initial_image = tmp_image.convert('L')
         self.norm_image = utility.normalizeImage(self.initial_image).convert('L')
+        # self.modified_image = self.getModifiedImage()
         self.modified_image = 0
 
         self.width, self.height = utility.getSize(self.norm_image)
@@ -182,7 +185,8 @@ class ImageData():
 
                 # (upd + ~1w, чисто для истории) Ты анализировал изображение, на котором ты успел нарисовать линию
                 self.brightness_values.append(brightness)
-            except:
+            except Exception as e:
+                logging.error("Error in Brightness:", e)
                 # print("ERROR in brightness", image.getpixel((x_coords_index[i]-1, y_coords_index[i]-1)))
                 print("ERROR in brightness")
 
@@ -199,7 +203,8 @@ class ImageData():
         self.maximum = 0
         try:
             self.maximum = max(self.brightness_values)
-        except:
+        except Exception as e:
+            logging.error(e, '\n', 'initial points: ', self.p0_initial, self.p1_initial, '\n', 'new: ', self.p0_new, self.p1_new)
             print('initial points: ', self.p0_initial, self.p1_initial)
             print('new: ', self.p0_new, self.p1_new)
             print(self.brightness_values)
@@ -232,7 +237,8 @@ class ImageData():
                         still_searching_for_max = False
                 elif (self.brightness_values[i]/self.maximum >= 1 - ENERGY_THRESHOLD):
                     self.right_side_mm = self.coord[i]
-            except:
+            except Exception as e:
+                logging.error('msg:', e, '\n', "error in max intensity; i =", i, "len =", lenght)
                 print("error in max intensity; i =", i, "len =", lenght) 
         
         
@@ -251,7 +257,8 @@ class ImageData():
         try:
             _, tail= os.path.split(self.image_name)
             plotname, _ = os.path.splitext(tail)
-        except:
+        except Exception as e:
+            logging.error("Problems occured during name formatting;", e)
             print("Problems occured during name formatting")
             self.image_name = 'none'
             plotname = 'none'
@@ -269,7 +276,7 @@ class ImageData():
 
 
 
-    def plotBepis(self):
+    def plotBepis(self, path = ''):
         
         plt.tight_layout(pad=0)
         plt.figure(figsize=(12.1, 4.8))
@@ -281,15 +288,20 @@ class ImageData():
 
         img_plt = plt.subplot(121)
         img_plt.axis('off')
-        modified_image = self.getModifiedImage()
-        img_plt.imshow(modified_image)
+        # modified_image = self.getModifiedImage()
+        img_plt.imshow(self.modified_image)
 
         
         line_plt = plt.subplot(222)
         line_plt.plot(self.coord, self.brightness_values)
         
-        plotname_updated = "lastResults/" + self.plotname + "_plot.png"
-        plt.savefig(plotname_updated)
+        filename = self.plotname + "_plot.png"
+        if (path == ''):
+            plot_path_rel = "lastResults/" + filename
+            plot_path = utility.resourcePath(plot_path_rel)
+        else:
+            plot_path = os.path.join(path, filename)
+        plt.savefig(plot_path)
         plt.close()
 
 
