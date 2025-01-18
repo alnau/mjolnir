@@ -1132,7 +1132,7 @@ class App(ctk.CTk):
         self.base_path = util.resourcePath('tmp/')
         current_date = util.getCurrentDateStr() 
         self.backup_path = self.base_path + current_date + '_tmp/'
-        self.organiseBackup() 
+        self.organizeBackup() 
         self.backup_folders_names = util.getBackupFoldersNames(self.base_path)
         self.crop_factor_x = 0
         self.crop_factor_y = 0
@@ -1163,7 +1163,7 @@ class App(ctk.CTk):
         self.update_idletasks()
         self.mainloop()
     
-    def organiseBackup(self):
+    def organizeBackup(self):
         util.deleteOldFolders(self.base_path)
         util.createOrCleanFolder(self.backup_path)
 
