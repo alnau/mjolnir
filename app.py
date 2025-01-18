@@ -881,10 +881,12 @@ class Tab(ctk.CTkTabview):
         self.base_label = ctk.CTkLabel(self.base_entry_frame, text = 'База (см)')
         self.base_label.pack(side = 'left', pady = const.DEFAULT_PADY, padx = const.DEFAULT_PADX)
         
-        self.base_entry = ctk.CTkEntry(self.base_entry_frame, )
+        self.base_var = ctk.StringVar(self.main,value = str(const.DEFAULT_BASE_CM))
+        self.base_entry = ctk.CTkEntry(self.base_entry_frame, textvariable=self.base_var)
         self.base_entry.pack(fill="x", side = 'left', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY, expand = True)
-        
-        self.base_entry.insert(0, str(const.DEFAULT_BASE_CM))
+        self.base_var.trace_add('write', self.updateBase)
+
+        # self.base_entry.insert(0, str(const.DEFAULT_BASE_CM))
 
         self.parallelism_button_frame = ctk.CTkFrame(self.parallelism_tab)
         self.parallelism_button_frame.pack(fill = 'x', side = 'top')
@@ -904,6 +906,13 @@ class Tab(ctk.CTkTabview):
             self.resultsLabel[i].cget("font").configure(size=15)
 
         self.tabHandler()
+
+    def updateBase(self,var,index,mode):
+        new_base = self.base_var.get()
+        if (new_base!=''):
+            const.DEFAULT_BASE_CM = int(new_base)
+            util.updateIni('default_base_cm', new_base)
+
 
     def displayReport(self):
         data_was_analysed = False

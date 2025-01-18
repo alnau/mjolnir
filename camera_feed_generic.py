@@ -27,7 +27,8 @@ class GenericCamera():
             # Тупой баг. Программа пыталась достучаться до image_frame.camera_feed_image, а не до  app.camera_feed_image
             # следствие тупого рефакторинга. Идиот
 
-            master_app.master.camera_feed_image = Image.fromarray(arr_img.astype('uint8'),'L') 
+            # TODO: ЗАКОММЕНТИРОВАЛ НА ВРЕМЯ ТЕСТОВ
+            # master_app.master.camera_feed_image = Image.fromarray(arr_img.astype('uint8'),'L') 
 
             self.frame_is_ready =True
         except:

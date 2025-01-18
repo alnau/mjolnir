@@ -39,9 +39,7 @@ def test():
 
 def main():
     # cameraHandler()
-    # TODO!!!: Проблемы с путями файлов при сборке даже с учетом добавления utility.resoursePath(). 
-    # Ломается на логгере, но, думаю, и на всех других путях будет ровно та-же проблема. Кидает в ...AppData/Temp/...
-    # sys.excepthook = log_exception
+    sys.excepthook = log_exception
 
     utility.initializeWorkspace()
     config = utility.readIni()
