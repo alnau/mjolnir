@@ -2,7 +2,6 @@ import numpy as np
 import time
 import csv
 import cv2
-import matplotlib.pyplot as plt
 import xlsxwriter as xlsx
 import scipy as sp
 from scipy.optimize import differential_evolution
@@ -14,8 +13,11 @@ import os
 import sys
 import shutil
 import logging
+import configparser
 from datetime import datetime, timedelta
-from constants import *
+import constants as const
+
+# from constants import KGW_REFRACTION_INDEX, DEFAULT_BASE_CM, CUTOFF_THRESHOLD, PIXEL_TO_MM
 
 def resourcePath(relative_path):
     """ Получает абсолютный путь к ресурсам, включая при сборке в .exe """
@@ -54,16 +56,73 @@ def createOrCleanFolder(folder_name):
         print(f"Creating folder '{folder_name}'...")
         os.makedirs(folder_name)
 
-def initialiseWorkspace():
-    log_path_rel = '\tmp'
-    result_path_rel = '\lastResults'
+def initializeWorkspace():
+    log_path_rel = 'tmp'
+    result_path_rel = 'lastResults'
+
+    ini_name = 'settings.ini'
 
     log_path = resourcePath(log_path_rel)
-    if os.path.exists(log_path):
-        pass
-    else:
+    result_path = resourcePath(result_path_rel)
+    ini_path = resourcePath(ini_name)
+
+    if not os.path.exists(log_path):
         os.makedirs(log_path)
         print('Log folder was created')
+    
+    if not os.path.exists(result_path):
+        os.makedirs(result_path)
+        print('Result folder was created')
+    
+    if not os.path.exists(ini_path):
+        createIni(ini_path)
+
+def createIni(path_to_ini):
+    config = configparser.ConfigParser()
+
+    config['General'] = {'KGW_REFRACTION_INDEX': 2.0,
+                         'DEFAULT_BASE_CM': 200,
+                         'CUTOFF_THRESHOLD': 5,
+                         'PIXEL_TO_MM': 0.0052}
+
+    with open(path_to_ini, 'w') as config_file:
+        config.write(config_file)
+
+    
+
+def readIni():
+    ini_name = 'settings.ini'
+    ini_path = resourcePath(ini_name)
+
+    config = configparser.ConfigParser()
+
+    config.read(ini_path)
+
+    general = config['General']
+
+    const.KGW_REFRACTION_INDEX = general.get('KGW_REFRACTION_INDEX')
+    const.DEFAULT_BASE_CM = general.get('DEFAULT_BASE_CM')
+    const.CUTOFF_THRESHOLD = general.get('CUTOFF_THRESHOLD')
+    const.PIXEL_TO_MM = general.get('PIXEL_TO_MM')
+
+    return config
+def updateIni(param, value):
+ 
+    """ Доступные пераметры: kgw_refraction_index, default_base_cm, cutoff_threshold, pixel_to_mm"""
+
+    ini_name = 'settings.ini'
+    ini_path = resourcePath(ini_name)
+
+    config = configparser.ConfigParser()
+    config.read(ini_path)
+    config.set('General', param, str(value))
+    
+    with open(ini_path, 'w') as config_file:
+        config.write(config_file)
+
+
+
+        
 
 def deleteOldFolders(base_path, days=3):
     # узнаем текущее время
@@ -255,7 +314,7 @@ def getCOM(image):
         arr -= (minval)
         arr *= (255.0/(maxval-minval))
     
-    arr[arr < CUTOFF_THRESHOLD] = 0
+    arr[arr < const.CUTOFF_THRESHOLD] = 0
 
 
     x = np.sum(np.sum(arr, axis=0) * np.arange(width)) / np.sum(arr)
@@ -341,7 +400,7 @@ def getBrightness(p1, p2, image):
     coords = []
     coords.append(0)
   
-    conversion_factor = PIXEL_TO_MM*1280/width
+    conversion_factor = const.PIXEL_TO_MM*1280/width
     len_of_line = 0
     for i in range(length-1):
         dl = conversion_factor*np.sqrt((x_coords_index[i] - x_coords_index[i+1])**2 + (y_coords_index[i] - y_coords_index[i+1])**2)
@@ -394,7 +453,7 @@ def getIntegral(x1,y1,x2,y2,image, moment = 0):
             distances = np.sqrt(np.diff(np_x_coords_index)**2 + np.diff(np_y_coords_index)**2)  
             line_coordinates = np.insert(np.cumsum(distances), 0, 0)  
 
-            integral = PIXEL_TO_MM*np.trapz(np_brightness, line_coordinates)
+            integral = const.PIXEL_TO_MM*np.trapz(np_brightness, line_coordinates)
         except Exception as e:
             logging.error("Error in get Integral", e,'\n', len(np_x_coords_index), len(np_brightness) )
             print(len(np_x_coords_index), len(np_brightness))
@@ -463,7 +522,7 @@ def interpolateFknHard(image_data, x,y):
 
 def integrateOverPolar(image, x0, y0, r_max, r_min = 0, theta_min = 0, theta_max = 2*np.pi):
     arr_image = np.array(image)
-    arr_image[arr_image < CUTOFF_THRESHOLD] = 0
+    arr_image[arr_image < const.CUTOFF_THRESHOLD] = 0
     
     if len(arr_image.shape) != 2:
         raise ValueError("Image must be a 2D grayscale image")
@@ -488,7 +547,7 @@ def sumOverPixels(image_data,r):
     I_in = 0
     I_sum = 0
 
-    com = (image_data.coords_of_com[0]/PIXEL_TO_MM, image_data.coords_of_com[1]/PIXEL_TO_MM)
+    com = (image_data.coords_of_com[0]/const.PIXEL_TO_MM, image_data.coords_of_com[1]/const.PIXEL_TO_MM)
 
     for ix in range(image_data.width):
         for iy in range(image_data.height):

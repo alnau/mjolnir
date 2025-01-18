@@ -1,4 +1,3 @@
-PIXEL_TO_MM = 0.0052
 
 MAX_EXPOSURE_MS = 50
 
@@ -8,16 +7,16 @@ PROGRESS_COLOR = ['gray40', '#AAB0B5']
 
 ENERGY_THRESHOLD = 0.865
 
-CUTOFF_THRESHOLD = 5 # минимальная интенсивность (больше нуля) после нормализац
-
-KGW_REFRACTION_INDEX = 2.0
-
 DEFAULT_PADX = 5
 DEFAULT_PADY = 5
 
-DEFAULT_BASE_CM = 200
 
 LINE_WIDTH = 2
 CIRCLE_RADIUS = 2
 LINE_COLOR = 255
 CROSS_HALF_HEIGHT = 42
+
+KGW_REFRACTION_INDEX = 2.0
+DEFAULT_BASE_CM = 200
+CUTOFF_THRESHOLD = 5 # минимальная интенсивность (больше нуля) после нормализац
+PIXEL_TO_MM = 0.0052
