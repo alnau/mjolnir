@@ -19,6 +19,9 @@ import sys
 import traceback
 
 
+utility.initializeWorkspace()
+config = utility.readIni()
+
 logging.basicConfig(
     filename=utility.resourcePath('tmp\mjolnir.log'),  
     level=logging.ERROR,        
@@ -34,18 +37,14 @@ def log_exception(exc_type, exc_value, exc_traceback):
     logging.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
 
 
-def test():
-    print(1/0)
-
 def main():
     # cameraHandler()
-    sys.excepthook = log_exception
 
-    utility.initializeWorkspace()
-    config = utility.readIni()
+
     # test()
     # path = "D:\Photonics\\8pcs ВОМЗ"
     # names = ["90_62_d.tif"]  
+    sys.excepthook = log_exception
     app = App(config)
     
     # ip.analyseAll(path)

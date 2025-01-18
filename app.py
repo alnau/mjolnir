@@ -1119,8 +1119,13 @@ class App(ctk.CTk):
         self.geometry(f"{width}x{height}")
 
         # TODO Изменить заглушку
-        self.image_path= util.resourcePath('mockup.tif')        
-        self.camera_feed_image = Image.open(self.image_path).convert('L')
+        try:
+            self.image_path= util.resourcePath('mockup.tif')        
+            self.camera_feed_image = Image.open(self.image_path).convert('L')
+        except:
+            arr = np.arange(0, screen_width*screen_height, 0, np.uint8)
+            arr = np.reshape(arr, (screen_width,screen_height))
+            self.camera_feed_image = Image.fromarray(arr).convert('L')
         self.current_image = self.camera_feed_image
         
 
