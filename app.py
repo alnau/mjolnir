@@ -136,6 +136,7 @@ class TitleMenu(CTkTitleMenu):
                 print("Error during image import;:", str(e))
 
     def openFolder(self):
+        # TODO: если камера не была запущена, то интерфейс не инициализирован, а значит после анализа изображения не высвечиваются
         self.master.right_frame.logMessage('Начат импорт файлов...')
         self.master.image_data_container = []
         dir_path = filedialog.askdirectory()
@@ -171,9 +172,8 @@ class TitleMenu(CTkTitleMenu):
         saving_thread.daemon = True 
         saving_thread.start()
         
-# TODO : добавить предупреждение о несохраненных файлах при выходе. Добавить опцию сохраниения в директорию по выбору
+
     def saveAllWorker(self, path):
-        # TODO: при выделении o,d нужно делить название не по всем '_', а только по последнему '_' (проверить что это вообще ошибка (мне очень лень сейчас)). также можно добавить проверку на этапе создания названия 
         new_names = []
         width_data_d = []
         width_data_o = []
