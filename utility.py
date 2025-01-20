@@ -105,10 +105,10 @@ def readIni():
 
     general = config['General']
 
-    const.KGW_REFRACTION_INDEX = general.get('KGW_REFRACTION_INDEX')
-    const.DEFAULT_BASE_CM = general.get('DEFAULT_BASE_CM')
-    const.CUTOFF_THRESHOLD = general.get('CUTOFF_THRESHOLD')
-    const.PIXEL_TO_MM = general.get('PIXEL_TO_MM')
+    const.KGW_REFRACTION_INDEX = float(general.get('KGW_REFRACTION_INDEX'))
+    const.DEFAULT_BASE_CM = float(general.get('DEFAULT_BASE_CM'))
+    const.CUTOFF_THRESHOLD = int(general.get('CUTOFF_THRESHOLD'))
+    const.PIXEL_TO_MM = float(general.get('PIXEL_TO_MM'))
 
     return config
 def updateIni(param, value):
