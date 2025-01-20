@@ -453,31 +453,7 @@ class imageFrame(ctk.CTkFrame):
         self.image_canvas.create_image(0,0,image=photo,anchor = 'nw')
         self.image_canvas.image = photo
         
-
-    def updateDrawingsOnPhoto(self, image_data):
-        tmp_image = self.image_resized.copy()
-
-        self.draw = ImageDraw.Draw(tmp_image)
-        if (image_data.radius_was_calculated):
-            crop_x = self.master.crop_factor_x
-            crop_y = self.master.crop_factor_y
-
-            radius_px = image_data.radius_mm/const.PIXEL_TO_MM*crop_x
-            p_mm = image_data.getCOM()
-            p_px = (p_mm[0]*crop_x, p_mm[1]*crop_y)
-
-            self.draw.ellipse(util.getCircleBound(p_px, radius_px), outline = const.LINE_COLOR, width = const.LINE_WIDTH)
-        if(image_data.line_was_built):
-            # im_space = image space. Учитываем то, что изод=бражение кропнуто
-            start_coords = image_data.p0_im_space
-            end_coords = image_data.p1_im_space
-
-            self.draw.ellipse(util.getCircleBound(start_coords, const.CIRCLE_RADIUS), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
-            self.draw.ellipse(util.getCircleBound(end_coords, const.CIRCLE_RADIUS), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
-            self.draw.line([start_coords, end_coords], fill = const.LINE_COLOR, width = const.LINE_WIDTH)
-
-        return tmp_image
-    
+   
     def updateLineOnPhoto(self):
         tmp_image = self.image_resized.copy()
 
@@ -539,24 +515,6 @@ class imageFrame(ctk.CTkFrame):
         index = self.master.navigation_frame.image_index
         self.master.right_frame.entry.configure(placeholder_text = name)
         text = str(index + 1) 
-        self.L = ctk.CTkLabel(self.image_canvas, text = text, fg_color = 'transparent', width = 20, text_color = 'black')
-        self.L.place(x = 10,y = 10, anchor = 'nw')
-
-    def loadImageFromData(self, image_data, name = ''):
-        width = self.winfo_width()
-        height = self.winfo_height()
-        image = image_data.norm_image.copy()
-        
-        self.image_resized = image.resize((width, height))
-        self.photo = ImageTk.PhotoImage(self.image_resized)
-
-        self.image_canvas.config(width=self.image_resized.width, height=self.image_resized.height)
-        self.image_canvas.create_image(0,0,image=self.photo,anchor = 'nw')
-        self.image_canvas.image = self.photo
-        
-        index = self.master.navigation_frame.image_index
-        self.master.right_frame.entry.configure(placeholder_text = name)
-        text = str(index + 1) + "/" + str(len(self.master.image_data_container)+1)
         self.L = ctk.CTkLabel(self.image_canvas, text = text, fg_color = 'transparent', width = 20, text_color = 'black')
         self.L.place(x = 10,y = 10, anchor = 'nw')
 
