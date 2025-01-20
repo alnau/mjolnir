@@ -898,12 +898,10 @@ class Tab(ctk.CTkTabview):
         self.second_button = ctk.CTkButton(self.parallelism_button_frame, text = 'Записать вторую точку', command=self.setSecondPosition)
         self.second_button.grid(row = 0, column = 1, sticky = 'ew', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
 
-        res = self.getParallelismReport((0,0), (0,0), 0)
-        self.resultsLabel = []
-        for i in range(3):
-            self.resultsLabel.append(ctk.CTkLabel(self.parallelism_tab, text = res[i], anchor= 'nw'))
-            self.resultsLabel[i].pack(fill = 'x', expand = True, side = 'top', pady = 2)
-            self.resultsLabel[i].cget("font").configure(size=15)
+        res = self.getParallelismReport()
+        self.resultsLabel = ctk.CTkLabel(self.parallelism_tab, text =res , anchor= 'nw')
+        self.resultsLabel.pack(fill = 'x', expand = True, side = 'top', pady = 2)
+        self.resultsLabel.cget("font").configure(size=25)
 
         self.tabHandler()
 
@@ -939,23 +937,8 @@ class Tab(ctk.CTkTabview):
         else:
             self.report_textbox.insert('0.0', 'Данные не обработаны')
         self.report_textbox.configure(state = 'disabled')
+     
 
-
-    def resetReport(self):
-        res = self.getParallelismReport((0,0), (0,0), 0)
-        for i in range(3):
-            self.resultsLabel[i].configure(text = res[i])        
-
-    def getParallelismReport(self, p0, p1, angle):
-        p0x = round(p0[0])
-        p0y = round(p0[1])
-        p1x = round(p1[0])
-        p1y = round(p1[1])
-        
-        text1 = 'Координата первой точки: (' + str(p0x) +', ' + str(p0y) + ') px\n'
-        text2 = 'Координата второй точки: (' + str(p1x) +', ' + str(p1y) + ') px\n'
-        text3 = 'Угол клиновидности: ' + str(round(angle,0)) + '"'
-        return [text1,text2,text3]
 
     def tabHandler(self):
         if (self.get() == 'Захват'):
@@ -983,6 +966,9 @@ class Tab(ctk.CTkTabview):
         angle_rad = np.arctan(dist_mm/2/base_mm)/(const.KGW_REFRACTION_INDEX-1)
         angle_sec = angle_rad*180/np.pi*60*60 
         return angle_sec
+    
+    def getParallelismReport(self):
+        return str(self.angle_sec) + '"'
         
     def angleCalculationWorker(self):
         while True:
@@ -990,9 +976,9 @@ class Tab(ctk.CTkTabview):
                 self.p1 = util.getCOM(self.main.getImage())
                 self.angle_sec = self.calculateAngleSec()
 
-                res = self.getParallelismReport(self.p0, self.p1, self.angle_sec)
-                for i in range(3):
-                    self.resultsLabel[i].configure(text = res[i])
+                res = self.getParallelismReport()
+
+                self.resultsLabel.configure(text = res)
                 self.main.image_frame.callForCrossesRefresh()
             time.sleep(0.2)
 
@@ -1004,9 +990,8 @@ class Tab(ctk.CTkTabview):
         self.angle_sec = self.calculateAngleSec()
         # self.getParallelismReport(self.p0, self.p1, self.angle_sec)
         
-        res = self.getParallelismReport(self.p0, self.p1, self.angle_sec)
-        for i in range(3):
-            self.resultsLabel[i].configure(text = res[i])
+        res = self.getParallelismReport()
+        self.resultsLabel.configure(text = res)
 
         threading.Thread(target=self.angleCalculationWorker, args=(), daemon=True).start()
 
