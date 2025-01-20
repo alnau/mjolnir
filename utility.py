@@ -3,10 +3,8 @@ import time
 import csv
 import cv2
 import xlsxwriter as xlsx
-import scipy as sp
 from scipy.optimize import differential_evolution
-from scipy.interpolate import griddata
-from scipy.integrate import dblquad
+
 from scipy import integrate 
 from PIL import Image as img
 import os

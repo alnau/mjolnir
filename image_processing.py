@@ -1,10 +1,9 @@
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+# from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import time
-import csv
-from scipy.stats import norm
+# from scipy.stats import norm
 
 
 from PIL import Image as img

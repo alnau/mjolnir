@@ -13,8 +13,6 @@ from CTkMenuBar import *
 import CTkMessagebox as msg
 import os
 import logging
-import sys
-import traceback
 
 
 # import error as e
@@ -810,7 +808,7 @@ class Tab(ctk.CTkTabview):
         self.p0 = (100,100)
         self.p1 = (0,0)
 
-        self.angle_sec = -1
+        self.angle_sec = 0
 
         self.needed_active_pos_monitoring = False
 
@@ -888,20 +886,14 @@ class Tab(ctk.CTkTabview):
 
         # self.base_entry.insert(0, str(const.DEFAULT_BASE_CM))
 
-        self.parallelism_button_frame = ctk.CTkFrame(self.parallelism_tab)
-        self.parallelism_button_frame.pack(fill = 'x', side = 'top')
-        self.parallelism_button_frame.grid_columnconfigure((0,1), weight = 1)
-
-        self.first_button = ctk.CTkButton(self.parallelism_button_frame, text = 'Записать первую точку', command=self.setFirstPosition)
-        self.first_button.grid(row = 0, column = 0, sticky = 'ew', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
+        self.first_button = ctk.CTkButton(self.parallelism_tab, text = 'Записать первую точку', command=self.setFirstPosition)
+        self.first_button.pack(fill = 'x', side = 'top')
         
-        self.second_button = ctk.CTkButton(self.parallelism_button_frame, text = 'Записать вторую точку', command=self.setSecondPosition)
-        self.second_button.grid(row = 0, column = 1, sticky = 'ew', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
 
         res = self.getParallelismReport()
-        self.resultsLabel = ctk.CTkLabel(self.parallelism_tab, text =res , anchor= 'nw')
+        self.resultsLabel = ctk.CTkLabel(self.parallelism_tab, text =res , anchor= 'n')
         self.resultsLabel.pack(fill = 'x', expand = True, side = 'top', pady = 2)
-        self.resultsLabel.cget("font").configure(size=25)
+        self.resultsLabel.cget("font").configure(size=45)
 
         self.tabHandler()
 
@@ -956,7 +948,7 @@ class Tab(ctk.CTkTabview):
             self.displayReport()
         elif (self.get() == 'Клиновидность'):
             self.main.is_pause = False
-            self.resetReport()
+            self.angle_sec = 0
 
     def calculateAngleSec(self):
         dist_px  = np.sqrt((self.p0[0]-self.p1[0])**2 + (self.p0[1]-self.p1[1])**2)
@@ -996,18 +988,6 @@ class Tab(ctk.CTkTabview):
         threading.Thread(target=self.angleCalculationWorker, args=(), daemon=True).start()
 
 
-
-    def setSecondPosition(self):
-        self.secondImage = self.main.getImage()
-        self.p1 = util.getCOM(self.secondImage)
-
-        self.needed_active_pos_monitoring = False
-        self.angle_sec = self.calculateAngleSec()
-        res = self.getParallelismReport(self.p0, self.p1, self.angle_sec)
-        self.master.image_data.parallelism_has_been_calculated = True 
-        self.master.image_data.parallelism_angle_s = self.angle_sec
-        for i in range(3):
-            self.resultsLabel[i].configure(text = res[i])
 
 
     def analyseAll(self):
