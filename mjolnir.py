@@ -24,13 +24,6 @@ def log_exception(exc_type, exc_value, exc_traceback):
 
 
 def main():
-    # cameraHandler()
-
-    # base_path = utility.resourcePath('tmp')
-
-    # if (not os.path.exists(base_path)):
-    #     os.makedirs(base_path)
-    
 
     sys.excepthook = log_exception
     app = App(config)
