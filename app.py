@@ -112,7 +112,7 @@ class TitleMenu(CTkTitleMenu):
         self.master.right_frame.tabview.set('Обработка')
         self.master.navigation_frame.next_button.configure(state = 'normal')
         self.master.navigation_frame.prev_button.configure(state = 'normal')
-        self.master.image_frame.is_pause = True
+        self.master.is_pause = True
         self.data_is_external = True
 
     def toggleControl(self):
@@ -134,10 +134,12 @@ class TitleMenu(CTkTitleMenu):
                 print("Error during image import;:", str(e))
 
     def openFolder(self):
+        # TODO: решил большую часть проблем с подгрузкой, но все еще при открытии загружает правильное изображение, потом переключает его на заглушку. При этом нажатие на кнопки навигации возвращает все на круги своя. Пройдись дебагером и не еби мозги
         self.master.right_frame.logMessage('Начат импорт файлов...')
         self.master.image_data_container = []
         dir_path = filedialog.askdirectory()
         if dir_path:          
+            self.master.is_pause = True
             names = []
             for image_name in os.listdir(dir_path):
                 if (image_name.endswith('.tif')):
@@ -148,12 +150,17 @@ class TitleMenu(CTkTitleMenu):
                 pure_name.removesuffix('.tif')
                 self.master.image_data_container.append(ip.ImageData(image, pure_name))
             
-            self.master.image_frame.loadImage(self.master.image_data_container[0].norm_image, names[0])
+            # self.master.image_frame.loadImage(self.master.image_data_container[0].norm_image, names[0])
+            self.master.navigation_frame.switch()
+            # self.master.right_frame.updateWindowAfterAnalysis()
+            # self.master.image_frame.reset()
+            
             text = "Импортировано " + str(len(self.master.image_data_container)) + " изображений. Вы можете приступить к их обработке"
             self.master.right_frame.logMessage(text)
             self.master.right_frame.tabview.set('Обработка')
             self.master.navigation_frame.next_button.configure(state = 'normal')
             self.master.navigation_frame.prev_button.configure(state = 'normal')
+
             self.data_is_external = True
 
     def saveFile(self, path = ''):
@@ -223,11 +230,13 @@ class NavigationFrame(ctk.CTkFrame):
         self.next_button.grid(row = 0, column = 1, sticky = 'w', padx = const.DEFAULT_PADX, pady = 5)
 
     # посылает сигнал о переключении картинок
-    def switch(self, btn):
+    def switch(self, btn = ''):
         if (btn == 'fwd'):
             self.image_index = min(self.image_index+1, len(self.master.image_data_container) - 1)
-        else:
+        elif btn == 'back':
             self.image_index = max(0, self.image_index - 1)
+        else:
+            pass
         name = ''
         if (len(self.master.image_data_container)!= 0):
             name = self.master.image_data_container[self.image_index].image_name
@@ -336,13 +345,13 @@ class imageFrame(ctk.CTkFrame):
         while True:
             # запросим последнее изображение с камеры и загрузим его в app.camera_feed_image
             self.cam.cameraFeed(master_app=self) 
-            # подменим app.current_image TODO: возможно, безопаснее будет засунуть это под else до update_canvas
-            self.master.updateImage()
             if (self.master.is_pause or self.master.right_frame.tabview.needed_active_pos_monitoring):
                 # Если изображение захвачено (is_pause == True) или мы измеряем клиновидность, отключить автоообновление
                 # картинки с камеры
                 pass
             else:
+                # подменим app.current_image TODO: раньше было до if
+                self.master.updateImage()
                 self.updateCanvas(self.master.current_image)
                 self.master.right_frame.tabview.checkForOverexposure()
             time.sleep(0.05)
@@ -393,15 +402,15 @@ class imageFrame(ctk.CTkFrame):
                         self.man_we_just_switched_to_new_image = False
                     elif(len(self.master.image_data_container) != 0):
                             print(index)
-                            self.master.image_data_container[index].image_has_been_analysed = False
+                            self.master.image_data_container[index].image_has_been_analyzed = False
                             self.master.image_data_container[index].optimisation_needed = True
                     self.master.right_frame.clearPlot()
                     tabview_handle = self.master.right_frame.tabview 
                     tabview_handle.check_var.set('on')
                     self.tmp_coords = (0,0)
                     self.start_coords = (event.x, event.y)
-                    tabview_handle.analyse_all_button.configure(state = 'normal')
-                    tabview_handle.analyse_current_button.configure(state = 'normal')
+                    tabview_handle.analyze_all_button.configure(state = 'normal')
+                    tabview_handle.analyze_current_button.configure(state = 'normal')
                     self.clearPhoto()
                     
                 elif (event.type == '5'):
@@ -524,7 +533,7 @@ class imageFrame(ctk.CTkFrame):
         name = ''
         if (idata != 'None'):
             name = idata.image_name
-        if (idata.image_has_been_analysed):
+        if (idata.image_has_been_analyzed):
             self.loadImage(idata.modified_image, name)
         else:
             self.loadImage(idata.norm_image, name)
@@ -734,8 +743,8 @@ class RightFrame(ctk.CTkFrame):
         self.updatePlotAfterAnalysis(index)
         self.updatePrintedDataAfterAnalysis(index)
         self.master.image_frame.switchImage(index)
-        self.tabview.analyse_all_button.configure(state = 'disabled')
-        self.tabview.analyse_current_button.configure(state = 'disabled')
+        self.tabview.analyze_all_button.configure(state = 'disabled')
+        self.tabview.analyze_current_button.configure(state = 'disabled')
         # except:
         #     print('You know, I''m just hanging around, anyways, checkout updateWidndowAfterAnalysis()')
 
@@ -795,19 +804,19 @@ class Tab(ctk.CTkTabview):
         self.select_optimisation_button.grid(sticky = 'nw')
 
         #################     Обработка   #########################
-        self.analyse_tab = self.add("Обработка")
+        self.analyze_tab = self.add("Обработка")
 
-        self.analysis_frame = ctk.CTkFrame(self.analyse_tab)
+        self.analysis_frame = ctk.CTkFrame(self.analyze_tab)
         self.analysis_frame.pack(fill = 'x', side = 'top')
         self.analysis_frame.grid_columnconfigure((0,1), weight = 1)
         self.analysis_frame.grid_rowconfigure(0, weight = 0)
         self.analysis_frame.grid_rowconfigure(1, weight = 2)
 
 
-        self.analyse_all_button = ctk.CTkButton(self.analysis_frame, text = 'Обработать все', command=self.analyseAll)
-        self.analyse_all_button.grid(row = 0, column = 1, sticky = 'ew', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
-        self.analyse_current_button = ctk.CTkButton(self.analysis_frame, text = 'Обработать текущий', command=self.analyseCurrent)
-        self.analyse_current_button.grid(row = 0, column = 0, sticky = 'ew', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
+        self.analyze_all_button = ctk.CTkButton(self.analysis_frame, text = 'Обработать все', command=self.analyzeAll)
+        self.analyze_all_button.grid(row = 0, column = 1, sticky = 'ew', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
+        self.analyze_current_button = ctk.CTkButton(self.analysis_frame, text = 'Обработать текущий', command=self.analyzeCurrent)
+        self.analyze_current_button.grid(row = 0, column = 0, sticky = 'ew', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
 
         self.report_textbox = ctk.CTkTextbox(self.analysis_frame)
         self.report_textbox.insert('0.0', 'Данные не обработаны')
@@ -861,13 +870,13 @@ class Tab(ctk.CTkTabview):
 
 
     def displayReport(self):
-        data_was_analysed = False
+        data_was_analyzed = False
         index = 0
         tmp_image_data = 0
         try:
             index = self.main.navigation_frame.image_index
             tmp_image_data = self.main.image_data_container[index]
-            data_was_analysed = tmp_image_data.radius_was_calculated
+            data_was_analyzed = tmp_image_data.radius_was_calculated
         except Exception as e:
             
             logging.error("well, no luck on report printout side. Possibly, there is nothing inside image_data_container;", str(e))
@@ -879,7 +888,7 @@ class Tab(ctk.CTkTabview):
         
         self.report_textbox.configure(state = 'normal')
         self.report_textbox.delete('0.0', 'end')
-        if (data_was_analysed and self.get() == 'Обработка'):
+        if (data_was_analyzed and self.get() == 'Обработка'):
             report_text = tmp_image_data.report
             self.report_textbox.insert('0.0', report_text)
         else:
@@ -946,16 +955,16 @@ class Tab(ctk.CTkTabview):
 
 
 
-    def analyseAll(self):
+    def analyzeAll(self):
         self.configure(state = 'disabled')
-        threading.Thread(target=self.analyseAllWorker, args=(), daemon=True).start()
+        threading.Thread(target=self.analyzeAllWorker, args=(), daemon=True).start()
 
-    def analyseCurrent(self):
+    def analyzeCurrent(self):
         self.configure(state = 'disabled')
-        threading.Thread(target=self.analyseCurrentWorker, args=(), daemon=True).start()
+        threading.Thread(target=self.analyzeCurrentWorker, args=(), daemon=True).start()
 
-    # TODO: Добавить бегущий статус-бар при обработке (возможно, при любом вызове analyseImage)
-    def analyseAllWorker(self):
+    # TODO: Добавить бегущий статус-бар при обработке (возможно, при любом вызове analyzeImage)
+    def analyzeAllWorker(self):
         
         # Костыль, который закрывает баг в nextImage: для начала обработки
         # надо сначала зафиксировать последнее изображение (nextImage), 
@@ -964,12 +973,12 @@ class Tab(ctk.CTkTabview):
         self.main.navigation_frame.image_index = max(0, self.main.navigation_frame.image_index-1)
         
         # все изображения прошли базовую обработку и имеют полный набор данных (хотелось бы верить)
-        # self.analyse_button.configure(state = 'disabled')
+        # self.analyze_button.configure(state = 'disabled')
         self.master.logMessage("Обработка начата...")
         for image_data in self.main.image_data_container:
-            image_data.analyseImage()
+            image_data.analyzeImage()
             name = image_data.image_name
-            image_data.image_has_been_analysed = True
+            image_data.image_has_been_analyzed = True
             
             text = "Обработка " + name + " закончена"
             self.after(100, self.master.logMessage(text))
@@ -981,12 +990,12 @@ class Tab(ctk.CTkTabview):
 
 
 
-    def analyseCurrentWorker(self):
+    def analyzeCurrentWorker(self):
         
         index = self.main.navigation_frame.image_index
-        self.main.image_data_container[index].analyseImage()
+        self.main.image_data_container[index].analyzeImage()
         name = self.main.image_data_container[index].image_name
-        self.main.image_data_container[index].image_has_been_analysed = True
+        self.main.image_data_container[index].image_has_been_analyzed = True
 
         text = "Обработка " + name + " закончена"
         self.after(100, self.master.logMessage(text))
