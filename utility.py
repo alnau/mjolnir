@@ -61,14 +61,19 @@ def initializeWorkspace():
     result_path_rel = 'lastResults'
 
     ini_name = 'settings.ini'
+    logger_rel_path = 'tmp/mjolnir.log'
 
     log_path = resourcePath(log_path_rel)
+    logger_path = resourcePath(logger_rel_path)
     result_path = resourcePath(result_path_rel)
     ini_path = resourcePath(ini_name)
 
     if not os.path.exists(log_path):
         os.makedirs(log_path)
         print('Log folder was created')
+    # if not os.path.exists(logger_path):
+    #     with open(logger_path, 'w') as file:
+    #         file.write('')
     
     if not os.path.exists(result_path):
         os.makedirs(result_path)

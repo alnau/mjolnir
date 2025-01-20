@@ -9,3 +9,6 @@ work_log.txt
 build
 dist
 **/*test*.py
+*test*
+*ini
+*/*workspace

@@ -1120,12 +1120,15 @@ class App(ctk.CTk):
 
         # TODO Изменить заглушку
         try:
-            self.image_path= util.resourcePath('mockup.tif')        
+            self.image_path= util.resourcePath('mockup1.tif')        
             self.camera_feed_image = Image.open(self.image_path).convert('L')
         except:
-            arr = np.arange(0, screen_width*screen_height, 0, np.uint8)
-            arr = np.reshape(arr, (screen_width,screen_height))
+            # arr = np.arange(0, screen_width*screen_height, 1, np.uint8)
+            arr = np.zeros(1024*1536)
+            arr = np.reshape(arr, (1536,1024))
             self.camera_feed_image = Image.fromarray(arr).convert('L')
+            
+
         self.current_image = self.camera_feed_image
         
 

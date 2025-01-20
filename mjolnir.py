@@ -40,16 +40,16 @@ def log_exception(exc_type, exc_value, exc_traceback):
 def main():
     # cameraHandler()
 
+    # base_path = utility.resourcePath('tmp')
 
-    # test()
-    # path = "D:\Photonics\\8pcs ВОМЗ"
-    # names = ["90_62_d.tif"]  
+    # if (not os.path.exists(base_path)):
+    #     os.makedirs(base_path)
+    
+
     sys.excepthook = log_exception
     app = App(config)
     
-    # ip.analyseAll(path)
-    # ip.analyseFile(path,name)
-        
+
         
 
 
