@@ -1,10 +1,9 @@
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+# from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import time
-import csv
-from scipy.stats import norm
+# from scipy.stats import norm
 
 
 from PIL import Image as img
@@ -44,7 +43,7 @@ class ImageData():
         self.parallelism_has_been_calculated = False
 
         self.optimisation_needed = True
-        self.image_has_been_analysed = False
+        self.image_has_been_analyzed = False
 
         self.report = ''
 
@@ -330,7 +329,7 @@ class ImageData():
 
         return tmp_image
 
-    def analyseImage(self):
+    def analyzeImage(self):
         
         ZERO = (0,0)
         if (self.p0_initial == ZERO or self.p1_initial == ZERO):
@@ -350,7 +349,7 @@ class ImageData():
 
 
     
-def analyseAll(path, _start = 0):
+def analyzeAll(path, _start = 0):
     # path = image.path
     names = []
     for image_name in os.listdir(path):
@@ -374,7 +373,7 @@ def analyseAll(path, _start = 0):
         pure_name,_ = name.split('.')
         image_data = ImageData(image, pure_name)
         
-        image_data.analyseImage()
+        image_data.analyzeImage()
         image_data.plotBepis()
         
         if (image_data.plotname!='control'):
@@ -401,12 +400,12 @@ def analyseAll(path, _start = 0):
     print("So whole journey took about", '{:.1f}'.format(end-start), 's. That''s about', '{:.1f}'.format((end-start)/num_of_images), 's per image. \nNot too shaby at all')
 
 
-def analyseFile(path,name):
+def analyzeFile(path,name):
         image = img.open(os.path.join(path, name)).convert('L')
         pure_name,_ = name.split('.')
         image_data = ImageData(image, pure_name)
         
-        image_data.analyseImage()
+        image_data.analyzeImage()
         image_data.plotBepis()
 
         number, _ , test_for_d_o = image_data.plotname.partition("_")

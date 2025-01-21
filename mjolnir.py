@@ -1,22 +1,8 @@
-
-# from camera_feed import cameraHandler
-
-import image_processing as ip 
 import utility
-import matplotlib.pyplot as plt
-import numpy as np
-
 from app import App
-import utility 
 
-import csv
-
-from PIL import Image
-
-import os
 import logging
 import sys
-import traceback
 
 
 utility.initializeWorkspace()
@@ -38,13 +24,6 @@ def log_exception(exc_type, exc_value, exc_traceback):
 
 
 def main():
-    # cameraHandler()
-
-    # base_path = utility.resourcePath('tmp')
-
-    # if (not os.path.exists(base_path)):
-    #     os.makedirs(base_path)
-    
 
     sys.excepthook = log_exception
     app = App(config)
