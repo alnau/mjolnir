@@ -34,7 +34,7 @@ class TitleMenu(CTkTitleMenu):
         super().__init__(master)
 
         self.backup_folders = folders_names
-        self.data_is_external = False
+        self.data_is_external = False   #bool
         file_button = self.add_cascade("Файл")
         reopen_camera_buttom = self.add_cascade("Изменить камеру", command = self.master.initUI)
         
@@ -137,7 +137,12 @@ class TitleMenu(CTkTitleMenu):
         # TODO: решил большую часть проблем с подгрузкой, но все еще при открытии загружает правильное изображение, потом переключает его на заглушку. При этом нажатие на кнопки навигации возвращает все на круги своя. Пройдись дебагером и не еби мозги
         self.master.right_frame.logMessage('Начат импорт файлов...')
         self.master.image_data_container = []
+        self.master.navigation_frame.image_index = 0
+        
         dir_path = filedialog.askdirectory()
+        self.master.right_frame.tabview.analyze_all_button.configure(state = 'normal')
+        self.master.right_frame.tabview.analyze_current_button.configure(state = 'normal')
+    
         if dir_path:          
             self.master.is_pause = True
             names = []
@@ -213,7 +218,7 @@ class NavigationFrame(ctk.CTkFrame):
         super().__init__(master, **kwargs)
 
         self.image_index = 0
-        self.is_active = True
+        self.is_active = True #bool
 
         self.button_frame = ctk.CTkFrame(self)
         self.button_frame.pack(fill="x", pady=10, padx = const.DEFAULT_PADX, side = 'top')
@@ -282,7 +287,7 @@ class imageFrame(ctk.CTkFrame):
         self.p0_real_coords = (0,0)
         self.p1_real_coords = (0,0)
 
-        self.man_we_just_switched_to_new_image = False
+        self.man_we_just_switched_to_new_image = False     #bool
 
         self.start_dialog = ctk.CTkFrame(self)
         self.start_dialog.pack(fill="both", padx = (5,0), pady = 5, expand=True)
@@ -560,12 +565,12 @@ class RightFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
 
-        self.photo_is_captured = False
+        self.photo_is_captured = False  #bool
 
         self.plot_width = 4.5
         self.plot_height = 2.7
 
-        self.is_active = True
+        self.is_active = True   #bool
 
 
         self.fig, self.ax = plt.subplots(figsize=(self.plot_width, self.plot_height))  
@@ -655,7 +660,7 @@ class RightFrame(ctk.CTkFrame):
 
     def captureImage(self):
         # отработка захвата или сброса текущего изображения
-        
+        self.master.menu.data_is_external = False
         if (self.photo_is_captured):
             # переход к живой камере
             self.unlockCamera()
@@ -775,7 +780,7 @@ class Tab(ctk.CTkTabview):
 
         self.angle_sec = 0
 
-        self.needed_active_pos_monitoring = False
+        self.needed_active_pos_monitoring = False   #bool
 
         self.firstImage = 0
         self.secondImage = 0
@@ -925,7 +930,7 @@ class Tab(ctk.CTkTabview):
         return angle_sec
     
     def getParallelismReport(self):
-        return str(self.angle_sec) + '"'
+        return str(int(round(self.angle_sec,0))) + '"'
         
     def angleCalculationWorker(self):
         while True:
@@ -1070,9 +1075,9 @@ class App(ctk.CTk):
         self.crop_factor_x = 0
         self.crop_factor_y = 0
 
-        self.files_are_unsaved = False
+        self.files_are_unsaved = False  #bool
 
-        self.is_pause = False
+        self.is_pause = False   #bool
 
         self.setupGrid()
 
