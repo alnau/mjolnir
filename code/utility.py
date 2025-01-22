@@ -4,8 +4,8 @@ import csv
 import cv2
 import xlsxwriter as xlsx
 from scipy.optimize import differential_evolution
-
 from scipy import integrate 
+
 from PIL import Image as img
 import os
 import sys
@@ -16,6 +16,12 @@ from datetime import datetime, timedelta
 import constants as const
 
 # from constants import KGW_REFRACTION_INDEX, DEFAULT_BASE_CM, CUTOFF_THRESHOLD, PIXEL_TO_MM
+
+def removeSuffix(string, suffix):
+    """Удаляет заданное окончание у строки"""
+    if string.endswith(suffix):
+        return string[:-len(suffix)]
+    return string
 
 def resourcePath(relative_path):
     """ Получает абсолютный путь к ресурсам, включая при сборке в .exe """

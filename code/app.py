@@ -10,7 +10,7 @@ import customtkinter as ctk
 import tkinter as tk
 from  tkinter import filedialog
 from CTkMenuBar import *
-import CTkMessagebox as msg
+# import CTkMessagebox as msg
 import os
 import logging
 
@@ -102,7 +102,7 @@ class TitleMenu(CTkTitleMenu):
         for name in names:
             image = Image.open(os.path.join(dir_path, name)).convert('L')
             pure_name,_ = os.path.splitext(name)
-            pure_name.removesuffix('.tif')
+            pure_name = util.removeSuffix(pure_name, '.tif')
             self.master.image_data_container.append(ip.ImageData(image, pure_name))
 
         # TODO: здесь ломается подгрузка: архивные изображения высвечиваются, но сменяются на дефолтную заглушку. Ожидаю что openFile и openFolder будут иметь ту-же проблему. Разберись на трезвую голову
@@ -152,7 +152,7 @@ class TitleMenu(CTkTitleMenu):
             for name in names:
                 image = Image.open(os.path.join(dir_path, name)).convert('L')
                 pure_name,_ = os.path.splitext(name)
-                pure_name.removesuffix('.tif')
+                pure_name = util.removeSuffix(pure_name, '.tif')
                 self.master.image_data_container.append(ip.ImageData(image, pure_name))
             
             # self.master.image_frame.loadImage(self.master.image_data_container[0].norm_image, names[0])
@@ -392,10 +392,11 @@ class imageFrame(ctk.CTkFrame):
     def drawLines(self, event):
 
         if (self.master.right_frame.tabview.get() != "Захват"):
+            
             self.master.right_frame.logMessage("Это должно быть возможно, но временно функционал ограничен")
 
         else:
-            if (self.master.right_frame.photo_is_captured or self.master.right_frame.tabview.get() == 'Обработка'):
+            if (self.master.right_frame.photo_is_captured or self.master.right_frame.tabview.get() == 'Обработка' or  self.master.menu.data_is_external == True):
                 index = self.master.navigation_frame.image_index
                 if (event.type == '4'):
                     # тут какая-то полная грязь с логикой. Я уже слишком пьян чтобы разобраться в этом дерьме
@@ -1108,12 +1109,14 @@ class App(ctk.CTk):
     
     def onClosing(self):
         if (self.files_are_unsaved == True):
-            message = msg.CTkMessagebox(title = 'Внимание', message = "Результаты анализа не были сохранены \n сохранить перед закрытием?",
-                              icon = 'warning', option_1 = 'Да', option_2 = 'Нет', option_3 = "Отмена",)
-            if (message.get() == 'Да'):
-                self.menu.saveAll()
-            elif(message.get() == 'Нет'):
-                self.destroy()
+            # message = msg.CTkMessagebox(title = 'Внимание', message = "Результаты анализа не были сохранены \n сохранить перед закрытием?",
+            #                   icon = 'warning', option_1 = 'Да', option_2 = 'Нет', option_3 = "Отмена",)
+            # if (message.get() == 'Да'):
+            #     self.menu.saveAll()
+            # elif(message.get() == 'Нет'):
+            #     self.destroy()
+
+            pass
         # if (self.image_frame cam!= 0):
         #     try:
         #         del self.image_frame.cam
