@@ -90,7 +90,6 @@ class ImageData():
 
     def getRadius(self):
         print('Radius evaluation algorithm has been initiated...')
-        print('Damned math inbound! \n(god save our souls)')
         start = time.time()
 
         com_xy = self.getCOM()
