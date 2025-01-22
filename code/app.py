@@ -399,13 +399,13 @@ class imageFrame(ctk.CTkFrame):
     def cameraFeedWorker(self):
 
         while True:
+            # запросим последнее изображение с камеры и загрузим его в app.camera_feed_image
+            self.cam.cameraFeed(master_app=self) 
             if (self.master.is_pause or self.master.right_frame.tabview.needed_active_pos_monitoring):
                 # Если изображение захвачено (is_pause == True) или мы измеряем клиновидность, отключить автоообновление
                 # картинки с камеры
                 pass
             else:
-                # запросим последнее изображение с камеры и загрузим его в app.camera_feed_image
-                self.cam.cameraFeed(master_app=self) 
                 # подменим app.current_image TODO: раньше было до if
                 self.master.updateImage()
                 self.updateCanvas(self.master.current_image)
@@ -1023,7 +1023,6 @@ class Tab(ctk.CTkTabview):
                 self.main.image_frame.callForCrossesRefresh()
             self.master.update_idletasks()
             time.sleep(0.2)
-
     def setFirstPosition(self):
         self.firstImage = self.main.getImage()
         self.p0 = util.getCOM(self.firstImage)
