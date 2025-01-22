@@ -20,6 +20,8 @@ import camera_feed_thorlabs as thor
 from camera_feed_thorlabs import ThorCamera
 import camera_feed_generic as gen
 from camera_feed_generic import GenericCamera
+import camera_feed_fake as fake
+from camera_feed_fake import FakeCamera
 import constants as const
 import utility as util
 import image_processing as ip
@@ -186,6 +188,8 @@ class TitleMenu(CTkTitleMenu):
         width_data_d = []
         width_data_o = []
         for image_data in self.master.image_data_container:
+            
+            self.master.update_idletasks()
             image_data.plotBepis(path)
 
             r_ref = 0
@@ -198,7 +202,6 @@ class TitleMenu(CTkTitleMenu):
                     width_data_o.append(round(2*image_data.radius_mm,2))
             elif (image_data.plotname == 'control'):
                 r_ref = round(2*image_data.radius_mm,2)
-
         print("------------------")
 
         if (len(new_names)!=len(width_data_d) or len(new_names)!=len(width_data_o) ):
@@ -316,6 +319,8 @@ class imageFrame(ctk.CTkFrame):
 
     def getCameraList(self):
         tmp_camera_list = []
+        if (fake.isCameraConnected()):
+            tmp_camera_list.append("Пустышка")
         if (thor.isCameraConnected()):
             tmp_camera_list.append("ThorCam")
         for i in range(10):
@@ -326,6 +331,9 @@ class imageFrame(ctk.CTkFrame):
         return tmp_camera_list
     
     def chooseCamera(self, choise):
+        if (choise == 'Пустышка'):
+            self.cam = FakeCamera()
+            self.start_button.configure(state = 'normal')
         if (choise == 'ThorCam'):
             self.cam = ThorCamera()
             self.start_button.configure(state = 'normal')
@@ -359,6 +367,7 @@ class imageFrame(ctk.CTkFrame):
                 self.master.updateImage()
                 self.updateCanvas(self.master.current_image)
                 self.master.right_frame.tabview.checkForOverexposure()
+            self.master.update_idletasks()
             time.sleep(0.05)
 
     # вызываетя после выбора камеры. Убивает диалоговое окно с выбором и переключает на живую 
@@ -369,7 +378,7 @@ class imageFrame(ctk.CTkFrame):
         self.bind("<Configure>", self.resizeImage)
         self.resizeImage(None)
         self.master.toggleControl()
-        self.resizeImage(None)
+        # self.resizeImage(None)
         self.master.right_frame.tabview.slider.set(self.cam.getExposureFrac()) 
         self.master.right_frame.tabview.slider2.set(self.cam.getExposureFrac()) 
         
@@ -545,6 +554,8 @@ class imageFrame(ctk.CTkFrame):
             self.loadImage(idata.norm_image, name)
 
     def resizeImage(self, event):
+        # TODO разберись уже с этой функцией, это уже непрофессионально
+        self.master.update_idletasks()
         width = self.winfo_width()
         height = self.winfo_height()
 
@@ -552,8 +563,8 @@ class imageFrame(ctk.CTkFrame):
         image = self.master.current_image
         self.image_resized = image.resize((width, height))
         self.photo = ImageTk.PhotoImage(self.image_resized)
-
-        # обновим холст
+        self.master.update_idletasks()
+        # обновим холст 
         self.image_canvas.config(width=self.image_resized.width, height=self.image_resized.height)
         self.image_canvas.create_image(0,0,image=self.photo,anchor = 'nw')
         self.image_canvas.image = self.photo
@@ -561,6 +572,7 @@ class imageFrame(ctk.CTkFrame):
         # ... и данные по кропу
         self.master.crop_factor_x = width/self.master.current_image.width
         self.master.crop_factor_y = height/self.master.current_image.height
+        self.master.update_idletasks()
 
 class RightFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
@@ -943,6 +955,7 @@ class Tab(ctk.CTkTabview):
 
                 self.resultsLabel.configure(text = res)
                 self.main.image_frame.callForCrossesRefresh()
+            self.master.update_idletasks()
             time.sleep(0.2)
 
     def setFirstPosition(self):
@@ -982,6 +995,7 @@ class Tab(ctk.CTkTabview):
         # self.analyze_button.configure(state = 'disabled')
         self.master.logMessage("Обработка начата...")
         for image_data in self.main.image_data_container:
+            self.main.update_idletasks()
             image_data.analyzeImage()
             name = image_data.image_name
             image_data.image_has_been_analyzed = True
@@ -1099,7 +1113,6 @@ class App(ctk.CTk):
         self.toggleControl()
         
         self.protocol("WM_DELETE_WINDOW", self.onClosing)
-        self.update_idletasks()
         self.mainloop()
     
     def organizeBackup(self):
@@ -1108,22 +1121,24 @@ class App(ctk.CTk):
 
     
     def onClosing(self):
-        if (self.files_are_unsaved == True):
-            # message = msg.CTkMessagebox(title = 'Внимание', message = "Результаты анализа не были сохранены \n сохранить перед закрытием?",
-            #                   icon = 'warning', option_1 = 'Да', option_2 = 'Нет', option_3 = "Отмена",)
-            # if (message.get() == 'Да'):
-            #     self.menu.saveAll()
-            # elif(message.get() == 'Нет'):
-            #     self.destroy()
+        # if (self.files_are_unsaved == True):
+        #     # TODO: выбрасывает ошибку на 3.7.8, так как не может отработать иморт Literal (literally, ha. kill me). Я слишком устал чтобы придумывать решение, так что удачи, будущий я
+        #     # message = msg.CTkMessagebox(title = 'Внимание', message = "Результаты анализа не были сохранены \n сохранить перед закрытием?",
+        #     #                   icon = 'warning', option_1 = 'Да', option_2 = 'Нет', option_3 = "Отмена",)
+        #     # if (message.get() == 'Да'):
+        #     #     self.menu.saveAll()
+        #     # elif(message.get() == 'Нет'):
+        #     #     self.destroy()
 
-            pass
-        # if (self.image_frame cam!= 0):
-        #     try:
-        #         del self.image_frame.cam
-        #     except: 
-        #         print('Possibly there is still no cam object')
-        else:
-            self.destroy()
+        #     pass
+        # # if (self.image_frame cam!= 0):
+        # #     try:
+        # #         del self.image_frame.cam
+        # #     except: 
+        # #         print('Possibly there is still no cam object')
+        # else:
+        #     self.destroy()
+        self.destroy()
 
     def toggleControl(self):
         for widget in self.widget_list:
