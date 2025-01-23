@@ -64,7 +64,7 @@ class TitleMenu(CTkTitleMenu):
         self.exterminate_button.configure(state = 'disabled')
 
         geno_dropdown = CustomDropdownMenu(widget=self.exterminate_button)
-        geno_dropdown.add_option(option = "NUKE EM, OPPIE!", command = self.master.initUI)
+        geno_dropdown.add_option(option = "NUKE EM, OPPIE!", command = self.restartInterface)
         geno_dropdown.add_option(option = "SHOOT YOUR OWN FOOT!", command = self.shotYourself)
 
         self.master.bind("<Control-Up>", self.onControl_UpPress)
@@ -72,7 +72,15 @@ class TitleMenu(CTkTitleMenu):
         
         
         # self.bind("<ControlRelease>", self.onCtrlRelease)
-    
+    def restartInterface(self):
+        self.master.is_pause = False
+        try:
+            self.master.image_frame.forgetCamera()
+        except:
+            pass
+        self.master.initUI()
+
+
     def onControlPress(self, event):
         self.exterminate_button.configure(state = 'disabled')
 
@@ -327,6 +335,7 @@ class imageFrame(ctk.CTkFrame):
             if (gen.isCameraConnected(i)):
                 text = 'USB - камера ' + str(i) 
                 tmp_camera_list.append(text)
+        tmp_camera_list.append("Обновить список")
 
         return tmp_camera_list
     
@@ -341,6 +350,16 @@ class imageFrame(ctk.CTkFrame):
             index = int(choise[-1])
             self.cam = GenericCamera(index)
             self.start_button.configure(state = 'normal')
+        elif(choise == 'Обновить список'):
+            self.camera_list = self.getCameraList()
+            self.camera_selection.configure(values = self.camera_list)
+
+    def forgetCamera(self):
+        try:
+            self.cam.__delete__()
+            self.cam = FakeCamera()
+        except:
+            print("failed to delete camera")
         
     def toggleControl(self):
         pass
@@ -356,13 +375,13 @@ class imageFrame(ctk.CTkFrame):
     def cameraFeedWorker(self):
 
         while True:
-            # запросим последнее изображение с камеры и загрузим его в app.camera_feed_image
-            self.cam.cameraFeed(master_app=self) 
             if (self.master.is_pause or self.master.right_frame.tabview.needed_active_pos_monitoring):
                 # Если изображение захвачено (is_pause == True) или мы измеряем клиновидность, отключить автоообновление
                 # картинки с камеры
                 pass
             else:
+                # запросим последнее изображение с камеры и загрузим его в app.camera_feed_image
+                self.cam.cameraFeed(master_app=self) 
                 # подменим app.current_image TODO: раньше было до if
                 self.master.updateImage()
                 self.updateCanvas(self.master.current_image)

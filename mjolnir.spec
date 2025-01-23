@@ -5,7 +5,7 @@ block_cipher = None
 
 
 a = Analysis(
-    ['mjolnir.py'],
+    ['code\\mjolnir.py'],
     pathex=[],
     binaries=[],
     datas=[],

@@ -8,6 +8,7 @@ from constants import *
 class GenericCamera():
     def __init__(self, camera_index = 0):
         self.counter = 0
+        self.is_active = True
         try:
             self.camera_index = camera_index
             self.cam = cv2.VideoCapture(camera_index) 
@@ -21,15 +22,16 @@ class GenericCamera():
     def cameraFeed(self, master_app):
         ret, frame = self.cam.read()
         try:
-            while(not ret):
+            if (self.cam is not None):
                 ret, frame = self.cam.read()
-            arr_img = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY) 
-            # Тупой баг. Программа пыталась достучаться до image_frame.camera_feed_image, а не до  app.camera_feed_image
-            # следствие тупого рефакторинга. Идиот
+            if (ret):
+                arr_img = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY) 
+                # Тупой баг. Программа пыталась достучаться до image_frame.camera_feed_image, а не до  app.camera_feed_image
+                # следствие тупого рефакторинга. Идиот
 
-            master_app.master.camera_feed_image = Image.fromarray(arr_img.astype('uint8'),'L') 
+                master_app.master.camera_feed_image = Image.fromarray(arr_img.astype('uint8'),'L') 
 
-            self.frame_is_ready =True
+                self.frame_is_ready =True
         except:
             # Добавил чтобы эта дичь не спамила сообщения о том, что не может подключиться к камере
             # TODO: в дальнейшем, необходимо отрабатывать эту ситуацию адекватно
@@ -50,10 +52,14 @@ class GenericCamera():
         return 1
     
     def __del__(self):
+        self.is_active = False
         self.cam.release()
+        self.cam = None
         cv2.destroyAllWindows()
+
 def isCameraConnected(index):
         ret = False
+        
         try:
             cap = cv2.VideoCapture(index)
             if cap.read()[0]:
