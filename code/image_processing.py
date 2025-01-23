@@ -20,6 +20,7 @@ from constants import *
 class ImageData():
 
     def __init__(self, original_image, name = None):
+        # TODO !!!! image_name и plot_name вероятно являются дубликатами, надо разобраться и удалить один из них. До тей пор, весь дальнейший код будет дублироваться для обеих переенных
         self.image_name = name
 
         tmp_image = original_image.copy()

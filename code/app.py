@@ -271,8 +271,10 @@ class NavigationFrame(ctk.CTkFrame):
             pass
         name = ''
         if (len(self.master.image_data_container)!= 0):
+            
             name = self.master.image_data_container[self.image_index].image_name
         self.master.right_frame.entry.configure(placeholder_text = name)
+        self.master.right_frame.curr_name.set(name)
         self.master.right_frame.updatePlotAfterAnalysis(self.image_index)
         self.master.right_frame.updatePrintedDataAfterAnalysis(self.image_index)
         self.master.image_frame.loadImage(self.master.image_data_container[self.image_index].norm_image, name = self.master.image_data_container[self.image_index].image_name)
@@ -573,6 +575,7 @@ class imageFrame(ctk.CTkFrame):
         
         index = self.master.navigation_frame.image_index
         self.master.right_frame.entry.configure(placeholder_text = name)
+        self.master.right_frame.curr_name.set(name)
         text = str(index + 1) 
         self.L = ctk.CTkLabel(self.image_canvas, text = text, fg_color = 'transparent', width = 20, text_color = 'black')
         self.L.place(x = 10,y = 10, anchor = 'nw')
@@ -633,7 +636,8 @@ class RightFrame(ctk.CTkFrame):
         
         # Это будет самое безбожное, что ты делал с этим проектом
         self.curr_name = ctk.StringVar()
-        self.entry = ctk.CTkEntry(self.entry_frame)
+        self.curr_name.trace_add('write', self.updateName)
+        self.entry = ctk.CTkEntry(self.entry_frame, textvariable=self.curr_name)
         self.entry.pack(fill="x", side = 'left', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY, expand = True)
         self.entry.focus()
         
@@ -655,6 +659,17 @@ class RightFrame(ctk.CTkFrame):
 
         self.status = ctk.CTkLabel(self.status_frame, text = '', height = master.navigation_frame.winfo_height())   
         self.status.pack( fill = 'x', pady = const.DEFAULT_PADX, side = 'top')
+
+    def updateName(self,var,index,mode):
+        try:
+            _index = self.master.navigation_frame.image_index
+            name = self.curr_name.get()
+            self.master.image_data_container[_index].plotname = name
+            self.master.image_data_container[_index].image_name = name
+            self.entry.configure(placeholder_text = name)
+            # print(name, self.master.image_data_container[_index].plotname)
+        except:
+            pass
 
     def toggleControl(self):
         if self.is_active:
@@ -1054,11 +1069,11 @@ class Tab(ctk.CTkTabview):
             for name in mismatches:
                 message+=(name + '\n') 
 
-            message+= '\nЕсли не исправить эту проблему, то программма не сможет составить структурированную таблицу, и данные по одному и тому-же кристаллу окажутся в разных строках\n\n'
+            message+= '\nЕсли не исправить эту проблему, то программа не сможет составить структурированную таблицу, и данные по одному и тому-же кристаллу окажутся в разных строках\n\n'
             message+= 'Продолжить, несмотря на это?'
             answer = messagebox.askquestion(title='Внимание', message=message, )
-            if answer == 'нет':
-                messagebox.showinfo('Попытайтесь испраить названия и попробуйте снова')
+            if answer == 'no':
+                messagebox.showinfo(title = 'обработка отменена', message = 'Попытайтесь испраить названия и попробуйте снова')
                 return
             else:
                 self.main.continue_unstructured = True
