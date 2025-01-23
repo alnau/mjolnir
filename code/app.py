@@ -8,7 +8,7 @@ from datetime import datetime
 
 import customtkinter as ctk
 import tkinter as tk
-from  tkinter import filedialog
+from  tkinter import filedialog, messagebox
 from CTkMenuBar import *
 # import CTkMessagebox as msg
 import os
@@ -190,32 +190,48 @@ class TitleMenu(CTkTitleMenu):
         saving_thread = threading.Thread(target=self.saveAllWorker, args=(dir_path,))
         saving_thread.daemon = True 
         saving_thread.start()
+
+
         
     def saveAllWorker(self, path):
         new_names = []
-        width_data_d = []
-        width_data_o = []
-        for image_data in self.master.image_data_container:
-            
-            self.master.update_idletasks()
-            image_data.plotBepis(path)
+        r_ref = 0
+        
+        if (self.master.continue_unstructured):
+            width_data = []
+            for image_data in self.master.image_data_container:
+                
+                self.master.update_idletasks()
+                image_data.plotBepis(path)
 
-            r_ref = 0
-            if (image_data.plotname!='control'):
-                number, test_for_d_o = image_data.plotname.rsplit("_",1)
-                if (test_for_d_o == "d"):
-                    width_data_d.append(round(2*image_data.radius_mm, 2))
-                    new_names.append(number)
-                elif (test_for_d_o == "o"):
-                    width_data_o.append(round(2*image_data.radius_mm,2))
-            elif (image_data.plotname == 'control'):
-                r_ref = round(2*image_data.radius_mm,2)
-        print("------------------")
+                if (image_data.plotname!='control'):
+                    width_data.append(round(2*image_data.radius_mm, 2))
+                    new_names.append(image_data.plotname)
+                elif (image_data.plotname == 'control'):
+                    r_ref = round(2*image_data.radius_mm,2)
+            print("------------------")
+            util.printUnstructuredReportToXLSX(new_names, width_data, r_ref, path)
+        else:
+            width_data_d = []
+            width_data_o = []
+            for image_data in self.master.image_data_container:
+                
+                self.master.update_idletasks()
+                image_data.plotBepis(path)
 
-        if (len(new_names)!=len(width_data_d) or len(new_names)!=len(width_data_o) ):
-            print("error with files")
+                if (image_data.plotname!='control'):
+                    number, test_for_d_o = image_data.plotname.rsplit("_",1)
+                    if (test_for_d_o == "d"):
+                        width_data_d.append(round(2*image_data.radius_mm, 2))
+                        new_names.append(number)
+                    elif (test_for_d_o == "o"):
+                        width_data_o.append(round(2*image_data.radius_mm,2))
+                elif (image_data.plotname == 'control'):
+                    r_ref = round(2*image_data.radius_mm,2)
+            print("------------------")
+            util.printReportToXLSX(new_names, width_data_d, width_data_o, r_ref, path)  
 
-        util.printReportToXLSX(new_names, width_data_d, width_data_o, r_ref, path)  
+
         path_printout = '/lastResults'
         if (path != ''):
             path_printout = path           
@@ -615,6 +631,8 @@ class RightFrame(ctk.CTkFrame):
         self.entry_frame = ctk.CTkFrame(self, )
         self.entry_frame.pack(fill="x", pady=(10, 5), side = 'top')
         
+        # Это будет самое безбожное, что ты делал с этим проектом
+        self.curr_name = ctk.StringVar()
         self.entry = ctk.CTkEntry(self.entry_frame)
         self.entry.pack(fill="x", side = 'left', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY, expand = True)
         self.entry.focus()
@@ -992,9 +1010,62 @@ class Tab(ctk.CTkTabview):
 
 
 
+    def findMismatches(self):
+        # Create sets to store names ending with '_o' and '_d'
+        names = []
+        for image_data in self.main.image_data_container:
+            names.append(image_data.plotname)
+
+        
+        names_o = set()
+        names_d = set()
+
+        # Populate the sets
+        for name in names:
+            if name.endswith('_o'):
+                names_o.add(name)
+            elif name.endswith('_d'):
+                names_d.add(name)
+
+        # Find mismatches
+        mismatches = []
+        
+        for name in names_o:
+            # Extract the base name (without the suffix)
+            base_name = name[:-2]  # Remove the last two characters '_o'
+            if base_name + '_d' not in names_d:
+                mismatches.append(name)
+
+        for name in names_d:
+            # Extract the base name (without the suffix)
+            base_name = name[:-2]  # Remove the last two characters '_d'
+            if base_name + '_o' not in names_o:
+                mismatches.append(name)
+
+        return mismatches
+
 
     def analyzeAll(self):
+
+        mismatches = self.findMismatches()
+
+        if mismatches:
+            message = 'Не все измерения имеют пару. Ниже приведены названия несовпадающих:\n'
+            for name in mismatches:
+                message+=(name + '\n') 
+
+            message+= '\nЕсли не исправить эту проблему, то программма не сможет составить структурированную таблицу, и данные по одному и тому-же кристаллу окажутся в разных строках\n\n'
+            message+= 'Продолжить, несмотря на это?'
+            answer = messagebox.askquestion(title='Внимание', message=message, )
+            if answer == 'нет':
+                messagebox.showinfo('Попытайтесь испраить названия и попробуйте снова')
+                return
+            else:
+                self.main.continue_unstructured = True
+
         self.configure(state = 'disabled')
+        self.analyze_all_button.configure(state = 'disabled')
+        self.analyze_current_button.configure(state = 'disabled')
         threading.Thread(target=self.analyzeAllWorker, args=(), daemon=True).start()
 
     def analyzeCurrent(self):
@@ -1002,7 +1073,7 @@ class Tab(ctk.CTkTabview):
         threading.Thread(target=self.analyzeCurrentWorker, args=(), daemon=True).start()
 
     # TODO: Добавить бегущий статус-бар при обработке (возможно, при любом вызове analyzeImage)
-    def analyzeAllWorker(self):
+    def analyzeAllWorker(self, any_mismatches = False):
         
         # Костыль, который закрывает баг в nextImage: для начала обработки
         # надо сначала зафиксировать последнее изображение (nextImage), 
@@ -1022,10 +1093,12 @@ class Tab(ctk.CTkTabview):
             text = "Обработка " + name + " закончена"
             self.after(100, self.master.logMessage(text))
         
-        self.main.is_pause = True
+        self.main.is_pause = False
         self.after(1000, self.master.logMessage("Все изображения обработаны"))
         self.master.updateWindowAfterAnalysis()
         self.main.files_are_unsaved = True
+        self.analyze_all_button.configure(state = 'normal')
+        self.analyze_current_button.configure(state = 'normal')
 
 
 
@@ -1110,8 +1183,8 @@ class App(ctk.CTk):
         self.crop_factor_y = 0
 
         self.files_are_unsaved = False  #bool
-
         self.is_pause = False   #bool
+        self.continue_unstructured = False #bool
 
         self.setupGrid()
 
