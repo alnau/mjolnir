@@ -28,7 +28,7 @@ class GenericCamera():
             # следствие тупого рефакторинга. Идиот
 
             # TODO: ЗАКОММЕНТИРОВАЛ НА ВРЕМЯ ТЕСТОВ
-            # master_app.master.camera_feed_image = Image.fromarray(arr_img.astype('uint8'),'L') 
+            master_app.master.camera_feed_image = Image.fromarray(arr_img.astype('uint8'),'L') 
 
             self.frame_is_ready =True
         except:
