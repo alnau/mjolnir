@@ -332,19 +332,6 @@ def getCOM(image):
     return com
 
 
-
-def thresholdImage(image, threshold):
-    threshold_int = int(255*threshold)
-    tmp_image = image
-
-    image_as_np = np.asarray(tmp_image.convert('L'))
-    ret,thresh_img = cv2.threshold(image_as_np,threshold_int,254,cv2.THRESH_BINARY)
-
-    ret_image = img.fromarray(thresh_img.astype('uint8'),'L')
-
-    return ret_image
-
-
 def printReportToCSV(new_names, width_data_d, width_data_o, path = ''):
     if (path == ''):
         csv_name_rel = "lastResults/" + time.strftime("%d-%m-%Y_", time.gmtime()) + "data.csv"

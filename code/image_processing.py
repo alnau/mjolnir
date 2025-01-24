@@ -191,7 +191,6 @@ class ImageData():
 
         len_of_line = 0
         self.coord.append(0)
-        # TODO: Перевести на np.array и соответствующие методы обработки
         for i in range(lenght-1):
             dl = PIXEL_TO_MM*np.sqrt((x_coords_index[i] - x_coords_index[i+1])**2 + (y_coords_index[i] - y_coords_index[i+1])**2)
             self.coord.append(len_of_line)

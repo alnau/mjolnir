@@ -115,7 +115,7 @@ class TitleMenu(CTkTitleMenu):
             pure_name = util.removeSuffix(pure_name, '.tif')
             self.master.image_data_container.append(ip.ImageData(image, pure_name))
 
-        # TODO: здесь ломается подгрузка: архивные изображения высвечиваются, но сменяются на дефолтную заглушку. Ожидаю что openFile и openFolder будут иметь ту-же проблему. Разберись на трезвую голову
+    
         self.master.image_frame.loadImage(self.master.image_data_container[0].norm_image, names[0])
         text = "Восстановлено " + str(len(self.master.image_data_container)) + " изображений. Вы можете продолжить работу"
         self.master.right_frame.logMessage(text)
@@ -203,10 +203,10 @@ class TitleMenu(CTkTitleMenu):
                 
                 self.master.update_idletasks()
                 image_data.plotBepis(path)
-
-                if (image_data.plotname!='control'):
+                name = image_data.plotname
+                if (name !='control'):
                     width_data.append(round(2*image_data.radius_mm, 2))
-                    new_names.append(image_data.plotname)
+                    new_names.append(name)
                 elif (image_data.plotname == 'control'):
                     r_ref = round(2*image_data.radius_mm,2)
             print("------------------")
@@ -218,14 +218,17 @@ class TitleMenu(CTkTitleMenu):
                 
                 self.master.update_idletasks()
                 image_data.plotBepis(path)
-
-                if (image_data.plotname!='control'):
+                name = image_data.plotname
+                if (name != 'control'):
                     number, test_for_d_o = image_data.plotname.rsplit("_",1)
                     if (test_for_d_o == "d"):
                         width_data_d.append(round(2*image_data.radius_mm, 2))
-                        new_names.append(number)
+                        if number not in new_names:
+                            new_names.append(number)
                     elif (test_for_d_o == "o"):
                         width_data_o.append(round(2*image_data.radius_mm,2))
+                        if number not in new_names:
+                            new_names.append(number)
                 elif (image_data.plotname == 'control'):
                     r_ref = round(2*image_data.radius_mm,2)
             print("------------------")
@@ -273,8 +276,9 @@ class NavigationFrame(ctk.CTkFrame):
         if (len(self.master.image_data_container)!= 0):
             
             name = self.master.image_data_container[self.image_index].image_name
+
         self.master.right_frame.entry.configure(placeholder_text = name)
-        self.master.right_frame.curr_name.set(name)
+        self.master.right_frame.curr_name_str_val.set(name)
         self.master.right_frame.updatePlotAfterAnalysis(self.image_index)
         self.master.right_frame.updatePrintedDataAfterAnalysis(self.image_index)
         self.master.image_frame.loadImage(self.master.image_data_container[self.image_index].norm_image, name = self.master.image_data_container[self.image_index].image_name)
@@ -575,7 +579,7 @@ class imageFrame(ctk.CTkFrame):
         
         index = self.master.navigation_frame.image_index
         self.master.right_frame.entry.configure(placeholder_text = name)
-        self.master.right_frame.curr_name.set(name)
+        self.master.right_frame.curr_name_str_val.set(name)
         text = str(index + 1) 
         self.L = ctk.CTkLabel(self.image_canvas, text = text, fg_color = 'transparent', width = 20, text_color = 'black')
         self.L.place(x = 10,y = 10, anchor = 'nw')
@@ -622,7 +626,7 @@ class RightFrame(ctk.CTkFrame):
         self.plot_height = 2.7
 
         self.is_active = True   #bool
-
+        self.tmp_name = ''
 
         self.fig, self.ax = plt.subplots(figsize=(self.plot_width, self.plot_height))  
         self.ax.set_aspect('auto', adjustable='box')
@@ -635,9 +639,9 @@ class RightFrame(ctk.CTkFrame):
         self.entry_frame.pack(fill="x", pady=(10, 5), side = 'top')
         
         # Это будет самое безбожное, что ты делал с этим проектом
-        self.curr_name = ctk.StringVar()
-        self.curr_name.trace_add('write', self.updateName)
-        self.entry = ctk.CTkEntry(self.entry_frame, textvariable=self.curr_name)
+        self.curr_name_str_val = ctk.StringVar()
+        self.curr_name_str_val.trace_add('write', self.updateName)
+        self.entry = ctk.CTkEntry(self.entry_frame, textvariable=self.curr_name_str_val)
         self.entry.pack(fill="x", side = 'left', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY, expand = True)
         self.entry.focus()
         
@@ -663,13 +667,17 @@ class RightFrame(ctk.CTkFrame):
     def updateName(self,var,index,mode):
         try:
             _index = self.master.navigation_frame.image_index
-            name = self.curr_name.get()
+            name = self.curr_name_str_val.get()
             self.master.image_data_container[_index].plotname = name
             self.master.image_data_container[_index].image_name = name
             self.entry.configure(placeholder_text = name)
+            self.tmp_name = name
             # print(name, self.master.image_data_container[_index].plotname)
         except:
-            pass
+            name = self.curr_name_str_val.get()
+            self.entry.configure(placeholder_text = name)
+            self.tmp_name = name
+            # print(name,self.entry.get())
 
     def toggleControl(self):
         if self.is_active:
@@ -707,7 +715,7 @@ class RightFrame(ctk.CTkFrame):
         self.continue_button.configure(state = 'normal')
         self.master.image_frame.image_canvas.configure(highlightbackground="red")
         self.photo_is_captured = True
-        self.master.image_frame.loadImage(self.master.current_image)
+        self.master.image_frame.loadImage(self.master.current_image, self.tmp_name)
 
         self.logMessage('Фото захвачено')
 
@@ -734,7 +742,7 @@ class RightFrame(ctk.CTkFrame):
             self.master.image_frame.start_coords = (0,0)
             self.master.image_frame.end_coords = (0,0)
             self.tabview.check_var.set('off')
-        elif(len(self.entry.get())!=0) :
+        elif(len(self.tmp_name)!=0) :
             # Показать картинку, сохранить в буффер
             self.lockCamera()
             self.image_data = ip.ImageData(self.master.current_image, self.entry.get())
@@ -776,6 +784,8 @@ class RightFrame(ctk.CTkFrame):
             
 
             file_name = self.entry.get() + '.tif'
+            print(os.path.join(self.master.backup_path, file_name))
+            # self.image_data.initial_image.show()
             self.image_data.initial_image.save(os.path.join(self.master.backup_path, file_name))
 
             self.logMessage('Данные записаны')
@@ -1108,7 +1118,7 @@ class Tab(ctk.CTkTabview):
             text = "Обработка " + name + " закончена"
             self.after(100, self.master.logMessage(text))
         
-        self.main.is_pause = False
+        self.main.is_pause = True
         self.after(1000, self.master.logMessage("Все изображения обработаны"))
         self.master.updateWindowAfterAnalysis()
         self.main.files_are_unsaved = True
@@ -1175,7 +1185,6 @@ class App(ctk.CTk):
         width = int(0.8*screen_width)
         self.geometry(f"{width}x{height}")
 
-        # TODO Изменить заглушку
         try:
             self.image_path= util.resourcePath('mockup1.tif')        
             self.camera_feed_image = Image.open(self.image_path).convert('L')
