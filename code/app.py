@@ -101,6 +101,7 @@ class TitleMenu(CTkTitleMenu):
 
 
     def recoverFromFolder(self, folder_name):
+        self.master.is_pause = True
         dir_path = util.resourcePath(self.master.base_path + folder_name)
         print(dir_path)
         names = []
@@ -122,7 +123,6 @@ class TitleMenu(CTkTitleMenu):
         self.master.right_frame.tabview.set('Обработка')
         self.master.navigation_frame.next_button.configure(state = 'normal')
         self.master.navigation_frame.prev_button.configure(state = 'normal')
-        self.master.is_pause = True
         self.data_is_external = True
 
     def toggleControl(self):
@@ -145,6 +145,7 @@ class TitleMenu(CTkTitleMenu):
 
     def openFolder(self):
         # TODO: решил большую часть проблем с подгрузкой, но все еще при открытии загружает правильное изображение, потом переключает его на заглушку. При этом нажатие на кнопки навигации возвращает все на круги своя. Пройдись дебагером и не еби мозги
+        self.master.is_pause = True
         self.master.right_frame.logMessage('Начат импорт файлов...')
         self.master.image_data_container = []
         self.master.navigation_frame.image_index = 0
@@ -154,7 +155,6 @@ class TitleMenu(CTkTitleMenu):
         self.master.right_frame.tabview.analyze_current_button.configure(state = 'normal')
     
         if dir_path:          
-            self.master.is_pause = True
             names = []
             for image_name in os.listdir(dir_path):
                 if (image_name.endswith('.tif')):
@@ -177,6 +177,8 @@ class TitleMenu(CTkTitleMenu):
             self.master.navigation_frame.prev_button.configure(state = 'normal')
 
             self.data_is_external = True
+        else:
+            self.master.is_pause = False
 
     def saveFile(self, path = ''):
         index = self.master.navigation_frame.image_index
@@ -647,7 +649,7 @@ class RightFrame(ctk.CTkFrame):
         
         self.capture_button = ctk.CTkButton(self.entry_frame, text = 'Захватить', command= self.captureImage)
         self.capture_button.pack(side = 'left', pady = const.DEFAULT_PADY, padx = const.DEFAULT_PADX)
-        self.master.bind('<Return>', self.captureImageOnEnter)
+        self.master.bind('<Return>', self.handleEnter)
     
         self.thin_frame = ctk.CTkFrame(self, height=2, bg_color="gray")
         self.thin_frame.pack(fill="x", padx =10, pady=5,)
@@ -727,9 +729,11 @@ class RightFrame(ctk.CTkFrame):
         self.photo_is_captured = False
         self.master.image_frame.clearPhoto()
     
-    def captureImageOnEnter(self, event):
+    def handleEnter(self, event):
         if (self.tabview.get() == 'Захват'):
             self.captureImage()
+        if (self.tabview.get() == 'Клиновидность'):
+            self.tabview.setFirstPosition()
 
     def captureImage(self):
         # отработка захвата или сброса текущего изображения
