@@ -8,7 +8,7 @@ from datetime import datetime
 
 import customtkinter as ctk
 import tkinter as tk
-from  tkinter import filedialog
+from  tkinter import filedialog, messagebox
 from CTkMenuBar import *
 # import CTkMessagebox as msg
 import os
@@ -101,6 +101,7 @@ class TitleMenu(CTkTitleMenu):
 
 
     def recoverFromFolder(self, folder_name):
+        self.master.is_pause = True
         dir_path = util.resourcePath(self.master.base_path + folder_name)
         print(dir_path)
         names = []
@@ -115,14 +116,13 @@ class TitleMenu(CTkTitleMenu):
             pure_name = util.removeSuffix(pure_name, '.tif')
             self.master.image_data_container.append(ip.ImageData(image, pure_name))
 
-        # TODO: здесь ломается подгрузка: архивные изображения высвечиваются, но сменяются на дефолтную заглушку. Ожидаю что openFile и openFolder будут иметь ту-же проблему. Разберись на трезвую голову
+    
         self.master.image_frame.loadImage(self.master.image_data_container[0].norm_image, names[0])
         text = "Восстановлено " + str(len(self.master.image_data_container)) + " изображений. Вы можете продолжить работу"
         self.master.right_frame.logMessage(text)
         self.master.right_frame.tabview.set('Обработка')
         self.master.navigation_frame.next_button.configure(state = 'normal')
         self.master.navigation_frame.prev_button.configure(state = 'normal')
-        self.master.is_pause = True
         self.data_is_external = True
 
     def toggleControl(self):
@@ -145,6 +145,7 @@ class TitleMenu(CTkTitleMenu):
 
     def openFolder(self):
         # TODO: решил большую часть проблем с подгрузкой, но все еще при открытии загружает правильное изображение, потом переключает его на заглушку. При этом нажатие на кнопки навигации возвращает все на круги своя. Пройдись дебагером и не еби мозги
+        self.master.is_pause = True
         self.master.right_frame.logMessage('Начат импорт файлов...')
         self.master.image_data_container = []
         self.master.navigation_frame.image_index = 0
@@ -154,7 +155,6 @@ class TitleMenu(CTkTitleMenu):
         self.master.right_frame.tabview.analyze_current_button.configure(state = 'normal')
     
         if dir_path:          
-            self.master.is_pause = True
             names = []
             for image_name in os.listdir(dir_path):
                 if (image_name.endswith('.tif')):
@@ -177,6 +177,8 @@ class TitleMenu(CTkTitleMenu):
             self.master.navigation_frame.prev_button.configure(state = 'normal')
 
             self.data_is_external = True
+        else:
+            self.master.is_pause = False
 
     def saveFile(self, path = ''):
         index = self.master.navigation_frame.image_index
@@ -190,32 +192,51 @@ class TitleMenu(CTkTitleMenu):
         saving_thread = threading.Thread(target=self.saveAllWorker, args=(dir_path,))
         saving_thread.daemon = True 
         saving_thread.start()
+
+
         
     def saveAllWorker(self, path):
         new_names = []
-        width_data_d = []
-        width_data_o = []
-        for image_data in self.master.image_data_container:
-            
-            self.master.update_idletasks()
-            image_data.plotBepis(path)
+        r_ref = 0
+        
+        if (self.master.continue_unstructured):
+            width_data = []
+            for image_data in self.master.image_data_container:
+                
+                self.master.update_idletasks()
+                image_data.plotBepis(path)
+                name = image_data.plotname
+                if (name !='control'):
+                    width_data.append(round(2*image_data.radius_mm, 2))
+                    new_names.append(name)
+                elif (image_data.plotname == 'control'):
+                    r_ref = round(2*image_data.radius_mm,2)
+            print("------------------")
+            util.printUnstructuredReportToXLSX(new_names, width_data, r_ref, path)
+        else:
+            width_data_d = []
+            width_data_o = []
+            for image_data in self.master.image_data_container:
+                
+                self.master.update_idletasks()
+                image_data.plotBepis(path)
+                name = image_data.plotname
+                if (name != 'control'):
+                    number, test_for_d_o = image_data.plotname.rsplit("_",1)
+                    if (test_for_d_o == "d"):
+                        width_data_d.append(round(2*image_data.radius_mm, 2))
+                        if number not in new_names:
+                            new_names.append(number)
+                    elif (test_for_d_o == "o"):
+                        width_data_o.append(round(2*image_data.radius_mm,2))
+                        if number not in new_names:
+                            new_names.append(number)
+                elif (image_data.plotname == 'control'):
+                    r_ref = round(2*image_data.radius_mm,2)
+            print("------------------")
+            util.printReportToXLSX(new_names, width_data_d, width_data_o, r_ref, path)  
 
-            r_ref = 0
-            if (image_data.plotname!='control'):
-                number, test_for_d_o = image_data.plotname.rsplit("_",1)
-                if (test_for_d_o == "d"):
-                    width_data_d.append(round(2*image_data.radius_mm, 2))
-                    new_names.append(number)
-                elif (test_for_d_o == "o"):
-                    width_data_o.append(round(2*image_data.radius_mm,2))
-            elif (image_data.plotname == 'control'):
-                r_ref = round(2*image_data.radius_mm,2)
-        print("------------------")
 
-        if (len(new_names)!=len(width_data_d) or len(new_names)!=len(width_data_o) ):
-            print("error with files")
-
-        util.printReportToXLSX(new_names, width_data_d, width_data_o, r_ref, path)  
         path_printout = '/lastResults'
         if (path != ''):
             path_printout = path           
@@ -255,8 +276,11 @@ class NavigationFrame(ctk.CTkFrame):
             pass
         name = ''
         if (len(self.master.image_data_container)!= 0):
+            
             name = self.master.image_data_container[self.image_index].image_name
+
         self.master.right_frame.entry.configure(placeholder_text = name)
+        self.master.right_frame.curr_name_str_val.set(name)
         self.master.right_frame.updatePlotAfterAnalysis(self.image_index)
         self.master.right_frame.updatePrintedDataAfterAnalysis(self.image_index)
         self.master.image_frame.loadImage(self.master.image_data_container[self.image_index].norm_image, name = self.master.image_data_container[self.image_index].image_name)
@@ -375,13 +399,13 @@ class imageFrame(ctk.CTkFrame):
     def cameraFeedWorker(self):
 
         while True:
+            # запросим последнее изображение с камеры и загрузим его в app.camera_feed_image
+            self.cam.cameraFeed(master_app=self) 
             if (self.master.is_pause or self.master.right_frame.tabview.needed_active_pos_monitoring):
                 # Если изображение захвачено (is_pause == True) или мы измеряем клиновидность, отключить автоообновление
                 # картинки с камеры
                 pass
             else:
-                # запросим последнее изображение с камеры и загрузим его в app.camera_feed_image
-                self.cam.cameraFeed(master_app=self) 
                 # подменим app.current_image TODO: раньше было до if
                 self.master.updateImage()
                 self.updateCanvas(self.master.current_image)
@@ -557,6 +581,7 @@ class imageFrame(ctk.CTkFrame):
         
         index = self.master.navigation_frame.image_index
         self.master.right_frame.entry.configure(placeholder_text = name)
+        self.master.right_frame.curr_name_str_val.set(name)
         text = str(index + 1) 
         self.L = ctk.CTkLabel(self.image_canvas, text = text, fg_color = 'transparent', width = 20, text_color = 'black')
         self.L.place(x = 10,y = 10, anchor = 'nw')
@@ -603,7 +628,7 @@ class RightFrame(ctk.CTkFrame):
         self.plot_height = 2.7
 
         self.is_active = True   #bool
-
+        self.tmp_name = ''
 
         self.fig, self.ax = plt.subplots(figsize=(self.plot_width, self.plot_height))  
         self.ax.set_aspect('auto', adjustable='box')
@@ -615,13 +640,16 @@ class RightFrame(ctk.CTkFrame):
         self.entry_frame = ctk.CTkFrame(self, )
         self.entry_frame.pack(fill="x", pady=(10, 5), side = 'top')
         
-        self.entry = ctk.CTkEntry(self.entry_frame)
+        # Это будет самое безбожное, что ты делал с этим проектом
+        self.curr_name_str_val = ctk.StringVar()
+        self.curr_name_str_val.trace_add('write', self.updateName)
+        self.entry = ctk.CTkEntry(self.entry_frame, textvariable=self.curr_name_str_val)
         self.entry.pack(fill="x", side = 'left', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY, expand = True)
         self.entry.focus()
         
         self.capture_button = ctk.CTkButton(self.entry_frame, text = 'Захватить', command= self.captureImage)
         self.capture_button.pack(side = 'left', pady = const.DEFAULT_PADY, padx = const.DEFAULT_PADX)
-        self.master.bind('<Return>', self.captureImageOnEnter)
+        self.master.bind('<Return>', self.handleEnter)
     
         self.thin_frame = ctk.CTkFrame(self, height=2, bg_color="gray")
         self.thin_frame.pack(fill="x", padx =10, pady=5,)
@@ -637,6 +665,21 @@ class RightFrame(ctk.CTkFrame):
 
         self.status = ctk.CTkLabel(self.status_frame, text = '', height = master.navigation_frame.winfo_height())   
         self.status.pack( fill = 'x', pady = const.DEFAULT_PADX, side = 'top')
+
+    def updateName(self,var,index,mode):
+        try:
+            _index = self.master.navigation_frame.image_index
+            name = self.curr_name_str_val.get()
+            self.master.image_data_container[_index].plotname = name
+            self.master.image_data_container[_index].image_name = name
+            self.entry.configure(placeholder_text = name)
+            self.tmp_name = name
+            # print(name, self.master.image_data_container[_index].plotname)
+        except:
+            name = self.curr_name_str_val.get()
+            self.entry.configure(placeholder_text = name)
+            self.tmp_name = name
+            # print(name,self.entry.get())
 
     def toggleControl(self):
         if self.is_active:
@@ -674,7 +717,7 @@ class RightFrame(ctk.CTkFrame):
         self.continue_button.configure(state = 'normal')
         self.master.image_frame.image_canvas.configure(highlightbackground="red")
         self.photo_is_captured = True
-        self.master.image_frame.loadImage(self.master.current_image)
+        self.master.image_frame.loadImage(self.master.current_image, self.tmp_name)
 
         self.logMessage('Фото захвачено')
 
@@ -686,9 +729,11 @@ class RightFrame(ctk.CTkFrame):
         self.photo_is_captured = False
         self.master.image_frame.clearPhoto()
     
-    def captureImageOnEnter(self, event):
+    def handleEnter(self, event):
         if (self.tabview.get() == 'Захват'):
             self.captureImage()
+        if (self.tabview.get() == 'Клиновидность'):
+            self.tabview.setFirstPosition()
 
     def captureImage(self):
         # отработка захвата или сброса текущего изображения
@@ -701,7 +746,7 @@ class RightFrame(ctk.CTkFrame):
             self.master.image_frame.start_coords = (0,0)
             self.master.image_frame.end_coords = (0,0)
             self.tabview.check_var.set('off')
-        elif(len(self.entry.get())!=0) :
+        elif(len(self.tmp_name)!=0) :
             # Показать картинку, сохранить в буффер
             self.lockCamera()
             self.image_data = ip.ImageData(self.master.current_image, self.entry.get())
@@ -743,6 +788,8 @@ class RightFrame(ctk.CTkFrame):
             
 
             file_name = self.entry.get() + '.tif'
+            print(os.path.join(self.master.backup_path, file_name))
+            # self.image_data.initial_image.show()
             self.image_data.initial_image.save(os.path.join(self.master.backup_path, file_name))
 
             self.logMessage('Данные записаны')
@@ -976,7 +1023,6 @@ class Tab(ctk.CTkTabview):
                 self.main.image_frame.callForCrossesRefresh()
             self.master.update_idletasks()
             time.sleep(0.2)
-
     def setFirstPosition(self):
         self.firstImage = self.main.getImage()
         self.p0 = util.getCOM(self.firstImage)
@@ -992,9 +1038,62 @@ class Tab(ctk.CTkTabview):
 
 
 
+    def findMismatches(self):
+        # Create sets to store names ending with '_o' and '_d'
+        names = []
+        for image_data in self.main.image_data_container:
+            names.append(image_data.plotname)
+
+        
+        names_o = set()
+        names_d = set()
+
+        # Populate the sets
+        for name in names:
+            if name.endswith('_o'):
+                names_o.add(name)
+            elif name.endswith('_d'):
+                names_d.add(name)
+
+        # Find mismatches
+        mismatches = []
+        
+        for name in names_o:
+            # Extract the base name (without the suffix)
+            base_name = name[:-2]  # Remove the last two characters '_o'
+            if base_name + '_d' not in names_d:
+                mismatches.append(name)
+
+        for name in names_d:
+            # Extract the base name (without the suffix)
+            base_name = name[:-2]  # Remove the last two characters '_d'
+            if base_name + '_o' not in names_o:
+                mismatches.append(name)
+
+        return mismatches
+
 
     def analyzeAll(self):
+
+        mismatches = self.findMismatches()
+
+        if mismatches:
+            message = 'Не все измерения имеют пару. Ниже приведены названия несовпадающих:\n'
+            for name in mismatches:
+                message+=(name + '\n') 
+
+            message+= '\nЕсли не исправить эту проблему, то программа не сможет составить структурированную таблицу, и данные по одному и тому-же кристаллу окажутся в разных строках\n\n'
+            message+= 'Продолжить, несмотря на это?'
+            answer = messagebox.askquestion(title='Внимание', message=message, )
+            if answer == 'no':
+                messagebox.showinfo(title = 'обработка отменена', message = 'Попытайтесь испраить названия и попробуйте снова')
+                return
+            else:
+                self.main.continue_unstructured = True
+
         self.configure(state = 'disabled')
+        self.analyze_all_button.configure(state = 'disabled')
+        self.analyze_current_button.configure(state = 'disabled')
         threading.Thread(target=self.analyzeAllWorker, args=(), daemon=True).start()
 
     def analyzeCurrent(self):
@@ -1002,7 +1101,7 @@ class Tab(ctk.CTkTabview):
         threading.Thread(target=self.analyzeCurrentWorker, args=(), daemon=True).start()
 
     # TODO: Добавить бегущий статус-бар при обработке (возможно, при любом вызове analyzeImage)
-    def analyzeAllWorker(self):
+    def analyzeAllWorker(self, any_mismatches = False):
         
         # Костыль, который закрывает баг в nextImage: для начала обработки
         # надо сначала зафиксировать последнее изображение (nextImage), 
@@ -1026,6 +1125,8 @@ class Tab(ctk.CTkTabview):
         self.after(1000, self.master.logMessage("Все изображения обработаны"))
         self.master.updateWindowAfterAnalysis()
         self.main.files_are_unsaved = True
+        self.analyze_all_button.configure(state = 'normal')
+        self.analyze_current_button.configure(state = 'normal')
 
 
 
@@ -1087,7 +1188,6 @@ class App(ctk.CTk):
         width = int(0.8*screen_width)
         self.geometry(f"{width}x{height}")
 
-        # TODO Изменить заглушку
         try:
             self.image_path= util.resourcePath('mockup1.tif')        
             self.camera_feed_image = Image.open(self.image_path).convert('L')
@@ -1110,8 +1210,8 @@ class App(ctk.CTk):
         self.crop_factor_y = 0
 
         self.files_are_unsaved = False  #bool
-
         self.is_pause = False   #bool
+        self.continue_unstructured = False #bool
 
         self.setupGrid()
 

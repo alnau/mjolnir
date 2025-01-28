@@ -19,7 +19,6 @@ class FakeCamera():
         return True
 
     def getExposureFrac(self):
-        # TODO поднять ошибку или вывести в строку логов
         return 1
     
     def __del__(self):

@@ -20,6 +20,7 @@ from constants import *
 class ImageData():
 
     def __init__(self, original_image, name = None):
+        # TODO !!!! image_name и plot_name вероятно являются дубликатами, надо разобраться и удалить один из них. До тех пор, весь дальнейший код будет дублироваться для обеих переенных
         self.image_name = name
 
         tmp_image = original_image.copy()
@@ -89,8 +90,8 @@ class ImageData():
 
 
     def getRadius(self):
-        print('Radius evaluation algorithm has been initiated...')
-        start = time.time()
+        
+        
 
         com_xy = self.getCOM()
         self.coords_of_com[0] = com_xy[0]*PIXEL_TO_MM
@@ -102,14 +103,16 @@ class ImageData():
 
         radius_mm = 0
 
-        radius_px = self.binarySearch(2, com_xy, r_max, full_integral)
-        end = time.time()
+        radius_px = self.binarySearch(4, com_xy, r_max, full_integral)
+        
         radius_mm = radius_px*PIXEL_TO_MM
-        print('That wasn''t too hard, but, man, it still hurts. Time per execution =', '{:.1f}'.format(end-start),'s')
-
+        
         return radius_mm
 
+
     def binarySearch(self, epsilon, com, r_max, full_integral):
+        print('Radius evaluation algorithm has been initiated...')
+        start = time.time()
         r0 = 0
         r1 = r_max
 
@@ -123,16 +126,57 @@ class ImageData():
             r_inter = (r1+r0)/2
 
             integral_tmp, _ =  utility.integrateOverPolar(self.norm_image, com[0],  com[1], r_inter)
+            # print(integral_tmp)
             intermediate_val = integral_tmp/full_integral - ENERGY_THRESHOLD
-
             if (right_val*intermediate_val < 0):
                 # величины меняют знак => ноль между ними
                 r0 = r_inter
             else:
                 r1 = r_inter
+                right_val = intermediate_val
                 
             iter_counter+=1
+        end = time.time()
+        print('That wasn''t too hard, but, man, it still hurts. Time per execution =', '{:.1f}'.format(end-start),'s')
         return (r1+r0)/2
+
+
+    # в теории должен быть значительно эффективнее, не пересчитывает интеграл с нуля, а считает только различие от последней точки
+    # что в теории должно давать буст по времени порядка E(N), где E(N) - среднее число шагов бинарного поиска, но 
+    # по какой-то причение дает время в два раза дольше (и больше, 13с против 29с). Не знаю причину
+    def binarySearchOptimised(self, epsilon, com, r_max, full_integral ):
+        print('Radius evaluation algorithm has been initiated...')
+        start = time.time()
+        # Инициализация переменных
+        low = 0
+        high = r_max
+        known_integrals = {0: full_integral}  # Словарь для хранения известных интегралов
+        
+        # Начальное значение интеграла от 0 до r_max
+        total_integral = known_integrals[0]
+        iter_counter = 0
+        while (high - low > epsilon and iter_counter < 10):
+            mid = (low + high) / 2
+            
+            if mid not in known_integrals:
+                if mid < r_max:
+                    # Вычисляем интеграл от mid до r_max
+                    integral_mid_to_max,_ = utility.integrateOverPolar(self.norm_image, com[0], com[1], r_min=mid, r_max=r_max)
+                    known_integrals[mid] = total_integral - integral_mid_to_max
+                else:
+                    known_integrals[mid] = total_integral
+            
+            current_integral = known_integrals[mid]
+            trial_val = current_integral/full_integral
+            
+            if trial_val < ENERGY_THRESHOLD:
+                low = mid  # Увеличиваем нижнюю границу
+            else:
+                high = mid  # Уменьшаем верхнюю границу
+            iter_counter+=1
+        end = time.time()
+        print('That wasn''t too hard, but, man, it still hurts. Time per execution =', '{:.1f}'.format(end-start),'s')
+        return (low + high) / 2  # Возвращаем среднее значение как решение
         
 
     def verification(self, radius):
@@ -190,7 +234,6 @@ class ImageData():
 
         len_of_line = 0
         self.coord.append(0)
-        # TODO: Перевести на np.array и соответствующие методы обработки
         for i in range(lenght-1):
             dl = PIXEL_TO_MM*np.sqrt((x_coords_index[i] - x_coords_index[i+1])**2 + (y_coords_index[i] - y_coords_index[i+1])**2)
             self.coord.append(len_of_line)

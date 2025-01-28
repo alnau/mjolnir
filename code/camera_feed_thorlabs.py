@@ -47,9 +47,7 @@ class ThorCamera():
 
             time.sleep(0.05)
         except Exception as e:
-            logging.error('I fucking hate working without physical camera attached to my dying laptop \ n',
-                          'If this error occured on stable version of mjolnir (stable? Heh, nevermind), please check out ThorCamera.cameraFeed\n',
-                          'Of course I have no ideas of what had I done to cause this shitshow in the first place')
+            logging.error('I fucking hate working without physical camera attached to my dying laptop \nIf this error occured on stable version of mjolnir (stable? Heh, nevermind), please check out ThorCamera.cameraFeed \nOf course I have no ideas of what had I done to cause this shitshow in the first place')
             print('I fucking hate working without physical camera attached to my dying laptop')
             print('If this error occured on stable version of mjolnir (stable? Heh, nevermind), please check out ThorCamera.cameraFeed')
             print('Of course I have no ideas of what had I done to cause this shitshow in the first place')

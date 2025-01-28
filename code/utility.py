@@ -332,19 +332,6 @@ def getCOM(image):
     return com
 
 
-
-def thresholdImage(image, threshold):
-    threshold_int = int(255*threshold)
-    tmp_image = image
-
-    image_as_np = np.asarray(tmp_image.convert('L'))
-    ret,thresh_img = cv2.threshold(image_as_np,threshold_int,254,cv2.THRESH_BINARY)
-
-    ret_image = img.fromarray(thresh_img.astype('uint8'),'L')
-
-    return ret_image
-
-
 def printReportToCSV(new_names, width_data_d, width_data_o, path = ''):
     if (path == ''):
         csv_name_rel = "lastResults/" + time.strftime("%d-%m-%Y_", time.gmtime()) + "data.csv"
@@ -363,12 +350,19 @@ def printReportToCSV(new_names, width_data_d, width_data_o, path = ''):
             print(string)
             writer.writerow([str(new_names[i]), str(width_data_d[i]), str(width_data_o[i])])
 
-def fillTitleLine(worksheet_handle, r_control):
-    first_line = ['№', 'диаметр d (мм)', 'диаметр o, (мм)','', 'контрольный радиус (мм)',r_control]
-    counter = 0
-    for cols in first_line: 
-        worksheet_handle.write(0,counter, cols)
-        counter+=1
+def fillTitleLine(worksheet_handle, r_control, unstructured = False):
+    if unstructured:
+        first_line = ['№', 'диаметр (мм)','', 'контрольный радиус (мм)',r_control]
+        counter = 0
+        for cols in first_line: 
+            worksheet_handle.write(0,counter, cols)
+            counter+=1
+    else:
+        first_line = ['№', 'диаметр d (мм)', 'диаметр o, (мм)','', 'контрольный радиус (мм)',r_control]
+        counter = 0
+        for cols in first_line: 
+            worksheet_handle.write(0,counter, cols)
+            counter+=1
 
 def printReportToXLSX(names, r_d, r_o, r_ref = 0.337, path =''):
     if (path == ''):
@@ -391,6 +385,26 @@ def printReportToXLSX(names, r_d, r_o, r_ref = 0.337, path =''):
 
     workbook.close()
     
+def printUnstructuredReportToXLSX(names, diameters, r_ref = 0.337, path =''):
+    if (path == ''):
+        xlsx_name_rel = "lastResults/" + time.strftime("%d-%m-%Y_", time.gmtime()) + "data.xlsx"
+        xlsx_name = resourcePath(xlsx_name_rel)
+    else:
+        xlsx_name = os.path.join(path, time.strftime("%d-%m-%Y_", time.gmtime()) + "data.xlsx")
+
+    workbook = xlsx.Workbook(xlsx_name)
+    worksheet = workbook.add_worksheet()
+
+    fillTitleLine(worksheet, r_ref, True)
+
+    index = 0
+    for name in names:
+        worksheet.write(index+1,0,name)
+        worksheet.write(index+1, 1, float(diameters[index]))
+
+        index+=1
+
+    workbook.close()
 
 
 # возвращает (width, height)
