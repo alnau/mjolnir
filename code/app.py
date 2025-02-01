@@ -258,16 +258,22 @@ class NavigationFrame(ctk.CTkFrame):
         self.button_frame.grid_columnconfigure(1, weight=3)
         
         self.prev_button = ctk.CTkButton(self.button_frame, text="<", 
-                                        command = lambda: self.switch('back'))
+                                        command = lambda: self.switch(btn = 'back'))
         self.prev_button.grid(row = 0, column = 0, sticky = 'e', padx = const.DEFAULT_PADX, pady = 5)
 
 
         self.next_button = ctk.CTkButton(self.button_frame, text=">", 
-                                        command = lambda: self.switch("fwd"))
+                                        command = lambda: self.switch(btn = "fwd"))
         self.next_button.grid(row = 0, column = 1, sticky = 'w', padx = const.DEFAULT_PADX, pady = 5)
 
+        self.master.bind('<Left>', lambda event: self.switch(btn = 'back'))
+        self.master.bind('<Right>', lambda event: self.switch(btn = 'fwd'))
+
     # посылает сигнал о переключении картинок
-    def switch(self, btn = ''):
+    def switch(self, event = None, btn = ''):
+        if self.next_button.cget('state') == 'disabled':
+            return
+        
         if (btn == 'fwd'):
             self.image_index = min(self.image_index+1, len(self.master.image_data_container) - 1)
         elif btn == 'back':
@@ -655,16 +661,14 @@ class RightFrame(ctk.CTkFrame):
         self.thin_frame.pack(fill="x", padx =10, pady=5,)
 
         self.tabview = Tab(master = self, main=master)
-        self.tabview.pack(side = 'top', fill = 'x') 
+        self.tabview.pack(side = 'top', fill = 'both') 
         
-        self.continue_button = ctk.CTkButton(master = self, command = self.nextImage, text = 'Продолжить', state = 'disabled')
-        self.continue_button.pack(side = 'top', fill = 'x')
 
-        self.status_frame = ctk.CTkFrame(self, )
-        self.status_frame.pack(fill="x", padx = 2, side = 'top', expand = True)
+        self.status_frame = ctk.CTkFrame(self, height = master.navigation_frame.winfo_height())
+        self.status_frame.pack(fill="x", padx = 2, pady = const.DEFAULT_PADY, side = 'bottom', expand = True)
 
-        self.status = ctk.CTkLabel(self.status_frame, text = '', height = master.navigation_frame.winfo_height())   
-        self.status.pack( fill = 'x', pady = const.DEFAULT_PADX, side = 'top')
+        self.status = ctk.CTkLabel(self.status_frame, text = '', )   
+        self.status.pack( fill = 'both',  side = 'top')
 
     def updateName(self,var,index,mode):
         try:
@@ -714,7 +718,7 @@ class RightFrame(ctk.CTkFrame):
         
         self.master.is_pause = True
         self.capture_button.configure(text = 'Отмена')
-        self.continue_button.configure(state = 'normal')
+        self.tabview.continue_button.configure(state = 'normal')
         self.master.image_frame.image_canvas.configure(highlightbackground="red")
         self.photo_is_captured = True
         self.master.image_frame.loadImage(self.master.current_image, self.tmp_name)
@@ -724,36 +728,10 @@ class RightFrame(ctk.CTkFrame):
     def unlockCamera(self):
         self.master.is_pause = False
         self.capture_button.configure(text = 'Захватить')
-        self.continue_button.configure(state = 'disabled')
+        self.tabview.continue_button.configure(state = 'disabled')
         self.master.image_frame.image_canvas.configure(highlightbackground="black")
         self.photo_is_captured = False
         self.master.image_frame.clearPhoto()
-    
-    def handleEnter(self, event):
-        if (self.tabview.get() == 'Захват'):
-            self.captureImage()
-        if (self.tabview.get() == 'Клиновидность'):
-            self.tabview.setFirstPosition()
-
-    def captureImage(self):
-        # отработка захвата или сброса текущего изображения
-        self.master.menu.data_is_external = False
-        if (self.photo_is_captured):
-            # переход к живой камере
-            self.unlockCamera()
-            self.logMessage('Фото сброшено')
-            # чисто на всякий пожарный снимем все возможные триггеры на пропуск оптимизации 
-            self.master.image_frame.start_coords = (0,0)
-            self.master.image_frame.end_coords = (0,0)
-            self.tabview.check_var.set('off')
-        elif(len(self.tmp_name)!=0) :
-            # Показать картинку, сохранить в буффер
-            self.lockCamera()
-            self.image_data = ip.ImageData(self.master.current_image, self.entry.get())
-        else:
-            self.logMessage('Введите имя файла')
-
-        
 
     def nextImage(self):
         if len(self.entry.get()) != 0:
@@ -797,9 +775,42 @@ class RightFrame(ctk.CTkFrame):
 
 
             self.master.image_frame.reset()
+
+            # Разблокировать чекбоксы, заблокированные после обработки, если пользователь решил добавить данные 
+            self.tabview.draw_line_checkbox.configure(state = 'normal')
+            self.tabview.draw_circle_checkbox.configure(state = 'normal')
         else:
             self.logMessage('Введите название файла')
 
+    
+    def handleEnter(self, event):
+        if (self.tabview.get() == 'Захват'):
+            if (self.photo_is_captured):
+                self.nextImage()
+            else:
+                self.captureImage()
+        if (self.tabview.get() == 'Клиновидность'):
+            self.tabview.setFirstPosition()
+
+    def captureImage(self):
+        # отработка захвата или сброса текущего изображения
+        self.master.menu.data_is_external = False
+        if (self.photo_is_captured):
+            # переход к живой камере
+            self.unlockCamera()
+            self.logMessage('Фото сброшено')
+            # чисто на всякий пожарный снимем все возможные триггеры на пропуск оптимизации 
+            self.master.image_frame.start_coords = (0,0)
+            self.master.image_frame.end_coords = (0,0)
+            self.tabview.check_var.set('off')
+        elif(len(self.tmp_name)!=0) :
+            # Показать картинку, сохранить в буффер
+            self.lockCamera()
+            self.image_data = ip.ImageData(self.master.current_image, self.entry.get())
+        else:
+            self.logMessage('Введите имя файла')
+
+        
     def clearPlot(self):
         self.ax.clear()
         self.canvas.draw()
@@ -887,25 +898,41 @@ class Tab(ctk.CTkTabview):
         self.select_optimisation_button = ctk.CTkCheckBox(self.option_frame, onvalue= 'on', offvalue = 'off', variable= self.check_var, text = 'Использовать пользовательскую линию для анализа')
         self.select_optimisation_button.grid(sticky = 'nw')
 
+        # TODO: command = self.master.nextImage - это что-то совсем безбожное
+        self.continue_button = ctk.CTkButton(master = self.capture_tab, command = self.master.nextImage, text = 'Продолжить', state = 'disabled')
+        self.continue_button.pack(side = 'bottom', fill = 'x')
+
         #################     Обработка   #########################
         self.analyze_tab = self.add("Обработка")
 
-        self.analysis_frame = ctk.CTkFrame(self.analyze_tab)
-        self.analysis_frame.pack(fill = 'x', side = 'top')
-        self.analysis_frame.grid_columnconfigure((0,1), weight = 1)
-        self.analysis_frame.grid_rowconfigure(0, weight = 0)
-        self.analysis_frame.grid_rowconfigure(1, weight = 2)
-
-
-        self.analyze_all_button = ctk.CTkButton(self.analysis_frame, text = 'Обработать все', command=self.analyzeAll)
+        self.button_frame = ctk.CTkFrame(self.analyze_tab, fg_color='transparent')
+        self.button_frame.pack(fill = 'x', anchor = 'n')
+        self.button_frame.grid_columnconfigure((0,1), weight = 1)
+        self.analyze_all_button = ctk.CTkButton(self.button_frame, text = 'Обработать все', command=self.analyzeAll)
         self.analyze_all_button.grid(row = 0, column = 1, sticky = 'ew', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
-        self.analyze_current_button = ctk.CTkButton(self.analysis_frame, text = 'Обработать текущий', command=self.analyzeCurrent)
+        self.analyze_current_button = ctk.CTkButton(self.button_frame, text = 'Обработать текущий', command=self.analyzeCurrent)
         self.analyze_current_button.grid(row = 0, column = 0, sticky = 'ew', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
+        
+        
+        self.analysis_frame = ctk.CTkScrollableFrame(self.analyze_tab)
+        self.analysis_frame.pack(fill = 'x',anchor = 'n')
+        
+        self.draw_line_var = ctk.StringVar(value="off")
+        self.draw_line_checkbox = ctk.CTkCheckBox(self.analysis_frame, onvalue= 'on', offvalue = 'off', variable= self.draw_line_var, text = 'Вывести линию главной оси')
+        self.draw_line_checkbox.pack(anchor = 'nw', pady = const.DEFAULT_PADY)
+        self.draw_line_var.trace_add('write', self.changeNeedToDrawLine)
+
+        self.draw_circle_var = ctk.StringVar(value="on")
+        self.draw_circle_checkbox = ctk.CTkCheckBox(self.analysis_frame, onvalue= 'on', offvalue = 'off', variable= self.draw_circle_var, text = 'Вывести окружность 86.5% энергии')
+        self.draw_circle_checkbox.pack(anchor = 'nw', pady = const.DEFAULT_PADY)
+        self.draw_circle_var.trace_add('write', self.changeNeedToDrawCircle)
+        
 
         self.report_textbox = ctk.CTkTextbox(self.analysis_frame)
         self.report_textbox.insert('0.0', 'Данные не обработаны')
         self.report_textbox.configure(state = 'disabled')
-        self.report_textbox.grid(row = 1, column = 0, columnspan = 2, sticky = 'new', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
+        self.report_textbox.pack(fill = 'x', side = 'top')
+        # self.report_textbox.grid(row = 0, column = 0, sticky = 'new', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
 
         #################   Клиновидность   #########################
         self.parallelism_tab = self.add("Клиновидность")
@@ -920,7 +947,7 @@ class Tab(ctk.CTkTabview):
         self.slider2.pack(fill = 'x', side = 'left', expand = True) 
 
         self.max_exposure_label2 = ctk.CTkLabel(self.slider_frame2, text = '')
-        self.max_exposure_label.pack(side = 'left')
+        self.max_exposure_label2.pack(side = 'left')
         
         self.base_entry_frame = ctk.CTkFrame(self.parallelism_tab, )
         self.base_entry_frame.pack(fill="x", pady=(10, 5), side = 'top')
@@ -946,6 +973,22 @@ class Tab(ctk.CTkTabview):
 
         self.tabHandler()
 
+    def changeNeedToDrawLine(self,var,index,mode): 
+        # self.draw_line_var
+        if self.main.image_data_container[0].radius_was_calculated:
+            # TODO: в случае, когда данные уже были проанализированы и произошел переворот этого флага, необходимо подменить данные только для этого изображения
+            # возможно имеет смысл после анализа все-таки связывать эти флаги 
+            # с каждым индивидуальным изображением. Плевать, пока заморожу чекбоксы после обработки  
+            pass
+        for i in range(len(self.main.image_data_container)):
+            self.main.image_data_container[i].flipDrawLineFlag()
+
+    def changeNeedToDrawCircle(self,var,index,mode): 
+        # self.draw_line_var
+        for i in range(len(self.main.image_data_container)):
+            self.main.image_data_container[i].flipDrawCircleFlag()
+    
+
     def updateBase(self,var,index,mode):
         new_base = self.base_var.get()
         if (new_base!=''):
@@ -954,11 +997,14 @@ class Tab(ctk.CTkTabview):
 
 
     def displayReport(self):
+        if (len(self.main.image_data_container) == 0):
+            return
         data_was_analyzed = False
         index = 0
         tmp_image_data = 0
         try:
-            index = self.main.navigation_frame.image_index
+            last_index = len(self.main.image_data_container) - 1
+            index = min(self.main.navigation_frame.image_index, last_index)
             tmp_image_data = self.main.image_data_container[index]
             data_was_analyzed = tmp_image_data.radius_was_calculated
         except Exception as e:
@@ -1113,13 +1159,18 @@ class Tab(ctk.CTkTabview):
         # self.analyze_button.configure(state = 'disabled')
         self.master.logMessage("Обработка начата...")
         for image_data in self.main.image_data_container:
-            self.main.update_idletasks()
-            image_data.analyzeImage()
-            name = image_data.image_name
-            image_data.image_has_been_analyzed = True
-            
-            text = "Обработка " + name + " закончена"
-            self.after(100, self.master.logMessage(text))
+            if (image_data.image_has_been_analysed):
+                pass
+                # text = "Изображение " + name + " уже было проанализировано"
+                # self.after(100, self.master.logMessage(text))
+            else:
+                self.main.update_idletasks()
+                image_data.analyzeImage()
+                name = image_data.image_name
+                image_data.image_has_been_analyzed = True
+                
+                text = "Обработка " + name + " закончена"
+                self.after(100, self.master.logMessage(text))
         
         self.main.is_pause = True
         self.after(1000, self.master.logMessage("Все изображения обработаны"))
@@ -1127,6 +1178,8 @@ class Tab(ctk.CTkTabview):
         self.main.files_are_unsaved = True
         self.analyze_all_button.configure(state = 'normal')
         self.analyze_current_button.configure(state = 'normal')
+        self.draw_line_checkbox.configure(state = 'disabled')
+        self.draw_circle_checkbox.configure(state = 'disabled')
 
 
 
@@ -1145,7 +1198,8 @@ class Tab(ctk.CTkTabview):
     
     def sliderEvent(self, val):
         
-        
+        self.slider.set(val)
+        self.slider2.set(val)
         self.main.image_frame.cam.setExposure(exposure_time_ms = val)
 
         self.checkForOverexposure()
@@ -1164,7 +1218,8 @@ class Tab(ctk.CTkTabview):
             self.master.capture_button.configure(state = 'normal', fg_color = const.FG_COLOR)
             return False
         else:
-            self.master.capture_button.configure(state = 'disabled', fg_color = 'red')
+            # TODO: решил все-же убрать запрет захвата изображения. Возможно, зря
+            # self.master.capture_button.configure(state = 'disabled', fg_color = 'red')
             self.slider.configure(button_color = 'red', button_hover_color = 'red', progress_color = 'red' )
             self.slider2.configure(button_color = 'red', button_hover_color = 'red', progress_color = 'red' )
             
