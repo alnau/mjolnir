@@ -55,7 +55,7 @@ class TitleMenu(CTkTitleMenu):
 
         file_dropdown.add_separator()
         
-        
+        save_sub_menu = file_dropdown.add_option("Сохранить изображение", command = self.savePhoto)
         save_sub_menu = file_dropdown.add_submenu("Экспортировать")
         save_sub_menu.add_option(option = "Данные текущего изображения", command = self.saveFile)
         save_sub_menu.add_option(option = "Данные всех изображений", command = self.saveAll)
@@ -75,7 +75,12 @@ class TitleMenu(CTkTitleMenu):
         
         # self.bind("<ControlRelease>", self.onCtrlRelease)
 
+    def savePhoto(self): 
+        data = [("Изображения .png", "*.png")]
 
+        dir_path = filedialog.asksaveasfilename(filetypes=data, defaultextension=data)
+        if (dir_path):
+            self.master.camera_feed_image.save(dir_path)
 
 
     def restartInterface(self):
