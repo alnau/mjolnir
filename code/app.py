@@ -25,6 +25,7 @@ from camera_feed_fake import FakeCamera
 import constants as const
 import utility as util
 import image_processing as ip
+from top_level import TopLevel
 
 
 
@@ -53,7 +54,8 @@ class TitleMenu(CTkTitleMenu):
 
 
         file_dropdown.add_separator()
-
+        
+        
         save_sub_menu = file_dropdown.add_submenu("Экспортировать")
         save_sub_menu.add_option(option = "Данные текущего изображения", command = self.saveFile)
         save_sub_menu.add_option(option = "Данные всех изображений", command = self.saveAll)
@@ -72,6 +74,10 @@ class TitleMenu(CTkTitleMenu):
         
         
         # self.bind("<ControlRelease>", self.onCtrlRelease)
+
+
+
+
     def restartInterface(self):
         self.master.is_pause = False
         try:
@@ -284,10 +290,12 @@ class NavigationFrame(ctk.CTkFrame):
         if (len(self.master.image_data_container)!= 0):
             
             name = self.master.image_data_container[self.image_index].image_name
+        was_analyzed = self.master.image_data_container[self.image_index].image_has_been_analyzed
 
         self.master.right_frame.entry.configure(placeholder_text = name)
         self.master.right_frame.curr_name_str_val.set(name)
-        self.master.right_frame.updatePlotAfterAnalysis(self.image_index)
+        
+        self.master.right_frame.updatePlotAfterAnalysis(self.image_index, was_analyzed)
         self.master.right_frame.updatePrintedDataAfterAnalysis(self.image_index)
         self.master.image_frame.loadImage(self.master.image_data_container[self.image_index].norm_image, name = self.master.image_data_container[self.image_index].image_name)
         self.master.image_frame.switchImage(self.image_index)
@@ -816,7 +824,7 @@ class RightFrame(ctk.CTkFrame):
         self.canvas.draw()
 
     def updatePlot(self, p0, p1): 
-
+        
         self.image_data.p0_initial = p0
         self.image_data.p1_initial = p1
         coords, brightness = util.getBrightness(p0, p1,self.master.current_image)
@@ -843,12 +851,12 @@ class RightFrame(ctk.CTkFrame):
         # except:
         #     print('You know, I''m just hanging around, anyways, checkout updateWidndowAfterAnalysis()')
 
-    def updatePlotAfterAnalysis(self, index):
+    def updatePlotAfterAnalysis(self, index, was_analyzed = True):
         idata = self.master.image_data_container[index]
 
         self.ax.clear()
-    
-        self.ax.plot(idata.coord, idata.normalized_brightness_values)
+        if was_analyzed:
+            self.ax.plot(idata.coord, idata.normalized_brightness_values)
         self.canvas.draw()
 
     def updatePrintedDataAfterAnalysis(self, index):
@@ -908,9 +916,9 @@ class Tab(ctk.CTkTabview):
         self.button_frame = ctk.CTkFrame(self.analyze_tab, fg_color='transparent')
         self.button_frame.pack(fill = 'x', anchor = 'n')
         self.button_frame.grid_columnconfigure((0,1), weight = 1)
-        self.analyze_all_button = ctk.CTkButton(self.button_frame, text = 'Обработать все', command=self.analyzeAll)
+        self.analyze_all_button = ctk.CTkButton(self.button_frame, text = 'Обработать все', command= lambda: self.analyzeAll(data_container = self.main.image_data_container))
         self.analyze_all_button.grid(row = 0, column = 1, sticky = 'ew', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
-        self.analyze_current_button = ctk.CTkButton(self.button_frame, text = 'Обработать текущий', command=self.analyzeCurrent)
+        self.analyze_current_button = ctk.CTkButton(self.button_frame, text = 'Обработать отдельные кадры', command=self.selectFramesToAnalyze)
         self.analyze_current_button.grid(row = 0, column = 0, sticky = 'ew', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
         
         
@@ -1084,11 +1092,8 @@ class Tab(ctk.CTkTabview):
 
 
 
-    def findMismatches(self):
+    def findMismatches(self , names):
         # Create sets to store names ending with '_o' and '_d'
-        names = []
-        for image_data in self.main.image_data_container:
-            names.append(image_data.plotname)
 
         
         names_o = set()
@@ -1119,9 +1124,14 @@ class Tab(ctk.CTkTabview):
         return mismatches
 
 
-    def analyzeAll(self):
-
-        mismatches = self.findMismatches()
+    def analyzeAll(self, data_container):
+        
+        
+        names = []
+        for image_data in data_container:
+            names.append(image_data.plotname) 
+        
+        mismatches = self.findMismatches(names)
 
         if mismatches:
             message = 'Не все измерения имеют пару. Ниже приведены названия несовпадающих:\n'
@@ -1140,14 +1150,10 @@ class Tab(ctk.CTkTabview):
         self.configure(state = 'disabled')
         self.analyze_all_button.configure(state = 'disabled')
         self.analyze_current_button.configure(state = 'disabled')
-        threading.Thread(target=self.analyzeAllWorker, args=(), daemon=True).start()
-
-    def analyzeCurrent(self):
-        self.configure(state = 'disabled')
-        threading.Thread(target=self.analyzeCurrentWorker, args=(), daemon=True).start()
+        threading.Thread(target=self.analyzeAllWorker, args=(data_container,), daemon=True).start()
 
     # TODO: Добавить бегущий статус-бар при обработке (возможно, при любом вызове analyzeImage)
-    def analyzeAllWorker(self, any_mismatches = False):
+    def analyzeAllWorker(self, data_container, any_mismatches = False):
         
         # Костыль, который закрывает баг в nextImage: для начала обработки
         # надо сначала зафиксировать последнее изображение (nextImage), 
@@ -1158,8 +1164,8 @@ class Tab(ctk.CTkTabview):
         # все изображения прошли базовую обработку и имеют полный набор данных (хотелось бы верить)
         # self.analyze_button.configure(state = 'disabled')
         self.master.logMessage("Обработка начата...")
-        for image_data in self.main.image_data_container:
-            if (image_data.image_has_been_analysed):
+        for image_data in data_container:
+            if (image_data.image_has_been_analyzed):
                 pass
                 # text = "Изображение " + name + " уже было проанализировано"
                 # self.after(100, self.master.logMessage(text))
@@ -1172,6 +1178,10 @@ class Tab(ctk.CTkTabview):
                 text = "Обработка " + name + " закончена"
                 self.after(100, self.master.logMessage(text))
         
+        if self.main.top_level_window != None:
+            self.main.top_level_window.destroy()
+            self.main.top_level_window.update()
+            self.main.top_level_window = None
         self.main.is_pause = True
         self.after(1000, self.master.logMessage("Все изображения обработаны"))
         self.master.updateWindowAfterAnalysis()
@@ -1183,18 +1193,17 @@ class Tab(ctk.CTkTabview):
 
 
 
-    def analyzeCurrentWorker(self):
-        
-        index = self.main.navigation_frame.image_index
-        self.main.image_data_container[index].analyzeImage()
-        name = self.main.image_data_container[index].image_name
-        self.main.image_data_container[index].image_has_been_analyzed = True
+    def selectFramesToAnalyze(self):
+        top_level = self.main.top_level_window
+        if (top_level != None):
+            logging.error('Seems like window already exist')
+            return
 
-        text = "Обработка " + name + " закончена"
-        self.after(100, self.master.logMessage(text))
-        self.main.is_pause = True
+        self.main.top_level_window = TopLevel(self, self.main.image_data_container)
+
         
-        self.master.updateWindowAfterAnalysis()
+
+        
     
     def sliderEvent(self, val):
         
@@ -1272,6 +1281,8 @@ class App(ctk.CTk):
 
         self.menu = TitleMenu(self, folders_names= self.backup_folders_names)
         self.menu.grid()
+
+        self.top_level_window = None
 
         self.navigation_frame = NavigationFrame(self)
         self.navigation_frame.grid(row=1, column=0, rowspan = 1, sticky="nsew")

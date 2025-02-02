@@ -28,7 +28,7 @@ class ImageData():
         self.initial_image = tmp_image.convert('L')
         self.norm_image = utility.normalizeImage(self.initial_image).convert('L')
         # self.modified_image = self.getModifiedImage()
-        self.modified_image = 0
+        self.modified_image = original_image.copy()
 
         self.width, self.height = utility.getSize(self.norm_image)
         self.coords_of_max_intensity = [0,0]
