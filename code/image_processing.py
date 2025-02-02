@@ -113,14 +113,14 @@ class ImageData():
         radius_mm = 0
 
         radius_px = self.binarySearch(4, com_xy, r_max, full_integral)
-        
+        # radius_px_n = utility.newtonMetod(self.norm_image, com_xy, r_max, full_integral)
         radius_mm = radius_px*PIXEL_TO_MM
         
         return radius_mm
 
 
     def binarySearch(self, epsilon, com, r_max, full_integral):
-        print('Radius evaluation algorithm has been initiated...')
+        # print('Radius evaluation algorithm has been initiated...')
         start = time.time()
         r0 = 0
         r1 = r_max
@@ -146,7 +146,7 @@ class ImageData():
                 
             iter_counter+=1
         end = time.time()
-        print('That wasn''t too hard, but, man, it still hurts. Time per execution =', '{:.1f}'.format(end-start),'s')
+        # print('That wasn''t too hard, but, man, it still hurts. Time per execution =', '{:.1f}'.format(end-start),'s')
         return (r1+r0)/2
 
 

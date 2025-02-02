@@ -76,7 +76,7 @@ class TitleMenu(CTkTitleMenu):
         # self.bind("<ControlRelease>", self.onCtrlRelease)
 
     def savePhoto(self): 
-        data = [("Изображения .png", "*.png")]
+        data = [("Изображения png", "*.png")]
 
         dir_path = filedialog.asksaveasfilename(filetypes=data, defaultextension=data)
         if (dir_path):
@@ -1263,7 +1263,7 @@ class App(ctk.CTk):
         except:
             # arr = np.arange(0, screen_width*screen_height, 1, np.uint8)
             arr = np.zeros(1024*1536)
-            arr = np.reshape(arr, (1536,1024))
+            arr = np.reshape(arr, (1024, 1536))
             self.camera_feed_image = Image.fromarray(arr).convert('L')
             
 
