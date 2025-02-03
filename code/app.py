@@ -1046,11 +1046,15 @@ class Tab(ctk.CTkTabview):
         if (self.get() == 'Захват'):
             self.main.is_pause = False
             self.needed_active_pos_monitoring = False
+            if (self.angle_thread!= None):
+                self.angle_thread.join()
             self.main.navigation_frame.next_button.configure(state = 'disabled')
             self.main.navigation_frame.prev_button.configure(state = 'disabled')
             self.p1 = (0,0)
         elif (self.get() == 'Обработка'):
             self.needed_active_pos_monitoring = False
+            if (self.angle_thread!= None):
+                self.angle_thread.join()
             self.main.is_pause = True
             self.main.navigation_frame.next_button.configure(state = 'normal')
             self.main.navigation_frame.prev_button.configure(state = 'normal')
@@ -1086,18 +1090,21 @@ class Tab(ctk.CTkTabview):
         print("thread killed (?)")
     def setFirstPosition(self):
         
-        
         self.firstImage = self.main.getImage()
         self.p0 = util.getCOM(self.firstImage)
-        self.needed_active_pos_monitoring = True
+        # self.needed_active_pos_monitoring = True
     
         self.angle_sec = self.calculateAngleSec()
         # self.getParallelismReport(self.p0, self.p1, self.angle_sec)
         
         res = self.getParallelismReport()
         self.resultsLabel.configure(text = res)
+        
+        if (not self.needed_active_pos_monitoring):
+            self.needed_active_pos_monitoring = True
+            self.angle_thread = threading.Thread(target=self.angleCalculationWorker, args=(), daemon=True).start()
 
-        self.angle_thread = threading.Thread(target=self.angleCalculationWorker, args=(), daemon=True).start()
+
 
 
 
