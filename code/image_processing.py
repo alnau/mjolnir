@@ -28,7 +28,7 @@ class ImageData():
         self.initial_image = tmp_image.convert('L')
         self.norm_image = utility.normalizeImage(self.initial_image).convert('L')
         # self.modified_image = self.getModifiedImage()
-        self.modified_image = 0
+        self.modified_image = original_image.copy()
 
         self.width, self.height = utility.getSize(self.norm_image)
         self.coords_of_max_intensity = [0,0]
@@ -45,6 +45,9 @@ class ImageData():
 
         self.optimisation_needed = True
         self.image_has_been_analyzed = False
+
+        self.need_to_draw_line = False
+        self.need_to_draw_circle = True
 
         self.report = ''
 
@@ -65,6 +68,12 @@ class ImageData():
 
         self.p0_im_space = (0,0)
         self.p1_im_space = (0,0)
+
+    def flipDrawLineFlag(self):
+        self.need_to_draw_line = not self.need_to_draw_line
+
+    def flipDrawCircleFlag(self):
+        self.need_to_draw_line = not self.need_to_draw_line
     
     def getCOM(self):
         arr_image = np.array(self.norm_image)
@@ -104,14 +113,14 @@ class ImageData():
         radius_mm = 0
 
         radius_px = self.binarySearch(4, com_xy, r_max, full_integral)
-        
+        # radius_px_n = utility.newtonMetod(self.norm_image, com_xy, r_max, full_integral)
         radius_mm = radius_px*PIXEL_TO_MM
         
         return radius_mm
 
 
     def binarySearch(self, epsilon, com, r_max, full_integral):
-        print('Radius evaluation algorithm has been initiated...')
+        # print('Radius evaluation algorithm has been initiated...')
         start = time.time()
         r0 = 0
         r1 = r_max
@@ -137,7 +146,7 @@ class ImageData():
                 
             iter_counter+=1
         end = time.time()
-        print('That wasn''t too hard, but, man, it still hurts. Time per execution =', '{:.1f}'.format(end-start),'s')
+        # print('That wasn''t too hard, but, man, it still hurts. Time per execution =', '{:.1f}'.format(end-start),'s')
         return (r1+r0)/2
 
 
@@ -348,7 +357,7 @@ class ImageData():
 
 
 
-    def getModifiedImage(self):
+    def getModifiedImage(self, draw_circle = None, draw_line = None):
         tmp_image = self.norm_image.copy()
 
         x0 = self.p0_new[0]
@@ -364,10 +373,20 @@ class ImageData():
 
         line_color = 255  
         line_width = 1  # Width of the line
-        # draw.line([self.p0_new, self.p1_new], fill = line_color, width = line_width)
         circle_radius = int(self.radius_mm/PIXEL_TO_MM)
         start_coords = (int(self.coords_of_com[0]/PIXEL_TO_MM),int(self.coords_of_com[1]/PIXEL_TO_MM))
-        draw.ellipse(utility.getCircleBound(start_coords, circle_radius), outline = line_color, width = line_width)
+
+
+        # Немного больно на это смотреть, но эти ифы обеспечивают то, что draw_line/draw_circle != None
+        # Доминируют над тем, что стоит в переменных объекта. Это нужно чтобы пользователь мог включать (и перерисовывать) и отключать рисовку 
+        # в реальном времени
+        if ((draw_line == None and self.need_to_draw_line) or draw_line):
+            draw.line([self.p0_new, self.p1_new], fill = line_color, width = line_width)
+   
+        if ((draw_circle == None and self.need_to_draw_circle) or draw_circle):
+            draw.ellipse(utility.getCircleBound(start_coords, circle_radius), outline = line_color, width = line_width)
+      
+            
 
         return tmp_image
 

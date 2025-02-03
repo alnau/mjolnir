@@ -6,6 +6,7 @@ import xlsxwriter as xlsx
 from scipy.optimize import differential_evolution
 from scipy import integrate 
 
+
 from PIL import Image as img
 import os
 import sys
@@ -542,7 +543,62 @@ def interpolateFknHard(image_data, x,y):
 
     return brightness
 
+# def getPolarIntensity(image, x0,y0,r, phi):
+#     arr_image = np.array(image)
+#     arr_image[arr_image < const.CUTOFF_THRESHOLD] = 0
+    
+#     if len(arr_image.shape) != 2:
+#         raise ValueError("Image must be a 2D grayscale image")
+    
+#     x = x0 + r*np.cos(phi)
+#     y = y0 + r*np.sin(phi)
 
+#     result = interpolateFknHard(arr_image, x, y)
+
+#     return result 
+
+# def getFuncToFindRoots(image, x0,y0,r,I0):
+#     integral, _ = integrate.quad(lambda s: integrate.quad(lambda phi: getPolarIntensity(image, x0,y0,s, phi), 0, 2 * np.pi)[0] * s, 0, r)
+#     return integral - const.ENERGY_THRESHOLD*I0
+
+# def getDerivative(image, x0,y0,r):
+#     integral, _ = integrate.quad(lambda phi: getPolarIntensity(image, x0,y0, r, phi) * r, 0, 2 * np.pi)
+#     return integral
+    
+
+# def newtonMethod(image, com, r_max, I0):
+#     print('Newton method has been initiated...')
+#     start = time.time()
+#     max_iterations=10
+#     initial_guess = 1.0/const.PIXEL_TO_MM   # пусть начальное приближение соответствует радиусу 1мм
+#     tolerance = 0.001
+#     # tolerance = 0.01
+    
+#     x0 = com[0]
+#     y0 = com[1]
+    
+#     r_n = initial_guess
+#     for _ in range(max_iterations):
+#         f_r_n = getFuncToFindRoots(image, x0,y0, r_n, I0)
+#         f_prime_r_n = getDerivative(image, x0, y0, r_n)
+        
+#         # На всякий случай, ппроверим что не делим на 0 
+#         if f_prime_r_n == 0:
+#             raise ValueError("Derivative is zero. No solution found.")
+        
+#         # Обновим радиус согласно методу Ньютона
+#         r_n1 = r_n - f_r_n / f_prime_r_n
+        
+#         # Проверим сходимость
+#         if abs(getFuncToFindRoots(image, x0,y0, r_n1, I0)/I0) < tolerance:
+#             end = time.time()
+#             print('N: That wasn''t too hard, but, man, it still hurts. Time per execution =', '{:.1f}'.format(end-start),'s')
+#             return r_n1
+        
+#         r_n = r_n1
+    
+#     raise ValueError("Maximum iterations exceeded. No solution found.")
+    
 def integrateOverPolar(image, x0, y0, r_max, r_min = 0, theta_min = 0, theta_max = 2*np.pi):
     arr_image = np.array(image)
     arr_image[arr_image < const.CUTOFF_THRESHOLD] = 0

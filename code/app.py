@@ -25,6 +25,7 @@ from camera_feed_fake import FakeCamera
 import constants as const
 import utility as util
 import image_processing as ip
+from top_level import TopLevel
 
 
 
@@ -53,7 +54,8 @@ class TitleMenu(CTkTitleMenu):
 
 
         file_dropdown.add_separator()
-
+        
+        save_sub_menu = file_dropdown.add_option("Сохранить изображение", command = self.savePhoto)
         save_sub_menu = file_dropdown.add_submenu("Экспортировать")
         save_sub_menu.add_option(option = "Данные текущего изображения", command = self.saveFile)
         save_sub_menu.add_option(option = "Данные всех изображений", command = self.saveAll)
@@ -72,6 +74,15 @@ class TitleMenu(CTkTitleMenu):
         
         
         # self.bind("<ControlRelease>", self.onCtrlRelease)
+
+    def savePhoto(self): 
+        data = [("Изображения png", "*.png")]
+
+        dir_path = filedialog.asksaveasfilename(filetypes=data, defaultextension=data)
+        if (dir_path):
+            self.master.camera_feed_image.save(dir_path)
+
+
     def restartInterface(self):
         self.master.is_pause = False
         try:
@@ -253,21 +264,27 @@ class NavigationFrame(ctk.CTkFrame):
         self.is_active = True #bool
 
         self.button_frame = ctk.CTkFrame(self)
-        self.button_frame.pack(fill="x", pady=10, padx = const.DEFAULT_PADX, side = 'top')
+        self.button_frame.pack(fill="x", pady=const.DEFAULT_PADY, padx = const.DEFAULT_PADX, side = 'top')
         self.button_frame.grid_columnconfigure(0, weight=3)
         self.button_frame.grid_columnconfigure(1, weight=3)
         
         self.prev_button = ctk.CTkButton(self.button_frame, text="<", 
-                                        command = lambda: self.switch('back'))
+                                        command = lambda: self.switch(btn = 'back'))
         self.prev_button.grid(row = 0, column = 0, sticky = 'e', padx = const.DEFAULT_PADX, pady = 5)
 
 
         self.next_button = ctk.CTkButton(self.button_frame, text=">", 
-                                        command = lambda: self.switch("fwd"))
+                                        command = lambda: self.switch(btn = "fwd"))
         self.next_button.grid(row = 0, column = 1, sticky = 'w', padx = const.DEFAULT_PADX, pady = 5)
 
+        self.master.bind('<Left>', lambda event: self.switch(btn = 'back'))
+        self.master.bind('<Right>', lambda event: self.switch(btn = 'fwd'))
+
     # посылает сигнал о переключении картинок
-    def switch(self, btn = ''):
+    def switch(self, event = None, btn = ''):
+        if self.next_button.cget('state') == 'disabled':
+            return
+        
         if (btn == 'fwd'):
             self.image_index = min(self.image_index+1, len(self.master.image_data_container) - 1)
         elif btn == 'back':
@@ -278,10 +295,12 @@ class NavigationFrame(ctk.CTkFrame):
         if (len(self.master.image_data_container)!= 0):
             
             name = self.master.image_data_container[self.image_index].image_name
+        was_analyzed = self.master.image_data_container[self.image_index].image_has_been_analyzed
 
         self.master.right_frame.entry.configure(placeholder_text = name)
         self.master.right_frame.curr_name_str_val.set(name)
-        self.master.right_frame.updatePlotAfterAnalysis(self.image_index)
+        
+        self.master.right_frame.updatePlotAfterAnalysis(self.image_index, was_analyzed)
         self.master.right_frame.updatePrintedDataAfterAnalysis(self.image_index)
         self.master.image_frame.loadImage(self.master.image_data_container[self.image_index].norm_image, name = self.master.image_data_container[self.image_index].image_name)
         self.master.image_frame.switchImage(self.image_index)
@@ -638,7 +657,7 @@ class RightFrame(ctk.CTkFrame):
         self.canvas.get_tk_widget().pack(fill="x", padx = const.DEFAULT_PADX, pady = (5,0), side = "top")
 
         self.entry_frame = ctk.CTkFrame(self, )
-        self.entry_frame.pack(fill="x", pady=(10, 5), side = 'top')
+        self.entry_frame.pack(fill="x", pady=(10, 5), padx = const.DEFAULT_PADX, side = 'top')
         
         # Это будет самое безбожное, что ты делал с этим проектом
         self.curr_name_str_val = ctk.StringVar()
@@ -655,16 +674,14 @@ class RightFrame(ctk.CTkFrame):
         self.thin_frame.pack(fill="x", padx =10, pady=5,)
 
         self.tabview = Tab(master = self, main=master)
-        self.tabview.pack(side = 'top', fill = 'x') 
+        self.tabview.pack(side = 'top', fill = 'both', pady = const.DEFAULT_PADY, padx = const.DEFAULT_PADX) 
         
-        self.continue_button = ctk.CTkButton(master = self, command = self.nextImage, text = 'Продолжить', state = 'disabled')
-        self.continue_button.pack(side = 'top', fill = 'x')
 
-        self.status_frame = ctk.CTkFrame(self, )
-        self.status_frame.pack(fill="x", padx = 2, side = 'top', expand = True)
+        self.status_frame = ctk.CTkFrame(self, height = master.navigation_frame.winfo_height())
+        self.status_frame.pack(fill="x", padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY, side = 'bottom')
 
-        self.status = ctk.CTkLabel(self.status_frame, text = '', height = master.navigation_frame.winfo_height())   
-        self.status.pack( fill = 'x', pady = const.DEFAULT_PADX, side = 'top')
+        self.status = ctk.CTkLabel(self.status_frame, text = '', )   
+        self.status.pack( fill = 'both', pady = const.DEFAULT_PADY, padx = const.DEFAULT_PADX)
 
     def updateName(self,var,index,mode):
         try:
@@ -714,7 +731,7 @@ class RightFrame(ctk.CTkFrame):
         
         self.master.is_pause = True
         self.capture_button.configure(text = 'Отмена')
-        self.continue_button.configure(state = 'normal')
+        self.tabview.continue_button.configure(state = 'normal')
         self.master.image_frame.image_canvas.configure(highlightbackground="red")
         self.photo_is_captured = True
         self.master.image_frame.loadImage(self.master.current_image, self.tmp_name)
@@ -724,36 +741,10 @@ class RightFrame(ctk.CTkFrame):
     def unlockCamera(self):
         self.master.is_pause = False
         self.capture_button.configure(text = 'Захватить')
-        self.continue_button.configure(state = 'disabled')
+        self.tabview.continue_button.configure(state = 'disabled')
         self.master.image_frame.image_canvas.configure(highlightbackground="black")
         self.photo_is_captured = False
         self.master.image_frame.clearPhoto()
-    
-    def handleEnter(self, event):
-        if (self.tabview.get() == 'Захват'):
-            self.captureImage()
-        if (self.tabview.get() == 'Клиновидность'):
-            self.tabview.setFirstPosition()
-
-    def captureImage(self):
-        # отработка захвата или сброса текущего изображения
-        self.master.menu.data_is_external = False
-        if (self.photo_is_captured):
-            # переход к живой камере
-            self.unlockCamera()
-            self.logMessage('Фото сброшено')
-            # чисто на всякий пожарный снимем все возможные триггеры на пропуск оптимизации 
-            self.master.image_frame.start_coords = (0,0)
-            self.master.image_frame.end_coords = (0,0)
-            self.tabview.check_var.set('off')
-        elif(len(self.tmp_name)!=0) :
-            # Показать картинку, сохранить в буффер
-            self.lockCamera()
-            self.image_data = ip.ImageData(self.master.current_image, self.entry.get())
-        else:
-            self.logMessage('Введите имя файла')
-
-        
 
     def nextImage(self):
         if len(self.entry.get()) != 0:
@@ -797,15 +788,48 @@ class RightFrame(ctk.CTkFrame):
 
 
             self.master.image_frame.reset()
+
+            # Разблокировать чекбоксы, заблокированные после обработки, если пользователь решил добавить данные 
+            self.tabview.draw_line_checkbox.configure(state = 'normal')
+            self.tabview.draw_circle_checkbox.configure(state = 'normal')
         else:
             self.logMessage('Введите название файла')
 
+    
+    def handleEnter(self, event):
+        if (self.tabview.get() == 'Захват'):
+            if (self.photo_is_captured):
+                self.nextImage()
+            else:
+                self.captureImage()
+        if (self.tabview.get() == 'Клиновидность'):
+            self.tabview.setFirstPosition()
+
+    def captureImage(self):
+        # отработка захвата или сброса текущего изображения
+        self.master.menu.data_is_external = False
+        if (self.photo_is_captured):
+            # переход к живой камере
+            self.unlockCamera()
+            self.logMessage('Фото сброшено')
+            # чисто на всякий пожарный снимем все возможные триггеры на пропуск оптимизации 
+            self.master.image_frame.start_coords = (0,0)
+            self.master.image_frame.end_coords = (0,0)
+            self.tabview.check_var.set('off')
+        elif(len(self.tmp_name)!=0) :
+            # Показать картинку, сохранить в буффер
+            self.lockCamera()
+            self.image_data = ip.ImageData(self.master.current_image, self.entry.get())
+        else:
+            self.logMessage('Введите имя файла')
+
+        
     def clearPlot(self):
         self.ax.clear()
         self.canvas.draw()
 
     def updatePlot(self, p0, p1): 
-
+        
         self.image_data.p0_initial = p0
         self.image_data.p1_initial = p1
         coords, brightness = util.getBrightness(p0, p1,self.master.current_image)
@@ -832,12 +856,12 @@ class RightFrame(ctk.CTkFrame):
         # except:
         #     print('You know, I''m just hanging around, anyways, checkout updateWidndowAfterAnalysis()')
 
-    def updatePlotAfterAnalysis(self, index):
+    def updatePlotAfterAnalysis(self, index, was_analyzed = True):
         idata = self.master.image_data_container[index]
 
         self.ax.clear()
-    
-        self.ax.plot(idata.coord, idata.normalized_brightness_values)
+        if was_analyzed:
+            self.ax.plot(idata.coord, idata.normalized_brightness_values)
         self.canvas.draw()
 
     def updatePrintedDataAfterAnalysis(self, index):
@@ -849,6 +873,8 @@ class Tab(ctk.CTkTabview):
         super().__init__(master, **kwargs)
 
         self.main = main
+
+        self.angle_thread = None
 
         self.configure(command = self.tabHandler)
 
@@ -887,25 +913,41 @@ class Tab(ctk.CTkTabview):
         self.select_optimisation_button = ctk.CTkCheckBox(self.option_frame, onvalue= 'on', offvalue = 'off', variable= self.check_var, text = 'Использовать пользовательскую линию для анализа')
         self.select_optimisation_button.grid(sticky = 'nw')
 
+        # TODO: command = self.master.nextImage - это что-то совсем безбожное
+        self.continue_button = ctk.CTkButton(master = self.capture_tab, command = self.master.nextImage, text = 'Продолжить', state = 'disabled')
+        self.continue_button.pack(side = 'bottom', fill = 'x')
+
         #################     Обработка   #########################
         self.analyze_tab = self.add("Обработка")
 
-        self.analysis_frame = ctk.CTkFrame(self.analyze_tab)
-        self.analysis_frame.pack(fill = 'x', side = 'top')
-        self.analysis_frame.grid_columnconfigure((0,1), weight = 1)
-        self.analysis_frame.grid_rowconfigure(0, weight = 0)
-        self.analysis_frame.grid_rowconfigure(1, weight = 2)
-
-
-        self.analyze_all_button = ctk.CTkButton(self.analysis_frame, text = 'Обработать все', command=self.analyzeAll)
+        self.button_frame = ctk.CTkFrame(self.analyze_tab, fg_color='transparent')
+        self.button_frame.pack(fill = 'x', anchor = 'n')
+        self.button_frame.grid_columnconfigure((0,1), weight = 1)
+        self.analyze_all_button = ctk.CTkButton(self.button_frame, text = 'Обработать все', command= lambda: self.analyzeAll(data_container = self.main.image_data_container))
         self.analyze_all_button.grid(row = 0, column = 1, sticky = 'ew', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
-        self.analyze_current_button = ctk.CTkButton(self.analysis_frame, text = 'Обработать текущий', command=self.analyzeCurrent)
+        self.analyze_current_button = ctk.CTkButton(self.button_frame, text = 'Обработать отдельные кадры', command=self.selectFramesToAnalyze)
         self.analyze_current_button.grid(row = 0, column = 0, sticky = 'ew', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
+        
+        
+        self.analysis_frame = ctk.CTkScrollableFrame(self.analyze_tab)
+        self.analysis_frame.pack(fill = 'both',anchor = 'n', expand = True)
+        
+        self.draw_line_var = ctk.StringVar(value="off")
+        self.draw_line_checkbox = ctk.CTkCheckBox(self.analysis_frame, onvalue= 'on', offvalue = 'off', variable= self.draw_line_var, text = 'Вывести линию главной оси')
+        self.draw_line_checkbox.pack(anchor = 'nw', pady = const.DEFAULT_PADY)
+        self.draw_line_var.trace_add('write', self.changeNeedToDrawLine)
+
+        self.draw_circle_var = ctk.StringVar(value="on")
+        self.draw_circle_checkbox = ctk.CTkCheckBox(self.analysis_frame, onvalue= 'on', offvalue = 'off', variable= self.draw_circle_var, text = 'Вывести окружность 86.5% энергии')
+        self.draw_circle_checkbox.pack(anchor = 'nw', pady = const.DEFAULT_PADY)
+        self.draw_circle_var.trace_add('write', self.changeNeedToDrawCircle)
+        
 
         self.report_textbox = ctk.CTkTextbox(self.analysis_frame)
         self.report_textbox.insert('0.0', 'Данные не обработаны')
         self.report_textbox.configure(state = 'disabled')
-        self.report_textbox.grid(row = 1, column = 0, columnspan = 2, sticky = 'new', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
+        self.report_textbox.pack(fill = 'x', side = 'top')
+        # self.report_textbox.grid(row = 0, column = 0, sticky = 'new', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
 
         #################   Клиновидность   #########################
         self.parallelism_tab = self.add("Клиновидность")
@@ -920,7 +962,7 @@ class Tab(ctk.CTkTabview):
         self.slider2.pack(fill = 'x', side = 'left', expand = True) 
 
         self.max_exposure_label2 = ctk.CTkLabel(self.slider_frame2, text = '')
-        self.max_exposure_label.pack(side = 'left')
+        self.max_exposure_label2.pack(side = 'left')
         
         self.base_entry_frame = ctk.CTkFrame(self.parallelism_tab, )
         self.base_entry_frame.pack(fill="x", pady=(10, 5), side = 'top')
@@ -946,6 +988,22 @@ class Tab(ctk.CTkTabview):
 
         self.tabHandler()
 
+    def changeNeedToDrawLine(self,var,index,mode): 
+        # self.draw_line_var
+        if self.main.image_data_container[0].radius_was_calculated:
+            # TODO: в случае, когда данные уже были проанализированы и произошел переворот этого флага, необходимо подменить данные только для этого изображения
+            # возможно имеет смысл после анализа все-таки связывать эти флаги 
+            # с каждым индивидуальным изображением. Плевать, пока заморожу чекбоксы после обработки  
+            pass
+        for i in range(len(self.main.image_data_container)):
+            self.main.image_data_container[i].flipDrawLineFlag()
+
+    def changeNeedToDrawCircle(self,var,index,mode): 
+        # self.draw_line_var
+        for i in range(len(self.main.image_data_container)):
+            self.main.image_data_container[i].flipDrawCircleFlag()
+    
+
     def updateBase(self,var,index,mode):
         new_base = self.base_var.get()
         if (new_base!=''):
@@ -954,11 +1012,14 @@ class Tab(ctk.CTkTabview):
 
 
     def displayReport(self):
+        if (len(self.main.image_data_container) == 0):
+            return
         data_was_analyzed = False
         index = 0
         tmp_image_data = 0
         try:
-            index = self.main.navigation_frame.image_index
+            last_index = len(self.main.image_data_container) - 1
+            index = min(self.main.navigation_frame.image_index, last_index)
             tmp_image_data = self.main.image_data_container[index]
             data_was_analyzed = tmp_image_data.radius_was_calculated
         except Exception as e:
@@ -985,11 +1046,15 @@ class Tab(ctk.CTkTabview):
         if (self.get() == 'Захват'):
             self.main.is_pause = False
             self.needed_active_pos_monitoring = False
+            if (self.angle_thread!= None):
+                self.angle_thread.join()
             self.main.navigation_frame.next_button.configure(state = 'disabled')
             self.main.navigation_frame.prev_button.configure(state = 'disabled')
             self.p1 = (0,0)
         elif (self.get() == 'Обработка'):
             self.needed_active_pos_monitoring = False
+            if (self.angle_thread!= None):
+                self.angle_thread.join()
             self.main.is_pause = True
             self.main.navigation_frame.next_button.configure(state = 'normal')
             self.main.navigation_frame.prev_button.configure(state = 'normal')
@@ -1012,37 +1077,39 @@ class Tab(ctk.CTkTabview):
         return str(int(round(self.angle_sec,0))) + '"'
         
     def angleCalculationWorker(self):
-        while True:
-            if (self.needed_active_pos_monitoring):
-                self.p1 = util.getCOM(self.main.getImage())
-                self.angle_sec = self.calculateAngleSec()
+        while self.needed_active_pos_monitoring:
+            self.p1 = util.getCOM(self.main.getImage())
+            self.angle_sec = self.calculateAngleSec()
 
-                res = self.getParallelismReport()
+            res = self.getParallelismReport()
 
-                self.resultsLabel.configure(text = res)
-                self.main.image_frame.callForCrossesRefresh()
+            self.resultsLabel.configure(text = res)
+            self.main.image_frame.callForCrossesRefresh()
             self.master.update_idletasks()
             time.sleep(0.2)
+        print("thread killed (?)")
     def setFirstPosition(self):
+        
         self.firstImage = self.main.getImage()
         self.p0 = util.getCOM(self.firstImage)
-        self.needed_active_pos_monitoring = True
+        # self.needed_active_pos_monitoring = True
     
         self.angle_sec = self.calculateAngleSec()
         # self.getParallelismReport(self.p0, self.p1, self.angle_sec)
         
         res = self.getParallelismReport()
         self.resultsLabel.configure(text = res)
+        
+        if (not self.needed_active_pos_monitoring):
+            self.needed_active_pos_monitoring = True
+            self.angle_thread = threading.Thread(target=self.angleCalculationWorker, args=(), daemon=True).start()
 
-        threading.Thread(target=self.angleCalculationWorker, args=(), daemon=True).start()
 
 
 
-    def findMismatches(self):
+
+    def findMismatches(self , names):
         # Create sets to store names ending with '_o' and '_d'
-        names = []
-        for image_data in self.main.image_data_container:
-            names.append(image_data.plotname)
 
         
         names_o = set()
@@ -1073,9 +1140,14 @@ class Tab(ctk.CTkTabview):
         return mismatches
 
 
-    def analyzeAll(self):
-
-        mismatches = self.findMismatches()
+    def analyzeAll(self, data_container):
+        
+        
+        names = []
+        for image_data in data_container:
+            names.append(image_data.plotname) 
+        
+        mismatches = self.findMismatches(names)
 
         if mismatches:
             message = 'Не все измерения имеют пару. Ниже приведены названия несовпадающих:\n'
@@ -1094,14 +1166,10 @@ class Tab(ctk.CTkTabview):
         self.configure(state = 'disabled')
         self.analyze_all_button.configure(state = 'disabled')
         self.analyze_current_button.configure(state = 'disabled')
-        threading.Thread(target=self.analyzeAllWorker, args=(), daemon=True).start()
-
-    def analyzeCurrent(self):
-        self.configure(state = 'disabled')
-        threading.Thread(target=self.analyzeCurrentWorker, args=(), daemon=True).start()
+        threading.Thread(target=self.analyzeAllWorker, args=(data_container,), daemon=True).start()
 
     # TODO: Добавить бегущий статус-бар при обработке (возможно, при любом вызове analyzeImage)
-    def analyzeAllWorker(self, any_mismatches = False):
+    def analyzeAllWorker(self, data_container, any_mismatches = False):
         
         # Костыль, который закрывает баг в nextImage: для начала обработки
         # надо сначала зафиксировать последнее изображение (nextImage), 
@@ -1112,40 +1180,51 @@ class Tab(ctk.CTkTabview):
         # все изображения прошли базовую обработку и имеют полный набор данных (хотелось бы верить)
         # self.analyze_button.configure(state = 'disabled')
         self.master.logMessage("Обработка начата...")
-        for image_data in self.main.image_data_container:
-            self.main.update_idletasks()
-            image_data.analyzeImage()
-            name = image_data.image_name
-            image_data.image_has_been_analyzed = True
-            
-            text = "Обработка " + name + " закончена"
-            self.after(100, self.master.logMessage(text))
+        for image_data in data_container:
+            if (image_data.image_has_been_analyzed):
+                pass
+                # text = "Изображение " + name + " уже было проанализировано"
+                # self.after(100, self.master.logMessage(text))
+            else:
+                self.main.update_idletasks()
+                image_data.analyzeImage()
+                name = image_data.image_name
+                image_data.image_has_been_analyzed = True
+                
+                text = "Обработка " + name + " закончена"
+                self.after(100, self.master.logMessage(text))
         
+        if self.main.top_level_window != None:
+            self.main.top_level_window.destroy()
+            self.main.top_level_window.update()
+            self.main.top_level_window = None
         self.main.is_pause = True
         self.after(1000, self.master.logMessage("Все изображения обработаны"))
         self.master.updateWindowAfterAnalysis()
         self.main.files_are_unsaved = True
         self.analyze_all_button.configure(state = 'normal')
         self.analyze_current_button.configure(state = 'normal')
+        self.draw_line_checkbox.configure(state = 'disabled')
+        self.draw_circle_checkbox.configure(state = 'disabled')
 
 
 
-    def analyzeCurrentWorker(self):
+    def selectFramesToAnalyze(self):
+        top_level = self.main.top_level_window
+        if (top_level != None):
+            logging.error('Seems like window already exist')
+            return
+
+        self.main.top_level_window = TopLevel(self, self.main.image_data_container)
+
         
-        index = self.main.navigation_frame.image_index
-        self.main.image_data_container[index].analyzeImage()
-        name = self.main.image_data_container[index].image_name
-        self.main.image_data_container[index].image_has_been_analyzed = True
 
-        text = "Обработка " + name + " закончена"
-        self.after(100, self.master.logMessage(text))
-        self.main.is_pause = True
         
-        self.master.updateWindowAfterAnalysis()
     
     def sliderEvent(self, val):
         
-        
+        self.slider.set(val)
+        self.slider2.set(val)
         self.main.image_frame.cam.setExposure(exposure_time_ms = val)
 
         self.checkForOverexposure()
@@ -1164,7 +1243,8 @@ class Tab(ctk.CTkTabview):
             self.master.capture_button.configure(state = 'normal', fg_color = const.FG_COLOR)
             return False
         else:
-            self.master.capture_button.configure(state = 'disabled', fg_color = 'red')
+            # TODO: решил все-же убрать запрет захвата изображения. Возможно, зря
+            # self.master.capture_button.configure(state = 'disabled', fg_color = 'red')
             self.slider.configure(button_color = 'red', button_hover_color = 'red', progress_color = 'red' )
             self.slider2.configure(button_color = 'red', button_hover_color = 'red', progress_color = 'red' )
             
@@ -1194,7 +1274,7 @@ class App(ctk.CTk):
         except:
             # arr = np.arange(0, screen_width*screen_height, 1, np.uint8)
             arr = np.zeros(1024*1536)
-            arr = np.reshape(arr, (1536,1024))
+            arr = np.reshape(arr, (1024, 1536))
             self.camera_feed_image = Image.fromarray(arr).convert('L')
             
 
@@ -1218,6 +1298,8 @@ class App(ctk.CTk):
         self.menu = TitleMenu(self, folders_names= self.backup_folders_names)
         self.menu.grid()
 
+        self.top_level_window = None
+
         self.navigation_frame = NavigationFrame(self)
         self.navigation_frame.grid(row=1, column=0, rowspan = 1, sticky="nsew")
         
@@ -1240,6 +1322,7 @@ class App(ctk.CTk):
 
     
     def onClosing(self):
+        print('Destroying window...')
         # if (self.files_are_unsaved == True):
         #     # TODO: выбрасывает ошибку на 3.7.8, так как не может отработать иморт Literal (literally, ha. kill me). Я слишком устал чтобы придумывать решение, так что удачи, будущий я
         #     # message = msg.CTkMessagebox(title = 'Внимание', message = "Результаты анализа не были сохранены \n сохранить перед закрытием?",
@@ -1258,6 +1341,7 @@ class App(ctk.CTk):
         # else:
         #     self.destroy()
         self.destroy()
+        print("Window destroyed, clearup finished. Wait for this windw to close...")
 
     def toggleControl(self):
         for widget in self.widget_list:
