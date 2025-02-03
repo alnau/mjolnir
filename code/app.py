@@ -23,7 +23,7 @@ from camera_feed_generic import GenericCamera
 import camera_feed_fake as fake
 from camera_feed_fake import FakeCamera
 import constants as const
-import utility as util
+import utility 
 import image_processing as ip
 from top_level import TopLevel
 
@@ -113,7 +113,7 @@ class TitleMenu(CTkTitleMenu):
 
     def recoverFromFolder(self, folder_name):
         self.master.is_pause = True
-        dir_path = util.resourcePath(self.master.base_path + folder_name)
+        dir_path = utility.resourcePath(self.master.base_path + folder_name)
         print(dir_path)
         names = []
         self.master.image_data_container = []
@@ -124,7 +124,7 @@ class TitleMenu(CTkTitleMenu):
         for name in names:
             image = Image.open(os.path.join(dir_path, name)).convert('L')
             pure_name,_ = os.path.splitext(name)
-            pure_name = util.removeSuffix(pure_name, '.tif')
+            pure_name = utility.removeSuffix(pure_name, '.tif')
             self.master.image_data_container.append(ip.ImageData(image, pure_name))
 
     
@@ -173,7 +173,7 @@ class TitleMenu(CTkTitleMenu):
             for name in names:
                 image = Image.open(os.path.join(dir_path, name)).convert('L')
                 pure_name,_ = os.path.splitext(name)
-                pure_name = util.removeSuffix(pure_name, '.tif')
+                pure_name = utility.removeSuffix(pure_name, '.tif')
                 self.master.image_data_container.append(ip.ImageData(image, pure_name))
             
             # self.master.image_frame.loadImage(self.master.image_data_container[0].norm_image, names[0])
@@ -223,7 +223,7 @@ class TitleMenu(CTkTitleMenu):
                 elif (image_data.plotname == 'control'):
                     r_ref = round(2*image_data.radius_mm,2)
             print("------------------")
-            util.printUnstructuredReportToXLSX(new_names, width_data, r_ref, path)
+            utility.printUnstructuredReportToXLSX(new_names, width_data, r_ref, path)
         else:
             width_data_d = []
             width_data_o = []
@@ -245,7 +245,7 @@ class TitleMenu(CTkTitleMenu):
                 elif (image_data.plotname == 'control'):
                     r_ref = round(2*image_data.radius_mm,2)
             print("------------------")
-            util.printReportToXLSX(new_names, width_data_d, width_data_o, r_ref, path)  
+            utility.printReportToXLSX(new_names, width_data_d, width_data_o, r_ref, path)  
 
 
         path_printout = '/lastResults'
@@ -324,7 +324,7 @@ class NavigationFrame(ctk.CTkFrame):
 
 
 
-class imageFrame(ctk.CTkFrame):
+class ImageFrame(ctk.CTkFrame):
     def __init__(self, master, right_frame_handle, **kwargs):
         super().__init__(master, **kwargs)
 
@@ -420,6 +420,7 @@ class imageFrame(ctk.CTkFrame):
         while True:
             # запросим последнее изображение с камеры и загрузим его в app.camera_feed_image
             self.cam.cameraFeed(master_app=self) 
+            self.master.right_frame.tabview.checkForOverexposure()
             if (self.master.is_pause or self.master.right_frame.tabview.needed_active_pos_monitoring):
                 # Если изображение захвачено (is_pause == True) или мы измеряем клиновидность, отключить автоообновление
                 # картинки с камеры
@@ -428,7 +429,6 @@ class imageFrame(ctk.CTkFrame):
                 # подменим app.current_image TODO: раньше было до if
                 self.master.updateImage()
                 self.updateCanvas(self.master.current_image)
-                self.master.right_frame.tabview.checkForOverexposure()
             self.master.update_idletasks()
             time.sleep(0.05)
 
@@ -545,8 +545,8 @@ class imageFrame(ctk.CTkFrame):
 
         self.draw = ImageDraw.Draw(tmp_image)
 
-        self.draw.ellipse(util.getCircleBound(self.start_coords, const.CIRCLE_RADIUS), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
-        self.draw.ellipse(util.getCircleBound(self.tmp_coords, const.CIRCLE_RADIUS), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
+        self.draw.ellipse(utility.getCircleBound(self.start_coords, const.CIRCLE_RADIUS), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
+        self.draw.ellipse(utility.getCircleBound(self.tmp_coords, const.CIRCLE_RADIUS), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
         self.draw.line([self.start_coords, self.tmp_coords], fill = const.LINE_COLOR, width = const.LINE_WIDTH)
         if (self.master.right_frame.tabview.needed_active_pos_monitoring):
             point = self.master.right_frame.tabview.p0
@@ -617,6 +617,7 @@ class imageFrame(ctk.CTkFrame):
             self.loadImage(idata.norm_image, name)
 
     def resizeImage(self, event):
+        self.master.update_idletasks()
         # TODO разберись уже с этой функцией, это уже непрофессионально
         self.master.update_idletasks()
         width = self.winfo_width()
@@ -832,7 +833,7 @@ class RightFrame(ctk.CTkFrame):
         
         self.image_data.p0_initial = p0
         self.image_data.p1_initial = p1
-        coords, brightness = util.getBrightness(p0, p1,self.master.current_image)
+        coords, brightness = utility.getBrightness(p0, p1,self.master.current_image)
         self.ax.clear()
         self.ax.plot(coords, brightness)
         self.canvas.draw()
@@ -1008,7 +1009,7 @@ class Tab(ctk.CTkTabview):
         new_base = self.base_var.get()
         if (new_base!=''):
             const.DEFAULT_BASE_CM = int(new_base)
-            util.updateIni('default_base_cm', new_base)
+            utility.updateIni('default_base_cm', new_base)
 
 
     def displayReport(self):
@@ -1078,7 +1079,7 @@ class Tab(ctk.CTkTabview):
         
     def angleCalculationWorker(self):
         while self.needed_active_pos_monitoring:
-            self.p1 = util.getCOM(self.main.getImage())
+            self.p1 = utility.getCOM(self.main.getImage())
             self.angle_sec = self.calculateAngleSec()
 
             res = self.getParallelismReport()
@@ -1091,7 +1092,7 @@ class Tab(ctk.CTkTabview):
     def setFirstPosition(self):
         
         self.firstImage = self.main.getImage()
-        self.p0 = util.getCOM(self.firstImage)
+        self.p0 = utility.getCOM(self.firstImage)
         # self.needed_active_pos_monitoring = True
     
         self.angle_sec = self.calculateAngleSec()
@@ -1170,7 +1171,7 @@ class Tab(ctk.CTkTabview):
 
     # TODO: Добавить бегущий статус-бар при обработке (возможно, при любом вызове analyzeImage)
     def analyzeAllWorker(self, data_container, any_mismatches = False):
-        
+        self.main.setProgressBarActive()
         # Костыль, который закрывает баг в nextImage: для начала обработки
         # надо сначала зафиксировать последнее изображение (nextImage), 
         # при этом к индексу картинки автоматически прибавляется 1, 
@@ -1187,7 +1188,7 @@ class Tab(ctk.CTkTabview):
                 # self.after(100, self.master.logMessage(text))
             else:
                 self.main.update_idletasks()
-                image_data.analyzeImage()
+                image_data.analyzeImage(master = self.main)
                 name = image_data.image_name
                 image_data.image_has_been_analyzed = True
                 
@@ -1198,6 +1199,7 @@ class Tab(ctk.CTkTabview):
             self.main.top_level_window.destroy()
             self.main.top_level_window.update()
             self.main.top_level_window = None
+        self.main.setProgressBarInactive()
         self.main.is_pause = True
         self.after(1000, self.master.logMessage("Все изображения обработаны"))
         self.master.updateWindowAfterAnalysis()
@@ -1269,7 +1271,7 @@ class App(ctk.CTk):
         self.geometry(f"{width}x{height}")
 
         try:
-            self.image_path= util.resourcePath('mockup1.tif')        
+            self.image_path= utility.resourcePath('mockup1.tif')        
             self.camera_feed_image = Image.open(self.image_path).convert('L')
         except:
             # arr = np.arange(0, screen_width*screen_height, 1, np.uint8)
@@ -1281,11 +1283,11 @@ class App(ctk.CTk):
         self.current_image = self.camera_feed_image
         
 
-        self.base_path = util.resourcePath('tmp/')
-        current_date = util.getCurrentDateStr() 
+        self.base_path = utility.resourcePath('tmp/')
+        current_date = utility.getCurrentDateStr() 
         self.backup_path = self.base_path + current_date + '_tmp/'
         self.organizeBackup() 
-        self.backup_folders_names = util.getBackupFoldersNames(self.base_path)
+        self.backup_folders_names = utility.getBackupFoldersNames(self.base_path)
         self.crop_factor_x = 0
         self.crop_factor_y = 0
 
@@ -1299,15 +1301,19 @@ class App(ctk.CTk):
         self.menu.grid()
 
         self.top_level_window = None
-
+        self.progress_bar = ctk.CTkProgressBar(self, mode = 'indeterminate',  progress_color="gray10", fg_color = 'gray10')
+        # fg_color = 'gray10',
+        self.progress_bar.grid(row = 0, column = 0, rowspan = 1, columnspan = 2, sticky = 'nswe', padx = const.DEFAULT_PADX)
+        self.progress_bar.set(0)
+        
         self.navigation_frame = NavigationFrame(self)
-        self.navigation_frame.grid(row=1, column=0, rowspan = 1, sticky="nsew")
+        self.navigation_frame.grid(row=2, column=0, rowspan = 1, sticky="nsew")
         
         self.right_frame = RightFrame(self)
-        self.right_frame.grid(row=0, column=1, rowspan = 2, sticky="nsew")
+        self.right_frame.grid(row=1, column=1, rowspan = 2, sticky="nsew")
         
-        self.image_frame = imageFrame(self, right_frame_handle= self.right_frame)
-        self.image_frame.grid(row=0, column=0, rowspan = 1, sticky="nsew")
+        self.image_frame = ImageFrame(self, right_frame_handle= self.right_frame)
+        self.image_frame.grid(row=1, column=0, rowspan = 1, sticky="nsew")
 
         self.widget_list = [self.menu, self.navigation_frame, self.right_frame, self.image_frame]
 
@@ -1316,9 +1322,18 @@ class App(ctk.CTk):
         self.protocol("WM_DELETE_WINDOW", self.onClosing)
         self.mainloop()
     
+    def setProgressBarActive(self):
+        self.progress_bar.configure(bg_color = const.PROGRESS_BAR_FG_COLOR, progress_color = const.PROGRESS_BAR_PROGRESS_COLOR)
+        self.progress_bar.start()
+
+    def setProgressBarInactive(self):
+        self.progress_bar.configure(bg_color = 'gray10', progress_color = 'gray10')
+        self.progress_bar.stop()
+
+    
     def organizeBackup(self):
-        util.deleteOldFolders(self.base_path)
-        util.createOrCleanFolder(self.backup_path)
+        utility.deleteOldFolders(self.base_path)
+        utility.createOrCleanFolder(self.backup_path)
 
     
     def onClosing(self):
@@ -1341,7 +1356,7 @@ class App(ctk.CTk):
         # else:
         #     self.destroy()
         self.destroy()
-        print("Window destroyed, clearup finished. Wait for this windw to close...")
+        print("Window destroyed, cleanup finished. Wait for this windw to close...")
 
     def toggleControl(self):
         for widget in self.widget_list:
@@ -1350,8 +1365,9 @@ class App(ctk.CTk):
     def setupGrid(self):
         self.grid_columnconfigure(0, weight=2)  
         self.grid_columnconfigure(1, weight=1)  
-        self.grid_rowconfigure(0, weight=1)     
-        self.grid_rowconfigure(1, weight = 0)
+        self.grid_rowconfigure(0, weight = 0)
+        self.grid_rowconfigure(1, weight=1)     
+        self.grid_rowconfigure(2, weight = 0)
     
     def getImage(self):
         copy = self.camera_feed_image.copy()

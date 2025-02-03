@@ -98,7 +98,7 @@ class ImageData():
     
 
 
-    def getRadius(self):
+    def getRadius(self, master = None):
         
         
 
@@ -108,7 +108,7 @@ class ImageData():
 
         r_max = self.getRMax(com_xy)
 
-        full_integral, error_full_integral = utility.integrateOverPolar(self.norm_image, com_xy[0], com_xy[1], r_max)
+        full_integral, error_full_integral = utility.integrateOverPolar(self.norm_image, com_xy[0], com_xy[1], r_max, master = master)
 
         radius_mm = 0
 
@@ -119,7 +119,7 @@ class ImageData():
         return radius_mm
 
 
-    def binarySearch(self, epsilon, com, r_max, full_integral):
+    def binarySearch(self, epsilon, com, r_max, full_integral, master = None):
         # print('Radius evaluation algorithm has been initiated...')
         start = time.time()
         r0 = 0
@@ -127,14 +127,14 @@ class ImageData():
 
 
         left_val = 0
-        integral_tmp, _ = utility.integrateOverPolar(self.norm_image, com[0],  com[1], r1) 
+        integral_tmp, _ = utility.integrateOverPolar(self.norm_image, com[0],  com[1], r1, master = master) 
         right_val = integral_tmp/full_integral - ENERGY_THRESHOLD
         intermediate_val = 0
         iter_counter = 0
         while ((r1-r0)/2 >= epsilon and iter_counter < 10):
             r_inter = (r1+r0)/2
 
-            integral_tmp, _ =  utility.integrateOverPolar(self.norm_image, com[0],  com[1], r_inter)
+            integral_tmp, _ =  utility.integrateOverPolar(self.norm_image, com[0],  com[1], r_inter, master = master)
             # print(integral_tmp)
             intermediate_val = integral_tmp/full_integral - ENERGY_THRESHOLD
             if (right_val*intermediate_val < 0):
@@ -153,7 +153,7 @@ class ImageData():
     # в теории должен быть значительно эффективнее, не пересчитывает интеграл с нуля, а считает только различие от последней точки
     # что в теории должно давать буст по времени порядка E(N), где E(N) - среднее число шагов бинарного поиска, но 
     # по какой-то причение дает время в два раза дольше (и больше, 13с против 29с). Не знаю причину
-    def binarySearchOptimised(self, epsilon, com, r_max, full_integral ):
+    def binarySearchOptimised(self, epsilon, com, r_max, full_integral, master = None):
         print('Radius evaluation algorithm has been initiated...')
         start = time.time()
         # Инициализация переменных
@@ -170,7 +170,7 @@ class ImageData():
             if mid not in known_integrals:
                 if mid < r_max:
                     # Вычисляем интеграл от mid до r_max
-                    integral_mid_to_max,_ = utility.integrateOverPolar(self.norm_image, com[0], com[1], r_min=mid, r_max=r_max)
+                    integral_mid_to_max,_ = utility.integrateOverPolar(self.norm_image, com[0], com[1], r_min=mid, r_max=r_max, master = master)
                     known_integrals[mid] = total_integral - integral_mid_to_max
                 else:
                     known_integrals[mid] = total_integral
@@ -207,7 +207,7 @@ class ImageData():
 
     
 
-    def calculateNumbers(self):
+    def calculateNumbers(self, master = None):
         if (self.optimisation_needed):
             self.p0_new, self.p1_new = utility.getIntersections(self.p0_initial, self.p1_initial, self.initial_image)
             self.line_was_built = True
@@ -295,7 +295,7 @@ class ImageData():
         self.coords_of_max_intensity[0] = x_coords_index[max_index]*PIXEL_TO_MM
         self.coords_of_max_intensity[1] = y_coords_index[max_index]*PIXEL_TO_MM
 
-        self.radius_mm = self.getRadius()
+        self.radius_mm = self.getRadius(master = master)
         self.radius_was_calculated = True
 
         
@@ -390,7 +390,7 @@ class ImageData():
 
         return tmp_image
 
-    def analyzeImage(self):
+    def analyzeImage(self, master = None):
         
         ZERO = (0,0)
         if (self.p0_initial == ZERO or self.p1_initial == ZERO):
@@ -399,14 +399,14 @@ class ImageData():
         print("Optimisation needed = ", self.optimisation_needed)
         
         if (self.optimisation_needed):
-            x0,y0,x1,y1 = utility.optimisation(self.image_name, self.norm_image)
+            x0,y0,x1,y1 = utility.optimisation(self.image_name, self.norm_image, master = master)
             self.p0_initial = (x0,y0)
             self.p1_initial = (x1,y1)
         else:
             self.p0_new = self.p0_initial
             self.p1_new = self.p1_initial
 
-        self.calculateNumbers()
+        self.calculateNumbers(master = master)
 
 
     

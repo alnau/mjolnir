@@ -484,8 +484,10 @@ def getIntegral(x1,y1,x2,y2,image, moment = 0):
 
         return integral
 
-def funcToOptimize(args,image, RMS = True):
+def funcToOptimize(args,image, RMS = True, master = None):
     x0,y0,x1,y1 = map(int, args)
+    if (master != None):
+        master.update_idletasks()
     if (RMS):
         norm = 1.0/getIntegral(x0,y0,x1,y1,image)
         dispersion = norm*getIntegral(x0,y0,x1,y1,image, moment=2) - (norm**2)*getIntegral(x0,y0,x1,y1,image, moment = 1)**2
@@ -494,7 +496,7 @@ def funcToOptimize(args,image, RMS = True):
     else:
         return -getIntegral(x0,y0,x1,y1,image)
 
-def optimisation(image_name, image):
+def optimisation(image_name, image, master =  None):
     
     print("optimisation on", image_name, " has been started")
     arr_image = np.array(image)
@@ -504,7 +506,7 @@ def optimisation(image_name, image):
     start = time.time()
     width,height = getSize(trial_image)
     bounds = [[1, width-1], [1,height-1], [1, width-1], [1,height-1]]
-    result = differential_evolution(lambda args: funcToOptimize(args, trial_image, RMS=False), bounds)
+    result = differential_evolution(lambda args: funcToOptimize(args, trial_image, RMS=False, master = master), bounds)
     x0_initial, y0_initial, x1_initial, y1_initial = map(int, result.x)
     end = time.time()
   
@@ -599,14 +601,16 @@ def interpolateFknHard(image_data, x,y):
     
 #     raise ValueError("Maximum iterations exceeded. No solution found.")
     
-def integrateOverPolar(image, x0, y0, r_max, r_min = 0, theta_min = 0, theta_max = 2*np.pi):
+def integrateOverPolar(image, x0, y0, r_max, r_min = 0, theta_min = 0, theta_max = 2*np.pi, master = None):
     arr_image = np.array(image)
     arr_image[arr_image < const.CUTOFF_THRESHOLD] = 0
     
     if len(arr_image.shape) != 2:
         raise ValueError("Image must be a 2D grayscale image")
 
-    def integrand(r, theta):
+    def integrand(r, theta, master = master):
+        if (master != None):
+            master.update_idletasks()
         x = x0 + r*np.cos(theta)
         y = y0 + r*np.sin(theta)
 

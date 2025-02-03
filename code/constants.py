@@ -5,6 +5,9 @@ FG_COLOR = ['#3a7ebf', '#1f538d']
 HOVER_COLOR = ['#325882', '#14375e']
 PROGRESS_COLOR = ['gray40', '#AAB0B5']
 
+PROGRESS_BAR_FG_COLOR  = ['#939BA2', '#4A4D50']
+PROGRESS_BAR_PROGRESS_COLOR = ['#3a7ebf', '#1f538d']
+
 ENERGY_THRESHOLD = 0.865
 
 DEFAULT_PADX = 5
@@ -20,3 +23,4 @@ KGW_REFRACTION_INDEX = 2.0
 DEFAULT_BASE_CM = 200
 CUTOFF_THRESHOLD = 5 # минимальная интенсивность (больше нуля) после нормализац
 PIXEL_TO_MM = 0.0052
+
