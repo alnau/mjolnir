@@ -264,7 +264,7 @@ class NavigationFrame(ctk.CTkFrame):
         self.is_active = True #bool
 
         self.button_frame = ctk.CTkFrame(self)
-        self.button_frame.pack(fill="x", pady=10, padx = const.DEFAULT_PADX, side = 'top')
+        self.button_frame.pack(fill="x", pady=const.DEFAULT_PADY, padx = const.DEFAULT_PADX, side = 'top')
         self.button_frame.grid_columnconfigure(0, weight=3)
         self.button_frame.grid_columnconfigure(1, weight=3)
         
@@ -657,7 +657,7 @@ class RightFrame(ctk.CTkFrame):
         self.canvas.get_tk_widget().pack(fill="x", padx = const.DEFAULT_PADX, pady = (5,0), side = "top")
 
         self.entry_frame = ctk.CTkFrame(self, )
-        self.entry_frame.pack(fill="x", pady=(10, 5), side = 'top')
+        self.entry_frame.pack(fill="x", pady=(10, 5), padx = const.DEFAULT_PADX, side = 'top')
         
         # Это будет самое безбожное, что ты делал с этим проектом
         self.curr_name_str_val = ctk.StringVar()
@@ -674,14 +674,14 @@ class RightFrame(ctk.CTkFrame):
         self.thin_frame.pack(fill="x", padx =10, pady=5,)
 
         self.tabview = Tab(master = self, main=master)
-        self.tabview.pack(side = 'top', fill = 'both') 
+        self.tabview.pack(side = 'top', fill = 'both', pady = const.DEFAULT_PADY, padx = const.DEFAULT_PADX) 
         
 
         self.status_frame = ctk.CTkFrame(self, height = master.navigation_frame.winfo_height())
-        self.status_frame.pack(fill="x", padx = 2, pady = const.DEFAULT_PADY, side = 'bottom', expand = True)
+        self.status_frame.pack(fill="x", padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY, side = 'bottom')
 
         self.status = ctk.CTkLabel(self.status_frame, text = '', )   
-        self.status.pack( fill = 'both',  side = 'top')
+        self.status.pack( fill = 'both', pady = const.DEFAULT_PADY, padx = const.DEFAULT_PADX)
 
     def updateName(self,var,index,mode):
         try:
@@ -874,6 +874,8 @@ class Tab(ctk.CTkTabview):
 
         self.main = main
 
+        self.angle_thread = None
+
         self.configure(command = self.tabHandler)
 
         self.pack(fill="x", expand = True)
@@ -928,7 +930,7 @@ class Tab(ctk.CTkTabview):
         
         
         self.analysis_frame = ctk.CTkScrollableFrame(self.analyze_tab)
-        self.analysis_frame.pack(fill = 'x',anchor = 'n')
+        self.analysis_frame.pack(fill = 'both',anchor = 'n', expand = True)
         
         self.draw_line_var = ctk.StringVar(value="off")
         self.draw_line_checkbox = ctk.CTkCheckBox(self.analysis_frame, onvalue= 'on', offvalue = 'off', variable= self.draw_line_var, text = 'Вывести линию главной оси')
@@ -1071,18 +1073,20 @@ class Tab(ctk.CTkTabview):
         return str(int(round(self.angle_sec,0))) + '"'
         
     def angleCalculationWorker(self):
-        while True:
-            if (self.needed_active_pos_monitoring):
-                self.p1 = util.getCOM(self.main.getImage())
-                self.angle_sec = self.calculateAngleSec()
+        while self.needed_active_pos_monitoring:
+            self.p1 = util.getCOM(self.main.getImage())
+            self.angle_sec = self.calculateAngleSec()
 
-                res = self.getParallelismReport()
+            res = self.getParallelismReport()
 
-                self.resultsLabel.configure(text = res)
-                self.main.image_frame.callForCrossesRefresh()
+            self.resultsLabel.configure(text = res)
+            self.main.image_frame.callForCrossesRefresh()
             self.master.update_idletasks()
             time.sleep(0.2)
+        print("thread killed (?)")
     def setFirstPosition(self):
+        
+        
         self.firstImage = self.main.getImage()
         self.p0 = util.getCOM(self.firstImage)
         self.needed_active_pos_monitoring = True
@@ -1093,7 +1097,7 @@ class Tab(ctk.CTkTabview):
         res = self.getParallelismReport()
         self.resultsLabel.configure(text = res)
 
-        threading.Thread(target=self.angleCalculationWorker, args=(), daemon=True).start()
+        self.angle_thread = threading.Thread(target=self.angleCalculationWorker, args=(), daemon=True).start()
 
 
 
@@ -1311,6 +1315,7 @@ class App(ctk.CTk):
 
     
     def onClosing(self):
+        print('Destroying window...')
         # if (self.files_are_unsaved == True):
         #     # TODO: выбрасывает ошибку на 3.7.8, так как не может отработать иморт Literal (literally, ha. kill me). Я слишком устал чтобы придумывать решение, так что удачи, будущий я
         #     # message = msg.CTkMessagebox(title = 'Внимание', message = "Результаты анализа не были сохранены \n сохранить перед закрытием?",
@@ -1329,6 +1334,7 @@ class App(ctk.CTk):
         # else:
         #     self.destroy()
         self.destroy()
+        print("Window destroyed, clearup finished. Wait for this windw to close...")
 
     def toggleControl(self):
         for widget in self.widget_list:
