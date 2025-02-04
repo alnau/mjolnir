@@ -1,10 +1,12 @@
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.ticker import AutoMinorLocator, MultipleLocator
 from PIL import Image, ImageTk,ImageDraw
 import numpy as np
 import threading
 import time
 from datetime import datetime
+
 
 import customtkinter as ctk
 import tkinter as tk
@@ -260,7 +262,7 @@ class NavigationFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
 
-        self.image_index = 0
+        self.image_index = -1
         self.is_active = True #bool
 
         self.button_frame = ctk.CTkFrame(self)
@@ -478,7 +480,7 @@ class ImageFrame(ctk.CTkFrame):
                     if (self.man_we_just_switched_to_new_image):
                         self.man_we_just_switched_to_new_image = False
                     elif(len(self.master.image_data_container) != 0):
-                            print(index)
+                            # print('index =', index)
                             self.master.image_data_container[index].image_has_been_analyzed = False
                             self.master.image_data_container[index].optimisation_needed = True
                     self.master.right_frame.clearPlot()
@@ -611,6 +613,9 @@ class ImageFrame(ctk.CTkFrame):
         name = ''
         if (idata != 'None'):
             name = idata.image_name
+        else:
+            print('image data is empty. Returning')
+            return
         if (idata.image_has_been_analyzed):
             self.loadImage(idata.modified_image, name)
         else:
@@ -650,7 +655,8 @@ class RightFrame(ctk.CTkFrame):
         self.is_active = True   #bool
         self.tmp_name = ''
 
-        self.fig, self.ax = plt.subplots(figsize=(self.plot_width, self.plot_height))  
+        self.fig, self.ax = plt.subplots(figsize=(self.plot_width, self.plot_height)) 
+        plt.tight_layout(pad=0) 
         self.ax.set_aspect('auto', adjustable='box')
 
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
@@ -774,9 +780,9 @@ class RightFrame(ctk.CTkFrame):
 
             self.image_data.p0_im_space = self.master.image_frame.start_coords
             self.image_data.p1_im_space = self.master.image_frame.end_coords
-            self.master.image_data_container.append(self.image_data)
  
-            self.master.navigation_frame.image_index += 1
+            
+            self.master.image_data_container.append(self.image_data)
             
 
             file_name = self.entry.get() + '.tif'
@@ -810,6 +816,7 @@ class RightFrame(ctk.CTkFrame):
         # отработка захвата или сброса текущего изображения
         self.master.menu.data_is_external = False
         if (self.photo_is_captured):
+            self.master.navigation_frame.image_index = max(0,self.master.navigation_frame.image_index-1)
             # переход к живой камере
             self.unlockCamera()
             self.logMessage('Фото сброшено')
@@ -818,6 +825,8 @@ class RightFrame(ctk.CTkFrame):
             self.master.image_frame.end_coords = (0,0)
             self.tabview.check_var.set('off')
         elif(len(self.tmp_name)!=0) :
+            self.master.navigation_frame.image_index += 1
+            print(self.master.navigation_frame.image_index)
             # Показать картинку, сохранить в буффер
             self.lockCamera()
             self.image_data = ip.ImageData(self.master.current_image, self.entry.get())
@@ -836,6 +845,19 @@ class RightFrame(ctk.CTkFrame):
         coords, brightness = utility.getBrightness(p0, p1,self.master.current_image)
         self.ax.clear()
         self.ax.plot(coords, brightness)
+        
+        # Каждый мм
+        self.ax.xaxis.set_major_locator(MultipleLocator(1))
+        # каждые 50 ед
+        self.ax.yaxis.set_major_locator(MultipleLocator(0.2))
+
+        # Каждые 0.2 мм (1/5 = 0.2)
+        self.ax.xaxis.set_minor_locator(AutoMinorLocator(5))
+        # Каждые 10 ед (0.2/2 = 0.1)
+        self.ax.yaxis.set_minor_locator(AutoMinorLocator(2))
+        self.ax.grid(which = 'both')
+        self.ax.grid(which = 'major', linestyle = '--')
+        self.ax.grid(which = 'minor', linestyle =':')
         self.canvas.draw()
 
     # def updateWidowOnSwitch(self):
@@ -863,6 +885,18 @@ class RightFrame(ctk.CTkFrame):
         self.ax.clear()
         if was_analyzed:
             self.ax.plot(idata.coord, idata.normalized_brightness_values)
+            # Каждый мм
+            self.ax.xaxis.set_major_locator(MultipleLocator(1))
+            # каждые 50 ед
+            self.ax.yaxis.set_major_locator(MultipleLocator(0.2))
+
+            # Каждые 0.2 мм (1/5 = 0.2)
+            self.ax.xaxis.set_minor_locator(AutoMinorLocator(5))
+            # Каждые 10 ед (0.2/2 = 0.1)
+            self.ax.yaxis.set_minor_locator(AutoMinorLocator(2))
+            self.ax.grid(which = 'both')
+            self.ax.grid(which = 'major', linestyle = '--')
+            self.ax.grid(which = 'minor', linestyle =':')
         self.canvas.draw()
 
     def updatePrintedDataAfterAnalysis(self, index):
@@ -1057,6 +1091,21 @@ class Tab(ctk.CTkTabview):
             if (self.angle_thread!= None):
                 self.angle_thread.join()
             self.main.is_pause = True
+            length = len(self.main.image_data_container) 
+            if (length!=0):
+
+                index = self.main.navigation_frame.image_index
+                # print('index =', index,'; len =', length )
+                self.main.image_frame.switchImage(index)
+                if (self.main.image_data_container[index].image_has_been_analyzed):
+                    self.master.updatePlotAfterAnalysis(index)
+                    self.master.updatePrintedDataAfterAnalysis(index)
+            else:
+                print("image_data_container is empty. What a fluke. \nI''ll do nothing, and you better hope for the best")
+
+                
+            # except:
+            #     print('error occured during attempt to load modified image in tabHandler')    
             self.main.navigation_frame.next_button.configure(state = 'normal')
             self.main.navigation_frame.prev_button.configure(state = 'normal')
             self.p1 = (0,0)
@@ -1177,7 +1226,7 @@ class Tab(ctk.CTkTabview):
         # надо сначала зафиксировать последнее изображение (nextImage), 
         # при этом к индексу картинки автоматически прибавляется 1, 
         # пусть даже следующее изображение не захватывается
-        self.main.navigation_frame.image_index = max(0, self.main.navigation_frame.image_index-1)
+        # self.main.navigation_frame.image_index = max(0, self.main.navigation_frame.image_index-1)
         
         # все изображения прошли базовую обработку и имеют полный набор данных (хотелось бы верить)
         # self.analyze_button.configure(state = 'disabled')
@@ -1206,12 +1255,13 @@ class Tab(ctk.CTkTabview):
         self.after(1000, self.master.logMessage("Все изображения обработаны"))
         self.master.updateWindowAfterAnalysis()
         self.main.files_are_unsaved = True
+
         self.analyze_all_button.configure(state = 'normal')
         self.analyze_current_button.configure(state = 'normal')
         self.draw_line_checkbox.configure(state = 'disabled')
         self.draw_circle_checkbox.configure(state = 'disabled')
+       
         end = time.time()
-
         time_tot = round(end-start, 1)
         time_avg = time_tot/len(data_container)
 
@@ -1364,7 +1414,7 @@ class App(ctk.CTk):
         # else:
         #     self.destroy()
         self.destroy()
-        print("Window destroyed, cleanup finished. Wait for this windw to close...")
+        print("Window destroyed, cleanup finished. Wait for this window to close...")
 
     def toggleControl(self):
         for widget in self.widget_list:

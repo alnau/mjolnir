@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import matplotlib.pyplot as plt
+from matplotlib.ticker import AutoMinorLocator, MultipleLocator
 # from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import time
 # from scipy.stats import norm
@@ -331,19 +332,33 @@ class ImageData():
         plt.tight_layout(pad=0)
         plt.figure(figsize=(12.1, 4.8))
 
+        # Репорт
         text_data_plt = plt.subplot(224)
         text_data_plt.axis('off')
 
         text_data_plt.text(0, 0.8, self.report, transform=text_data_plt.transAxes, fontsize=10, verticalalignment='top')        
 
+        # Изображение
         img_plt = plt.subplot(121)
         img_plt.axis('off')
         # modified_image = self.getModifiedImage()
         img_plt.imshow(self.modified_image)
 
-        
+        # График яркости
         line_plt = plt.subplot(222)
         line_plt.plot(self.coord, self.brightness_values)
+
+        # Каждый мм
+        line_plt.xaxis.set_major_locator(MultipleLocator(1))
+        # каждые 50 ед
+        line_plt.yaxis.set_major_locator(MultipleLocator(50))
+
+        # Каждые 0.2 мм (1/5 = 0.2)
+        line_plt.xaxis.set_minor_locator(AutoMinorLocator(5))
+        # Каждые 10 ед (50/5 = 10)
+        line_plt.yaxis.set_minor_locator(AutoMinorLocator(5))
+        line_plt.grid(which = 'major', linestyle = '--')
+        line_plt.grid(which = 'minor', linestyle =':')
         
         filename = self.plotname + "_plot.png"
         if (path == ''):
