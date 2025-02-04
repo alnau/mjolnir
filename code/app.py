@@ -70,12 +70,22 @@ class TitleMenu(CTkTitleMenu):
         geno_dropdown = CustomDropdownMenu(widget=self.exterminate_button)
         geno_dropdown.add_option(option = "NUKE EM, OPPIE!", command = self.restartInterface)
         geno_dropdown.add_option(option = "SHOOT YOUR OWN FOOT!", command = self.shotYourself)
+        geno_dropdown.add_option(option = "TELL ME", command = self.dropInfo)
 
         self.master.bind("<Control-Up>", self.onControl_UpPress)
         self.master.bind("<Control_L>", self.onControlPress)
         
         
         # self.bind("<ControlRelease>", self.onCtrlRelease)
+
+    def dropInfo(self):
+        print('\n\n--------------------------')
+        print('Amount =', len(self.master.image_data_container))
+        print('Curr index =', self.master.navigation_frame.image_index)
+        print("\nnames:")
+        for id in self.master.image_data_container:
+                print(id.plotname)
+        print('--------------------------\n\n')
 
     def savePhoto(self): 
         data = [("Изображения png", "*.png")]
@@ -262,7 +272,7 @@ class NavigationFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
 
-        self.image_index = -1
+        self.image_index = 0
         self.is_active = True #bool
 
         self.button_frame = ctk.CTkFrame(self)
@@ -692,18 +702,28 @@ class RightFrame(ctk.CTkFrame):
 
     def updateName(self,var,index,mode):
         try:
+            # TODO: Вылезает ошибка, но, вроде, обрабатывается исключением
+            if (len(self.master.image_data_container)==0):
+                name = self.curr_name_str_val.get()
+                self.entry.configure(placeholder_text = name)
+                self.tmp_name = name
+                return
+            
             _index = self.master.navigation_frame.image_index
             name = self.curr_name_str_val.get()
             self.master.image_data_container[_index].plotname = name
             self.master.image_data_container[_index].image_name = name
             self.entry.configure(placeholder_text = name)
             self.tmp_name = name
-            # print(name, self.master.image_data_container[_index].plotname)
+            # print('from entry: index =', name, self.master.image_data_container[_index].plotname)
         except:
+            # print('err in update Name')
+            _index = self.master.navigation_frame.image_index
+            print('index =', _index)
             name = self.curr_name_str_val.get()
             self.entry.configure(placeholder_text = name)
             self.tmp_name = name
-            # print(name,self.entry.get())
+            # print('from entry except:', name,self.entry.get())
 
     def toggleControl(self):
         if self.is_active:
@@ -754,6 +774,7 @@ class RightFrame(ctk.CTkFrame):
         self.master.image_frame.clearPhoto()
 
     def nextImage(self):
+        self.master.navigation_frame.image_index += 1
         if len(self.entry.get()) != 0:
 
             self.unlockCamera()
@@ -816,7 +837,7 @@ class RightFrame(ctk.CTkFrame):
         # отработка захвата или сброса текущего изображения
         self.master.menu.data_is_external = False
         if (self.photo_is_captured):
-            self.master.navigation_frame.image_index = max(0,self.master.navigation_frame.image_index-1)
+            # self.master.navigation_frame.image_index = max(0,self.master.navigation_frame.image_index-1)
             # переход к живой камере
             self.unlockCamera()
             self.logMessage('Фото сброшено')
@@ -825,7 +846,7 @@ class RightFrame(ctk.CTkFrame):
             self.master.image_frame.end_coords = (0,0)
             self.tabview.check_var.set('off')
         elif(len(self.tmp_name)!=0) :
-            self.master.navigation_frame.image_index += 1
+            # self.master.navigation_frame.image_index += 1
             print(self.master.navigation_frame.image_index)
             # Показать картинку, сохранить в буффер
             self.lockCamera()
@@ -1087,6 +1108,10 @@ class Tab(ctk.CTkTabview):
             self.main.navigation_frame.prev_button.configure(state = 'disabled')
             self.p1 = (0,0)
         elif (self.get() == 'Обработка'):
+            # TODO: все еще грязый трюк, но время 19:44, а я еще на работе. Эта возня с обработкой индексов - единственное, что тормозит новую версию
+            self.main.navigation_frame.image_index = max(self.main.navigation_frame.image_index - 1, 0)
+            for id in self.main.image_data_container:
+                print(id.plotname)
             self.needed_active_pos_monitoring = False
             if (self.angle_thread!= None):
                 self.angle_thread.join()
