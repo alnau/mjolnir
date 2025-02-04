@@ -1171,6 +1171,7 @@ class Tab(ctk.CTkTabview):
 
     # TODO: Добавить бегущий статус-бар при обработке (возможно, при любом вызове analyzeImage)
     def analyzeAllWorker(self, data_container, any_mismatches = False):
+        start = time.time()
         self.main.setProgressBarActive()
         # Костыль, который закрывает баг в nextImage: для начала обработки
         # надо сначала зафиксировать последнее изображение (nextImage), 
@@ -1195,6 +1196,7 @@ class Tab(ctk.CTkTabview):
                 text = "Обработка " + name + " закончена"
                 self.after(100, self.master.logMessage(text))
         
+        self.main.update_idletasks()
         if self.main.top_level_window != None:
             self.main.top_level_window.destroy()
             self.main.top_level_window.update()
@@ -1208,6 +1210,12 @@ class Tab(ctk.CTkTabview):
         self.analyze_current_button.configure(state = 'normal')
         self.draw_line_checkbox.configure(state = 'disabled')
         self.draw_circle_checkbox.configure(state = 'disabled')
+        end = time.time()
+
+        time_tot = round(end-start, 1)
+        time_avg = time_tot/len(data_container)
+
+        print("Finished in", time_tot, "s. Average time:", time_avg,"s. That wasn''t too shabby, I would say.")
 
 
 

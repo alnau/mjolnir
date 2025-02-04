@@ -171,7 +171,9 @@ def getReport(name, radius, h_width, left_side_mm, right_side_mm, coords_of_max_
     if (parallelism_sec > 0):
         str_Par = "Угол клиновидности: " + str(round(parallelism_sec,0)) + " сек\n"
         report+=str_Par
+    print('\nReport:')
     print(report)
+    print('----------------------------------')
     
     return report
 
@@ -620,7 +622,7 @@ def integrateOverPolar(image, x0, y0, r_max, r_min = 0, theta_min = 0, theta_max
     
     r_limits = (r_min, r_max)
     theta_limits = (theta_min, theta_max)   
-    options = {'limit': 200, 'epsabs': 0.1, 'epsrel': 0.1}
+    options = {'limit': 200, 'epsabs': 1, 'epsrel': 1}
 
     result, error = integrate.nquad(integrand, [r_limits, theta_limits], opts=options)
 

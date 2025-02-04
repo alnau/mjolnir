@@ -120,14 +120,14 @@ class ImageData():
 
 
     def binarySearch(self, epsilon, com, r_max, full_integral, master = None):
-        # print('Radius evaluation algorithm has been initiated...')
+        print('Radius evaluation algorithm has been initiated...')
         start = time.time()
         r0 = 0
         r1 = r_max
 
 
         left_val = 0
-        integral_tmp, _ = utility.integrateOverPolar(self.norm_image, com[0],  com[1], r1, master = master) 
+        integral_tmp = full_integral
         right_val = integral_tmp/full_integral - ENERGY_THRESHOLD
         intermediate_val = 0
         iter_counter = 0
@@ -146,7 +146,7 @@ class ImageData():
                 
             iter_counter+=1
         end = time.time()
-        # print('That wasn''t too hard, but, man, it still hurts. Time per execution =', '{:.1f}'.format(end-start),'s')
+        print('Radius evaluation algorithm had been finished. Time per execution =', '{:.1f}'.format(end-start),'s')
         return (r1+r0)/2
 
 
@@ -248,7 +248,6 @@ class ImageData():
             self.coord.append(len_of_line)
             len_of_line+=dl
 
-        still_searching_for_max = True
 
         self.maximum = 0
         try:
@@ -277,6 +276,7 @@ class ImageData():
         
         self.integral = utility.getIntegral(x0,y0,x1,y1,self.norm_image)
 
+        still_searching_for_max = True
         # Найдем полуширину и максимум интенсивности
         for i in range(lenght-1):
             try:
@@ -299,7 +299,7 @@ class ImageData():
         self.radius_was_calculated = True
 
         
-
+        
         self.modified_image = self.getModifiedImage()
 
         self.h_width = (self.right_side_mm - self.left_side_mm)/2
@@ -351,6 +351,7 @@ class ImageData():
             plot_path = utility.resourcePath(plot_path_rel)
         else:
             plot_path = os.path.join(path, filename)
+        
         plt.savefig(plot_path)
         plt.close()
 
