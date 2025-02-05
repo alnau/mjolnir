@@ -40,43 +40,79 @@ class TitleMenu(CTkTitleMenu):
 
         self.backup_folders = folders_names
         self.data_is_external = False   #bool
-        file_button = self.add_cascade("Файл")
-        reopen_camera_buttom = self.add_cascade("Изменить камеру", command = self.master.initUI)
+        self.file_button = self.add_cascade("Файл")
+        # reopen_camera_buttom = self.add_cascade("Изменить камеру", command = self.master.initUI)
         
-        file_dropdown = CustomDropdownMenu(widget=file_button)
+        self.file_dropdown = CustomDropdownMenu(widget=self.file_button)
 
-        open_sub_menu = file_dropdown.add_submenu("Открыть")
-        open_sub_menu.add_option(option="Файл", command = self.openFile)
-        open_sub_menu.add_option(option="Папку", command = self.openFolder)
+        self.open_sub_menu = self.file_dropdown.add_submenu("Открыть")
+        self.open_sub_menu.add_option(option="Файл", command = self.openFile)
+        self.open_sub_menu.add_option(option="Папку", command = self.openFolder)
 
-        recover_sub_menu  = file_dropdown.add_submenu("Восстановить сессию")
+        self.recover_sub_menu  = self.file_dropdown.add_submenu("Восстановить сессию")
 
         for folder in self.backup_folders:
-            recover_sub_menu.add_option(option = folder, command = lambda: self.recoverFromFolder(folder))
+            self.recover_sub_menu.add_option(option = folder, command = lambda: self.recoverFromFolder(folder))
 
 
-        file_dropdown.add_separator()
+        self.file_dropdown.add_separator()
         
-        save_sub_menu = file_dropdown.add_option("Сохранить изображение", command = self.savePhoto)
-        save_sub_menu = file_dropdown.add_submenu("Экспортировать")
+        save_sub_menu = self.file_dropdown.add_option("Сохранить изображение", command = self.savePhoto)
+        save_sub_menu = self.file_dropdown.add_submenu("Экспортировать")
         save_sub_menu.add_option(option = "Данные текущего изображения", command = self.saveFile)
         save_sub_menu.add_option(option = "Данные всех изображений", command = self.saveAll)
      
+        self.extras_button = self.add_cascade("Дополнительно")
+        
+        self.extras_dropdown = CustomDropdownMenu(widget = self.extras_button)
+        self.extras_dropdown.add_option("Изменить камеру", command = self.master.initUI)
+        self.extras_dropdown.add_option("Начать новую серию измерений", command = self.resetStateAndData)
 
 
         self.exterminate_button = self.add_cascade("DoW")
         self.exterminate_button.configure(state = 'disabled')
 
-        geno_dropdown = CustomDropdownMenu(widget=self.exterminate_button)
-        geno_dropdown.add_option(option = "NUKE EM, OPPIE!", command = self.restartInterface)
-        geno_dropdown.add_option(option = "SHOOT YOUR OWN FOOT!", command = self.shotYourself)
-        geno_dropdown.add_option(option = "TELL ME", command = self.dropInfo)
+        self.geno_dropdown = CustomDropdownMenu(widget=self.exterminate_button)
+        self.geno_dropdown.add_option(option = "NUKE EM, OPPIE!", command = self.restartInterface)
+        self.geno_dropdown.add_option(option = "SHOOT YOUR OWN FOOT!", command = self.shotYourself)
+        self.geno_dropdown.add_option(option = "TELL ME", command = self.dropInfo)
 
         self.master.bind("<Control-Up>", self.onControl_UpPress)
         self.master.bind("<Control_L>", self.onControlPress)
         
         
         # self.bind("<ControlRelease>", self.onCtrlRelease)
+
+    def resetStateAndData(self):
+        message =''
+        if self.master.files_are_unsaved:
+            message = 'У вас есть захваченные изображение или несохраненные результаты анализа\n'
+        message += 'Если продолжить, все собранные данные будут сброшены. \nПродолжить?'
+
+        answer = messagebox.askquestion(title='Внимание', message=message, )
+        if answer == 'no':               
+            return
+
+        self.master.image_data_container = []
+        
+        self.master.navigation_frame.image_index = 0
+
+        # bool reset
+        self.data_is_external = False
+        self.master.navigation_frame.is_active = True
+        self.master.image_frame.man_we_just_switched_to_new_image = False
+        self.master.right_frame.photo_is_captured = False  
+        self.master.right_frame.is_active = True   
+           
+        self.master.right_frame.needed_active_pos_monitoring = False
+        self.master.is_pause = False      
+
+
+
+
+
+
+
 
     def dropInfo(self):
         print('\n\n--------------------------')
@@ -660,13 +696,13 @@ class RightFrame(ctk.CTkFrame):
         super().__init__(master, **kwargs)
 
         self.photo_is_captured = False  #bool
+        self.is_active = True   #bool
 
         self.plot_width = 4.5
         self.plot_height = 2.7
 
         self.image_data = None
 
-        self.is_active = True   #bool
         self.tmp_name = ''
 
         self.fig, self.ax = plt.subplots(figsize=(self.plot_width, self.plot_height)) 
@@ -806,10 +842,11 @@ class RightFrame(ctk.CTkFrame):
 
             self.image_data.p0_im_space = self.master.image_frame.start_coords
             self.image_data.p1_im_space = self.master.image_frame.end_coords
- 
+
+
             
             self.master.image_data_container.append(self.image_data)
-            
+            self.master.files_are_unsaved = True
 
             file_name = self.entry.get() + '.tif'
             print(os.path.join(self.master.backup_path, file_name))
@@ -1431,16 +1468,17 @@ class App(ctk.CTk):
 
     
     def onClosing(self):
-        print('Destroying window...')
-        # if (self.files_are_unsaved == True):
-        #     # TODO: выбрасывает ошибку на 3.7.8, так как не может отработать иморт Literal (literally, ha. kill me). Я слишком устал чтобы придумывать решение, так что удачи, будущий я
-        #     # message = msg.CTkMessagebox(title = 'Внимание', message = "Результаты анализа не были сохранены \n сохранить перед закрытием?",
-        #     #                   icon = 'warning', option_1 = 'Да', option_2 = 'Нет', option_3 = "Отмена",)
-        #     # if (message.get() == 'Да'):
-        #     #     self.menu.saveAll()
-        #     # elif(message.get() == 'Нет'):
-        #     #     self.destroy()
-
+        if (self.files_are_unsaved == True):
+            answer = messagebox.askyesnocancel(title = 'Внимание', message = "Результаты анализа не были сохранены \nВы хотите сохранить данные перед выходом?",)
+            if (answer == True):
+                self.menu.saveAll()
+            elif(answer == False):
+                print('Destroying window...')
+                self.destroy()
+        else:
+            print('Destroying window...')
+            self.destroy()
+            print("Window destroyed, cleanup finished. Wait for this window to close...")
         #     pass
         # # if (self.image_frame cam!= 0):
         # #     try:
@@ -1449,8 +1487,7 @@ class App(ctk.CTk):
         # #         print('Possibly there is still no cam object')
         # else:
         #     self.destroy()
-        self.destroy()
-        print("Window destroyed, cleanup finished. Wait for this window to close...")
+        
 
     def toggleControl(self):
         for widget in self.widget_list:
