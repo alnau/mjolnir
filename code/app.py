@@ -107,13 +107,6 @@ class TitleMenu(CTkTitleMenu):
         self.master.right_frame.needed_active_pos_monitoring = False
         self.master.is_pause = False      
 
-
-
-
-
-
-
-
     def dropInfo(self):
         print('\n\n--------------------------')
         print('Amount =', len(self.master.image_data_container))
@@ -260,6 +253,8 @@ class TitleMenu(CTkTitleMenu):
     def saveAllWorker(self, path):
         new_names = []
         r_ref = 0
+
+        self.master.setProgressBarActive()
         
         if (self.master.continue_unstructured):
             width_data = []
@@ -302,6 +297,7 @@ class TitleMenu(CTkTitleMenu):
         path_printout = '/lastResults'
         if (path != ''):
             path_printout = path           
+        self.master.setProgressBarInactive()
         self.master.right_frame.logMessage("Данные измерений сохранены в папке " + str(path_printout))
         self.master.files_are_unsaved = False
 
