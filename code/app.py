@@ -139,7 +139,10 @@ class TitleMenu(CTkTitleMenu):
             pure_name = utility.removeSuffix(pure_name, '.tif')
             self.master.image_data_container.append(ip.ImageData(image, pure_name))
 
-    
+        length = len(self.master.image_data_container)
+        if (length == 0):
+            self.master.right_frame.logMessage('Ошибка при импорте')
+            logging.error('Err occured during recovery from folder. Image_data_container is empty')
         self.master.image_frame.loadImage(self.master.image_data_container[0].norm_image, names[0])
         text = "Восстановлено " + str(len(self.master.image_data_container)) + " изображений. Вы можете продолжить работу"
         self.master.right_frame.logMessage(text)
@@ -159,7 +162,7 @@ class TitleMenu(CTkTitleMenu):
                 plotname, _ = os.path.splitext(tail)
                 image = Image.open(file_path)
                 pure_name,_ = os.path.splitext(plotname)
-                self.image_data_container.append(ip.ImageData(image, pure_name))
+                self.master.image_data_container.append(ip.ImageData(image, pure_name))
                 self.data_is_external = True
             except Exception as e:
             # Логируем исключение
@@ -477,7 +480,6 @@ class ImageFrame(ctk.CTkFrame):
         if (self.master.right_frame.tabview.get() != "Захват"):
             
             self.master.right_frame.logMessage("Это должно быть возможно, но временно функционал ограничен")
-
         else:
             if (self.master.right_frame.photo_is_captured or self.master.right_frame.tabview.get() == 'Обработка' or  self.master.menu.data_is_external == True):
                 index = self.master.navigation_frame.image_index
@@ -662,6 +664,8 @@ class RightFrame(ctk.CTkFrame):
         self.plot_width = 4.5
         self.plot_height = 2.7
 
+        self.image_data = None
+
         self.is_active = True   #bool
         self.tmp_name = ''
 
@@ -780,6 +784,7 @@ class RightFrame(ctk.CTkFrame):
             self.unlockCamera()
 
             if (self.tabview.check_var.get() == 'on'):
+                
                 self.image_data.optimisation_needed = False
                 self.image_data.line_was_built = True
                 self.image_data.p0_im_space = self.master.image_frame.start_coords
@@ -866,16 +871,22 @@ class RightFrame(ctk.CTkFrame):
         coords, brightness = utility.getBrightness(p0, p1,self.master.current_image)
         self.ax.clear()
         self.ax.plot(coords, brightness)
-        
         # Каждый мм
         self.ax.xaxis.set_major_locator(MultipleLocator(1))
-        # каждые 50 ед
-        self.ax.yaxis.set_major_locator(MultipleLocator(0.2))
-
         # Каждые 0.2 мм (1/5 = 0.2)
         self.ax.xaxis.set_minor_locator(AutoMinorLocator(5))
-        # Каждые 10 ед (0.2/2 = 0.1)
-        self.ax.yaxis.set_minor_locator(AutoMinorLocator(2))
+
+        if (max(brightness) < 10):
+            # каждые 50 ед
+            self.ax.yaxis.set_major_locator(MultipleLocator(0.2))
+            # Каждые 10 ед (0.2/2 = 0.1)
+            self.ax.yaxis.set_minor_locator(AutoMinorLocator(2))
+        else:
+            # каждые 50 ед
+            self.ax.yaxis.set_major_locator(MultipleLocator(50))
+            # Каждые 10 ед (50/5 = 10)
+            self.ax.yaxis.set_minor_locator(AutoMinorLocator(5))
+        
         self.ax.grid(which = 'both')
         self.ax.grid(which = 'major', linestyle = '--')
         self.ax.grid(which = 'minor', linestyle =':')
@@ -1354,7 +1365,7 @@ class App(ctk.CTk):
         self.geometry(f"{width}x{height}")
 
         try:
-            self.image_path= utility.resourcePath('mockup1.tif')        
+            self.image_path= utility.resourcePath('mockup.tif')        
             self.camera_feed_image = Image.open(self.image_path).convert('L')
         except:
             # arr = np.arange(0, screen_width*screen_height, 1, np.uint8)

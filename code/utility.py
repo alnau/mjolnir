@@ -182,62 +182,111 @@ def getCircleBound(point, r):
     return (point[0]-r,point[1]-r, point[0]+r, point[1]+r)
 
 
+# def bresenhamLine(p1, p2, width, height):
+#     x1, y1 = p1
+#     x2, y2 = p2
+
+#     # На всякий пожарный
+#     if not (0 <= x1 < width and 0 <= y1 < height and 0 <= x2 < width and 0 <= y2 < height):
+#         raise ValueError("Coordinates are out of bounds.")
+
+#     xcoordinates = []
+#     ycoordinates = []
+
+#     # вертикаль
+#     if x1 == x2:
+#         y_range = np.arange(min(y1, y2), max(y1, y2) + 1)
+#         xcoordinates = [x1] * len(y_range)
+#         ycoordinates = list(y_range)
+#         return xcoordinates, ycoordinates
+
+#     # горизонталь
+#     elif y1 == y2:
+#         x_range = np.arange(min(x1, x2), max(x1, x2) + 1)
+#         ycoordinates = [y1] * len(x_range)
+#         xcoordinates = list(x_range)
+#         return xcoordinates, ycoordinates
+
+#     # Общий случай
+#     dx = abs(x2 - x1)
+#     dy = abs(y2 - y1)
+#     sx = 1 if x1 < x2 else -1
+#     sy = 1 if y1 < y2 else -1
+
+#     if dy > dx:
+#         dx, dy = dy, dx
+#         x1, y1 = y1, x1
+#         x2, y2 = y2, x2
+#         sx, sy = sy, sx
+
+#     err = dx / 2.0
+#     while x1 != x2:
+#         if 0 <= x1 < width and 0 <= y1 < height:
+#             xcoordinates.append(x1)
+#             ycoordinates.append(y1)
+
+#         err -= dy
+#         if err < 0:
+#             y1 += sy
+#             err += dx
+#         x1 += sx
+
+#     # конечные точки
+#     if 0 <= x2 < width and 0 <= y2 < height:
+#         xcoordinates.append(x2)
+#         ycoordinates.append(y2)
+
+#     return xcoordinates, ycoordinates
+
+
 def bresenhamLine(p1, p2, width, height):
     x1, y1 = p1
     x2, y2 = p2
 
-    # На всякий пожарный
+    # Проверка границ
     if not (0 <= x1 < width and 0 <= y1 < height and 0 <= x2 < width and 0 <= y2 < height):
         raise ValueError("Coordinates are out of bounds.")
 
     xcoordinates = []
     ycoordinates = []
 
-    # вертикаль
-    if x1 == x2:
-        y_range = np.arange(min(y1, y2), max(y1, y2) + 1)
-        xcoordinates = [x1] * len(y_range)
-        ycoordinates = list(y_range)
-        return xcoordinates, ycoordinates
-
-    # горизонталь
-    elif y1 == y2:
-        x_range = np.arange(min(x1, x2), max(x1, x2) + 1)
-        ycoordinates = [y1] * len(x_range)
-        xcoordinates = list(x_range)
-        return xcoordinates, ycoordinates
-
-    # Общий случай
     dx = abs(x2 - x1)
     dy = abs(y2 - y1)
     sx = 1 if x1 < x2 else -1
     sy = 1 if y1 < y2 else -1
 
     if dy > dx:
+        # Если линия ближе к вертикальной, меняем местами x и y
         dx, dy = dy, dx
-        x1, y1 = y1, x1
-        x2, y2 = y2, x2
-        sx, sy = sy, sx
+        steep = True
+    else:
+        steep = False
 
     err = dx / 2.0
-    while x1 != x2:
+    while x1 != x2 or y1 != y2:
         if 0 <= x1 < width and 0 <= y1 < height:
             xcoordinates.append(x1)
             ycoordinates.append(y1)
 
         err -= dy
         if err < 0:
-            y1 += sy
+            if steep:
+                x1 += sx
+            else:
+                y1 += sy
             err += dx
-        x1 += sx
 
-    # конечные точки
+        if steep:
+            y1 += sy
+        else:
+            x1 += sx
+
+    # Добавляем конечную точку
     if 0 <= x2 < width and 0 <= y2 < height:
         xcoordinates.append(x2)
         ycoordinates.append(y2)
 
     return xcoordinates, ycoordinates
-
 
 def getSize(image):
     width, height = image.size
