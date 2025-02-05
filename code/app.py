@@ -40,10 +40,14 @@ class TitleMenu(CTkTitleMenu):
 
         self.backup_folders = folders_names
         self.data_is_external = False   #bool
+        
         self.file_button = self.add_cascade("Файл")
         # reopen_camera_buttom = self.add_cascade("Изменить камеру", command = self.master.initUI)
         
         self.file_dropdown = CustomDropdownMenu(widget=self.file_button)
+        self.extras_button = self.add_cascade("Дополнительно")
+        self.exterminate_button = self.add_cascade("DoW")
+        self.exterminate_button.configure(state = 'disabled')
 
         self.open_sub_menu = self.file_dropdown.add_submenu("Открыть")
         self.open_sub_menu.add_option(option="Файл", command = self.openFile)
@@ -62,15 +66,12 @@ class TitleMenu(CTkTitleMenu):
         save_sub_menu.add_option(option = "Данные текущего изображения", command = self.saveFile)
         save_sub_menu.add_option(option = "Данные всех изображений", command = self.saveAll)
      
-        self.extras_button = self.add_cascade("Дополнительно")
         
         self.extras_dropdown = CustomDropdownMenu(widget = self.extras_button)
         self.extras_dropdown.add_option("Изменить камеру", command = self.master.initUI)
         self.extras_dropdown.add_option("Начать новую серию измерений", command = self.resetStateAndData)
 
 
-        self.exterminate_button = self.add_cascade("DoW")
-        self.exterminate_button.configure(state = 'disabled')
 
         self.geno_dropdown = CustomDropdownMenu(widget=self.exterminate_button)
         self.geno_dropdown.add_option(option = "NUKE EM, OPPIE!", command = self.restartInterface)
@@ -157,6 +158,7 @@ class TitleMenu(CTkTitleMenu):
         dir_path = utility.resourcePath(self.master.base_path + folder_name)
         print(dir_path)
         names = []
+        pure_names = []
         self.master.image_data_container = []
 
         for image_name in os.listdir(dir_path):
@@ -166,13 +168,14 @@ class TitleMenu(CTkTitleMenu):
             image = Image.open(os.path.join(dir_path, name)).convert('L')
             pure_name,_ = os.path.splitext(name)
             pure_name = utility.removeSuffix(pure_name, '.tif')
+            pure_names.append(pure_name)
             self.master.image_data_container.append(ip.ImageData(image, pure_name))
 
         length = len(self.master.image_data_container)
         if (length == 0):
             self.master.right_frame.logMessage('Ошибка при импорте')
             logging.error('Err occured during recovery from folder. Image_data_container is empty')
-        self.master.image_frame.loadImage(self.master.image_data_container[0].norm_image, names[0])
+        self.master.image_frame.loadImage(self.master.image_data_container[0].norm_image, pure_names[0])
         text = "Восстановлено " + str(len(self.master.image_data_container)) + " изображений. Вы можете продолжить работу"
         self.master.right_frame.logMessage(text)
         self.master.right_frame.tabview.set('Обработка')
@@ -813,7 +816,6 @@ class RightFrame(ctk.CTkFrame):
         self.master.navigation_frame.image_index += 1
         if len(self.entry.get()) != 0:
 
-            self.unlockCamera()
 
             if (self.tabview.check_var.get() == 'on'):
                 
@@ -844,14 +846,31 @@ class RightFrame(ctk.CTkFrame):
             self.master.image_data_container.append(self.image_data)
             self.master.files_are_unsaved = True
 
-            file_name = self.entry.get() + '.tif'
-            print(os.path.join(self.master.backup_path, file_name))
+            need_to_check_for_duplicate = True
+            number = ''
+            pure_name = ''
+            file_path = ''
+            counter = 0
+            # Логика проверки на существование дубликата. Добавляет в конце
+            # названия цифры 1, 2, 3... пока не найдет незанятого имени
+            while(need_to_check_for_duplicate):
+
+                pure_name = self.entry.get()
+                file_name = self.entry.get() + number + '.tif'
+                file_path = os.path.join(self.master.backup_path, file_name) 
+                print(file_path)
+                if (os.path.exists(file_path)):
+                    counter+=1
+                    number  = '(' + str(counter) + ')'
+                else:
+                    need_to_check_for_duplicate  = False
             # self.image_data.initial_image.show()
-            self.image_data.initial_image.save(os.path.join(self.master.backup_path, file_name))
+            self.image_data.initial_image.save(file_path)
 
             self.logMessage('Данные записаны')
             self.entry.delete(0, 'end')
 
+            self.unlockCamera()
 
             self.master.image_frame.reset()
 
@@ -1393,8 +1412,8 @@ class App(ctk.CTk):
 
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
-        height = int(0.8*screen_height)
-        width = int(0.8*screen_width)
+        height = int(0.9*screen_height)
+        width = int(0.9*screen_width)
         self.geometry(f"{width}x{height}")
 
         try:
