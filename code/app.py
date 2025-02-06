@@ -178,7 +178,9 @@ class TitleMenu(CTkTitleMenu):
         if (length == 0):
             self.master.right_frame.logMessage('Ошибка при импорте')
             logging.error('Err occured during recovery from folder. Image_data_container is empty')
+        
         self.master.image_frame.loadImage(self.master.image_data_container[0].norm_image, pure_names[0])
+        
         text = "Восстановлено " + str(len(self.master.image_data_container)) + " изображений. Вы можете продолжить работу"
         self.master.right_frame.logMessage(text)
         self.master.right_frame.tabview.set('Обработка')
@@ -475,7 +477,7 @@ class ImageFrame(ctk.CTkFrame):
         self.master.after(2000, camera_thread.start)
     
     def cameraFeedWorker(self):
-
+        self.master.right_frame.tabview.sliderEvent(const.MAX_EXPOSURE_MS/2)
         while True:
             # запросим последнее изображение с камеры и загрузим его в app.camera_feed_image
             self.cam.cameraFeed(master_app=self) 
@@ -527,6 +529,7 @@ class ImageFrame(ctk.CTkFrame):
         else:
             if (self.master.right_frame.photo_is_captured or self.master.right_frame.tabview.get() == 'Обработка' or  self.master.menu.data_is_external == True):
                 index = self.master.navigation_frame.image_index
+                length = len(self.master.image_data_container)
                 if (event.type == '4'):
                     # тут какая-то полная грязь с логикой. Я уже слишком пьян чтобы разобраться в этом дерьме
                     # фактически ифы ниже только для того, чтобы нормально отрабатывала логика сброса галки о том, 
@@ -535,10 +538,11 @@ class ImageFrame(ctk.CTkFrame):
                     # При этом, все работает
                     if (self.man_we_just_switched_to_new_image):
                         self.man_we_just_switched_to_new_image = False
-                    elif(len(self.master.image_data_container) != 0):
-                            # print('index =', index)
-                            self.master.image_data_container[index].image_has_been_analyzed = False
-                            self.master.image_data_container[index].optimisation_needed = True
+                    elif(length != 0 and index < length):
+                        # TODO: Есть сценарии, при которых индекс может вести за пределы массива. Не знаю как решать эту проблему
+                        # print('index =', index)
+                        self.master.image_data_container[index].image_has_been_analyzed = False
+                        self.master.image_data_container[index].optimisation_needed = True
                     self.master.right_frame.clearPlot()
                     tabview_handle = self.master.right_frame.tabview 
                     tabview_handle.check_var.set('on')
@@ -656,7 +660,9 @@ class ImageFrame(ctk.CTkFrame):
         self.image_canvas.create_image(0,0,image=self.photo,anchor = 'nw')
         self.image_canvas.image = self.photo
         
-        index = self.master.navigation_frame.image_index
+        index = min(self.master.navigation_frame.image_index, len(self.master.image_data_container)-1)
+        if (index < 0):
+            index = 0
         self.master.right_frame.entry.configure(placeholder_text = name)
         self.master.right_frame.curr_name_str_val.set(name)
         text = str(index + 1) 
@@ -767,7 +773,7 @@ class RightFrame(ctk.CTkFrame):
         except:
             # print('err in update Name')
             _index = self.master.navigation_frame.image_index
-            print('index =', _index)
+            # print('index =', _index)
             name = self.curr_name_str_val.get()
             self.entry.configure(placeholder_text = name)
             self.tmp_name = name
@@ -876,7 +882,8 @@ class RightFrame(ctk.CTkFrame):
             # self.image_data.initial_image.show()
             self.image_data.initial_image.save(file_path)
 
-            self.logMessage('Данные записаны')
+            msg = 'Данные ' + pure_name + ' записаны в буфер'
+            self.logMessage(msg)
             self.entry.delete(0, 'end')
 
             self.unlockCamera()
@@ -963,7 +970,7 @@ class RightFrame(ctk.CTkFrame):
     def updateWindowAfterAnalysis(self):
         # try:
         self.after(100, self.tabview.configure(state = 'normal'))
-        index = self.master.navigation_frame.image_index
+        index = min(self.master.navigation_frame.image_index, len(self.master.image_data_container) - 1)
         self.updatePlotAfterAnalysis(index)
         self.updatePrintedDataAfterAnalysis(index)
         self.master.image_frame.switchImage(index)
@@ -1060,13 +1067,13 @@ class Tab(ctk.CTkTabview):
         self.analysis_frame = ctk.CTkScrollableFrame(self.analyze_tab)
         self.analysis_frame.pack(fill = 'both',anchor = 'n', expand = True)
         
-        self.draw_line_var = ctk.StringVar(value="off")
-        self.draw_line_checkbox = ctk.CTkCheckBox(self.analysis_frame, onvalue= 'on', offvalue = 'off', variable= self.draw_line_var, text = 'Вывести линию главной оси')
+        self.draw_line_var = ctk.IntVar(value=0)
+        self.draw_line_checkbox = ctk.CTkCheckBox(self.analysis_frame, onvalue= 1, offvalue = 0, variable= self.draw_line_var, text = 'Вывести линию главной оси')
         self.draw_line_checkbox.pack(anchor = 'nw', pady = const.DEFAULT_PADY)
         self.draw_line_var.trace_add('write', self.changeNeedToDrawLine)
 
-        self.draw_circle_var = ctk.StringVar(value="on")
-        self.draw_circle_checkbox = ctk.CTkCheckBox(self.analysis_frame, onvalue= 'on', offvalue = 'off', variable= self.draw_circle_var, text = 'Вывести окружность 86.5% энергии')
+        self.draw_circle_var = ctk.IntVar(value=1)
+        self.draw_circle_checkbox = ctk.CTkCheckBox(self.analysis_frame, onvalue= 1, offvalue = 0, variable= self.draw_circle_var, text = 'Вывести окружность 86.5% энергии')
         self.draw_circle_checkbox.pack(anchor = 'nw', pady = const.DEFAULT_PADY)
         self.draw_circle_var.trace_add('write', self.changeNeedToDrawCircle)
         
@@ -1107,8 +1114,7 @@ class Tab(ctk.CTkTabview):
 
         self.first_button = ctk.CTkButton(self.parallelism_tab, text = 'Записать первую точку', command=self.setFirstPosition)
         self.first_button.pack(fill = 'x', side = 'top')
-        
-
+    
         res = self.getParallelismReport()
         self.resultsLabel = ctk.CTkLabel(self.parallelism_tab, text =res , anchor= 'n')
         self.resultsLabel.pack(fill = 'x', expand = True, side = 'top', pady = 2)
@@ -1124,12 +1130,14 @@ class Tab(ctk.CTkTabview):
             # с каждым индивидуальным изображением. Плевать, пока заморожу чекбоксы после обработки  
             pass
         for i in range(len(self.main.image_data_container)):
-            self.main.image_data_container[i].flipDrawLineFlag()
+            self.main.image_data_container[i].need_to_draw_line = self.draw_line_var.get() 
+        # print('Need to draw line:', self.main.image_data_container[0].need_to_draw_line)
 
     def changeNeedToDrawCircle(self,var,index,mode): 
         # self.draw_line_var
         for i in range(len(self.main.image_data_container)):
-            self.main.image_data_container[i].flipDrawCircleFlag()
+            self.main.image_data_container[i].need_to_draw_circle = self.draw_circle_var.get()
+        # print('Need to draw circle:', self.main.image_data_container[0].need_to_draw_circle)
     
 
     def updateBase(self,var,index,mode):
@@ -1179,12 +1187,15 @@ class Tab(ctk.CTkTabview):
             self.main.navigation_frame.next_button.configure(state = 'disabled')
             self.main.navigation_frame.prev_button.configure(state = 'disabled')
             self.p1 = (0,0)
+            # Обеспечим то, что счетчик указывает на последний эл-т в image_data_container 
+            self.main.navigation_frame.image_index = max(0, len(self.main.image_data_container) - 1)    #
         elif (self.get() == 'Обработка'):
             # TODO: все еще грязый трюк, но время 19:44, а я еще на работе. Эта возня с обработкой индексов - единственное, что тормозит новую версию
-            if (self.master.menu.data_was_reset or self.master.menu.data_is_external):
+            
+            if (self.main.menu.data_was_reset or self.main.menu.data_is_external):
                 # Иначе индекс становится равным -1
-                self.master.menu.data_was_reset = False
-                self.master.menu.data_is_external = False # TODO не знаю, нужно ли
+                self.main.menu.data_was_reset = False
+                self.main.menu.data_is_external = False # TODO не знаю, нужно ли
             else:
                 self.main.navigation_frame.image_index = max(self.main.navigation_frame.image_index - 1, 0)
             
@@ -1393,7 +1404,7 @@ class Tab(ctk.CTkTabview):
         self.checkForOverexposure()
 
     def checkForOverexposure(self):
-        image_array = np.array(self.main.current_image)
+        image_array = np.array(self.main.getImage())
         brightest_pixel_value = np.max(image_array)
 
         self.max_exposure_label2.configure(text = brightest_pixel_value)
@@ -1427,8 +1438,8 @@ class App(ctk.CTk):
 
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
-        height = int(0.9*screen_height)
-        width = int(0.9*screen_width)
+        height = int(0.8*screen_height)
+        width = int(0.8*screen_width)
         self.geometry(f"{width}x{height}")
 
         try:
@@ -1479,6 +1490,7 @@ class App(ctk.CTk):
         self.widget_list = [self.menu, self.navigation_frame, self.right_frame, self.image_frame]
 
         self.toggleControl()
+        
         
         self.protocol("WM_DELETE_WINDOW", self.onClosing)
         self.mainloop()

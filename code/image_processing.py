@@ -329,6 +329,8 @@ class ImageData():
 
     def plotBepis(self, path = ''):
         
+        # TODO: возможно, следует добавить проверку на то, что изображение обработано, но для этого нужно сначала убедиться что везде в app это проставляется. Также можно возвращать T/F в app в случае если все ок или не проанализир. изобр
+        
         plt.tight_layout(pad=0)
         plt.figure(figsize=(12.1, 4.8))
 
@@ -397,9 +399,11 @@ class ImageData():
         # Доминируют над тем, что стоит в переменных объекта. Это нужно чтобы пользователь мог включать (и перерисовывать) и отключать рисовку 
         # в реальном времени
         if ((draw_line == None and self.need_to_draw_line) or draw_line):
+            # print('Need to draw line =', self.need_to_draw_line,'Printing')
             draw.line([self.p0_new, self.p1_new], fill = line_color, width = line_width)
    
         if ((draw_circle == None and self.need_to_draw_circle) or draw_circle):
+            # print('Need to draw circ =', self.need_to_draw_line,'Printing')
             draw.ellipse(utility.getCircleBound(start_coords, circle_radius), outline = line_color, width = line_width)
       
             
