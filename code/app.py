@@ -108,6 +108,7 @@ class TitleMenu(CTkTitleMenu):
         self.master.right_frame.is_active = True   
            
         self.master.right_frame.tabview.needed_active_pos_monitoring = False
+
         self.master.is_pause = False      
 
     def dropInfo(self):
@@ -125,7 +126,7 @@ class TitleMenu(CTkTitleMenu):
         print('image_frame.man_we_just_switched_to_new_image:',self.master.image_frame.man_we_just_switched_to_new_image) 
         print('right_frame.photo_is_captured:',self.master.right_frame.photo_is_captured)
         print('right_frame.is_active:',self.master.right_frame.is_active)
-           
+        
         print('right_frame.tabview.needed_active_pos_monitoring:',self.master.right_frame.tabview.needed_active_pos_monitoring)
         print('app.is_pause:',self.master.is_pause)
         print('--------------------------\n\n')
@@ -774,19 +775,17 @@ class RightFrame(ctk.CTkFrame):
                 self.tmp_name = name
                 return
             
-            # TODO: Проблема вот здесь! При переходе от обработки к захвату изменение названия адресуется по _index, который указывает на предыдущий (уже захваченый) файл. 
-            # Пэтому все заигрывания с полем ввода приведут к потере имени или перезаписи. 
-            # Вероятно необходимо ввести новый флаг, который выставляется при переходе от обработки к захвату (плохое решение)
+            # TODO на текущий момент исправления в имени файла между захватом изображения и переходом к следующему кадру невозможны 
             _index = self.master.navigation_frame.image_index
             name = self.curr_name_str_val.get()
             if self.tabview.get() == 'Захват':
-                if self.photo_is_captured:
+                # if self.photo_is_captured:
                     # При этом оставим возможность редактуры после захвата
-                    self.image_data.plotname = name
-                    self.image_data.image_name = name 
+                # self.image_data.plotname = name
+                # self.image_data.image_name = name 
                 # Возможно, исправит ошибку. В режиме захвата мы все равно не можем 
                 # переключать кадры, так что вовлекать индексы и image_data_container нет никакого смысла.
-                
+                pass
             else:
                 # На самом деле, проявляется только в режиме обработки изображений. Но пока это 
                 # взаимозаменяемые вещи
@@ -795,8 +794,9 @@ class RightFrame(ctk.CTkFrame):
             self.entry.configure(placeholder_text = name)
             self.tmp_name = name
             # print('from entry: index =', name, self.master.image_data_container[_index].plotname)
-        except:
+        except Exception as e:
             # print('err in update Name')
+            print('exception in updateName;', e)
             _index = self.master.navigation_frame.image_index
             # print('index =', _index)
             name = self.curr_name_str_val.get()
@@ -1047,6 +1047,7 @@ class Tab(ctk.CTkTabview):
 
         self.needed_active_pos_monitoring = False   #bool
 
+
         self.firstImage = 0
         self.secondImage = 0
 
@@ -1205,6 +1206,7 @@ class Tab(ctk.CTkTabview):
 
     def tabHandler(self):
         if (self.get() == 'Захват'):
+            # self.lockNameFromChanges()
             self.main.is_pause = False
             self.needed_active_pos_monitoring = False
             if (self.angle_thread!= None):
@@ -1214,8 +1216,9 @@ class Tab(ctk.CTkTabview):
             self.master.capture_button.configure(state = 'normal')
             self.p1 = (0,0)
             # Обеспечим то, что счетчик указывает на последний эл-т в image_data_container 
-            self.main.navigation_frame.image_index = max(0, len(self.main.image_data_container) - 1)    #
+            self.main.navigation_frame.image_index = max(0, len(self.main.image_data_container) - 1)
         elif (self.get() == 'Обработка'):
+            # self.lockNameFromChanges()
             # TODO: все еще грязый трюк, но время 19:44, а я еще на работе. Эта возня с обработкой индексов - единственное, что тормозит новую версию
             self.master.capture_button.configure(state = 'disabled')
             if (self.main.menu.data_was_reset or self.main.menu.data_is_external):
