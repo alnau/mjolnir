@@ -107,7 +107,7 @@ class TitleMenu(CTkTitleMenu):
         self.master.right_frame.photo_is_captured = False  
         self.master.right_frame.is_active = True   
            
-        self.master.right_frame.needed_active_pos_monitoring = False
+        self.master.right_frame.tabview.needed_active_pos_monitoring = False
         self.master.is_pause = False      
 
     def dropInfo(self):
@@ -126,7 +126,7 @@ class TitleMenu(CTkTitleMenu):
         print('right_frame.photo_is_captured:',self.master.right_frame.photo_is_captured)
         print('right_frame.is_active:',self.master.right_frame.is_active)
            
-        print('right_frame.needed_active_pos_monitoring:',self.master.right_frame.needed_active_pos_monitoring)
+        print('right_frame.tabview.needed_active_pos_monitoring:',self.master.right_frame.tabview.needed_active_pos_monitoring)
         print('app.is_pause:',self.master.is_pause)
         print('--------------------------\n\n')
 
