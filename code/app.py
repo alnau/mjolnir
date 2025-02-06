@@ -774,10 +774,24 @@ class RightFrame(ctk.CTkFrame):
                 self.tmp_name = name
                 return
             
+            # TODO: Проблема вот здесь! При переходе от обработки к захвату изменение названия адресуется по _index, который указывает на предыдущий (уже захваченый) файл. 
+            # Пэтому все заигрывания с полем ввода приведут к потере имени или перезаписи. 
+            # Вероятно необходимо ввести новый флаг, который выставляется при переходе от обработки к захвату (плохое решение)
             _index = self.master.navigation_frame.image_index
             name = self.curr_name_str_val.get()
-            self.master.image_data_container[_index].plotname = name
-            self.master.image_data_container[_index].image_name = name
+            if self.tabview.get() == 'Захват':
+                if self.photo_is_captured:
+                    # При этом оставим возможность редактуры после захвата
+                    self.image_data.plotname = name
+                    self.image_data.image_name = name 
+                # Возможно, исправит ошибку. В режиме захвата мы все равно не можем 
+                # переключать кадры, так что вовлекать индексы и image_data_container нет никакого смысла.
+                
+            else:
+                # На самом деле, проявляется только в режиме обработки изображений. Но пока это 
+                # взаимозаменяемые вещи
+                self.master.image_data_container[_index].plotname = name
+                self.master.image_data_container[_index].image_name = name
             self.entry.configure(placeholder_text = name)
             self.tmp_name = name
             # print('from entry: index =', name, self.master.image_data_container[_index].plotname)
@@ -1197,17 +1211,21 @@ class Tab(ctk.CTkTabview):
                 self.angle_thread.join()
             self.main.navigation_frame.next_button.configure(state = 'disabled')
             self.main.navigation_frame.prev_button.configure(state = 'disabled')
+            self.master.capture_button.configure(state = 'normal')
             self.p1 = (0,0)
             # Обеспечим то, что счетчик указывает на последний эл-т в image_data_container 
             self.main.navigation_frame.image_index = max(0, len(self.main.image_data_container) - 1)    #
         elif (self.get() == 'Обработка'):
             # TODO: все еще грязый трюк, но время 19:44, а я еще на работе. Эта возня с обработкой индексов - единственное, что тормозит новую версию
-            
+            self.master.capture_button.configure(state = 'disabled')
             if (self.main.menu.data_was_reset or self.main.menu.data_is_external):
                 # Иначе индекс становится равным -1
                 self.main.menu.data_was_reset = False
                 self.main.menu.data_is_external = False # TODO не знаю, нужно ли
             else:
+                # Т.к. единственный способ здесь оказаться с какими либо данными (минуя экспорт 
+                # или восстановление) - переход из захвата, где после захвата пооследнего 
+                # изображения мы лишний раз прибавили 1
                 self.main.navigation_frame.image_index = max(self.main.navigation_frame.image_index - 1, 0)
             
             for id in self.main.image_data_container:
@@ -1236,6 +1254,9 @@ class Tab(ctk.CTkTabview):
             self.p1 = (0,0)
             self.displayReport()
         elif (self.get() == 'Клиновидность'):
+            self.main.navigation_frame.next_button.configure(state = 'disabled')
+            self.main.navigation_frame.prev_button.configure(state = 'disabled')
+            self.master.capture_button.configure(state = 'disabled')
             self.main.is_pause = False
             self.angle_sec = 0
 
