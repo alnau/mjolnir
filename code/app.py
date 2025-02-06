@@ -15,7 +15,7 @@ from CTkMenuBar import *
 # import CTkMessagebox as msg
 import os
 import logging
-
+import traceback
 
 # import error as e
 import camera_feed_thorlabs as thor
@@ -63,9 +63,9 @@ class TitleMenu(CTkTitleMenu):
         self.file_dropdown.add_separator()
         
         save_sub_menu = self.file_dropdown.add_option("Сохранить изображение", command = self.savePhoto)
-        save_sub_menu = self.file_dropdown.add_submenu("Экспортировать")
-        save_sub_menu.add_option(option = "Данные текущего изображения", command = self.saveFile)
-        save_sub_menu.add_option(option = "Данные всех изображений", command = self.saveAll)
+        export_sub_menu = self.file_dropdown.add_submenu("Экспортировать")
+        export_sub_menu.add_option(option = "Данные текущего изображения", command = self.exportFile)
+        export_sub_menu.add_option(option = "Данные всех изображений", command = self.exportAll)
      
         
         self.extras_dropdown = CustomDropdownMenu(widget = self.extras_button)
@@ -126,7 +126,6 @@ class TitleMenu(CTkTitleMenu):
         print('image_frame.man_we_just_switched_to_new_image:',self.master.image_frame.man_we_just_switched_to_new_image) 
         print('right_frame.photo_is_captured:',self.master.right_frame.photo_is_captured)
         print('right_frame.is_active:',self.master.right_frame.is_active)
-        
         print('right_frame.tabview.needed_active_pos_monitoring:',self.master.right_frame.tabview.needed_active_pos_monitoring)
         print('app.is_pause:',self.master.is_pause)
         print('--------------------------\n\n')
@@ -143,8 +142,9 @@ class TitleMenu(CTkTitleMenu):
         self.master.is_pause = False
         try:
             self.master.image_frame.forgetCamera()
-        except:
-            pass
+        except Exception as e:
+            logging.error(e,stack_info=True, exc_info=True)
+            print('Exception durint restartInterface:', traceback.format_exc())
         self.master.initUI()
 
 
@@ -163,8 +163,8 @@ class TitleMenu(CTkTitleMenu):
             a = 1/0
         except Exception as e:
             # Логируем исключение
-            logging.error("Leg had been shot successfully:", str(e))
-            print("Leg had been shot successfully:", str(e))
+            logging.error(e,stack_info=True, exc_info=True)
+            print("Leg had been shot successfully:", traceback.format_exc())
 
 
     def recoverFromFolder(self, folder_name):
@@ -215,8 +215,8 @@ class TitleMenu(CTkTitleMenu):
                 self.data_is_external = True
             except Exception as e:
             # Логируем исключение
-                logging.error("Error during image import", str(e))
-                print("Error during image import;:", str(e))
+                logging.error(e,stack_info=True, exc_info=True)
+                print("Error during image import;:", traceback.format_exc())
 
     def openFolder(self):
         # TODO: решил большую часть проблем с подгрузкой, но все еще при открытии загружает правильное изображение, потом переключает его на заглушку. При этом нажатие на кнопки навигации возвращает все на круги своя. Пройдись дебагером и не еби мозги
@@ -256,22 +256,22 @@ class TitleMenu(CTkTitleMenu):
         else:
             self.master.is_pause = False
 
-    def saveFile(self, path = ''):
+    def exportFile(self, path = ''):
         index = self.master.navigation_frame.image_index
         image_data = self.master.image_data_container[index]
         image_data.plotBepis(path)
         
         self.master.right_frame.logMessage("Данные", image_data.image_name, "сохранены в папке")
                         
-    def saveAll(self, path =''):
+    def exportAll(self, path =''):
         dir_path = filedialog.askdirectory(title='Выберете папку для сохранения файлов')
-        saving_thread = threading.Thread(target=self.saveAllWorker, args=(dir_path,))
+        saving_thread = threading.Thread(target=self.exportAllWorker, args=(dir_path,))
         saving_thread.daemon = True 
         saving_thread.start()
 
 
         
-    def saveAllWorker(self, path):
+    def exportAllWorker(self, path):
         new_names = []
         r_ref = 0
 
@@ -366,9 +366,9 @@ class NavigationFrame(ctk.CTkFrame):
         was_analyzed = False
         try:
             was_analyzed = self.master.image_data_container[self.image_index].image_has_been_analyzed
-        except:
-            print('Can not get access to self.master.image_data_container[self.image_index].image_has_been_analyzed')
-            logging.error('Can not get access to self.master.image_data_container[self.image_index].image_has_been_analyzed')
+        except Exception as e:
+            print('Can not get access to self.master.image_data_container[self.image_index].image_has_been_analyzed', traceback.format_exc())
+            logging.error(e,stack_info=True, exc_info=True)
             
         self.master.right_frame.entry.configure(placeholder_text = name)
         self.master.right_frame.curr_name_str_val.set(name)
@@ -474,8 +474,9 @@ class ImageFrame(ctk.CTkFrame):
         try:
             self.cam.__delete__()
             self.cam = FakeCamera()
-        except:
-            print("failed to delete camera")
+        except Exception as e:
+            logging.error(e,stack_info=True, exc_info=True)
+            print("failed to delete camera", traceback.format_exc())
         
     def toggleControl(self):
         pass
@@ -796,7 +797,8 @@ class RightFrame(ctk.CTkFrame):
             # print('from entry: index =', name, self.master.image_data_container[_index].plotname)
         except Exception as e:
             # print('err in update Name')
-            print('exception in updateName;', e)
+            logging.error(e,stack_info=True, exc_info=True)
+            print('exception in updateName;', traceback.format_exc())
             _index = self.master.navigation_frame.image_index
             # print('index =', _index)
             name = self.curr_name_str_val.get()
@@ -882,8 +884,11 @@ class RightFrame(ctk.CTkFrame):
             self.image_data.p1_im_space = self.master.image_frame.end_coords
 
 
+            self.image_data.initial_image.save(file_path)
             
-            self.master.image_data_container.append(self.image_data)
+            image_data_copy = self.image_data.copy()
+            self.image_data = None
+            self.master.image_data_container.append(image_data_copy)
             self.master.files_are_unsaved = True
 
             need_to_check_for_duplicate = True
@@ -904,8 +909,6 @@ class RightFrame(ctk.CTkFrame):
                     number  = '(' + str(counter) + ')'
                 else:
                     need_to_check_for_duplicate  = False
-            # self.image_data.initial_image.show()
-            self.image_data.initial_image.save(file_path)
 
             msg = 'Данные ' + pure_name + ' записаны в буфер'
             self.logMessage(msg)
@@ -1186,8 +1189,8 @@ class Tab(ctk.CTkTabview):
             data_was_analyzed = tmp_image_data.radius_was_calculated
         except Exception as e:
             
-            logging.error("well, no luck on report printout side. Possibly, there is nothing inside image_data_container;", str(e))
-            print("well, no luck on report printout side. Possibly, there is nothing inside image_data_container;", str(e))
+            logging.error(e,stack_info=True, exc_info=True)
+            print("well, no luck on report printout side. Possibly, there is nothing inside image_data_container;", traceback.format_exc())
 
             if (tmp_image_data == 0):
                 print('Yeah, just checked, seems like it. Try to find workaround, godspeed')
@@ -1480,15 +1483,16 @@ class App(ctk.CTk):
         try:
             self.image_path= utility.resourcePath('mockup.tif')        
             self.camera_feed_image = Image.open(self.image_path).convert('L')
-        except:
+        except Exception as e:
+            logging.error(e,stack_info=True, exc_info=True)
+            print('Checkout initUI', traceback.format_exc())
             # arr = np.arange(0, screen_width*screen_height, 1, np.uint8)
             arr = np.zeros(1024*1536)
             arr = np.reshape(arr, (1024, 1536))
             self.camera_feed_image = Image.fromarray(arr).convert('L')
             
-
         self.current_image = self.camera_feed_image
-        
+
 
         self.base_path = utility.resourcePath('tmp/')
         current_date = utility.getCurrentDateStr() 
@@ -1548,7 +1552,7 @@ class App(ctk.CTk):
         if (self.files_are_unsaved == True):
             answer = messagebox.askyesnocancel(title = 'Внимание', message = "Результаты анализа не были сохранены \nВы хотите сохранить данные перед выходом?",)
             if (answer == True):
-                self.menu.saveAll()
+                self.menu.exportAll()
             elif(answer == False):
                 print('Destroying window...')
                 self.destroy()

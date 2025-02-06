@@ -2,6 +2,9 @@ from PIL import Image
 import cv2
 import time
 
+import logging
+import traceback
+
 from constants import * 
 
 
@@ -14,7 +17,8 @@ class GenericCamera():
             self.cam = cv2.VideoCapture(camera_index) 
             self.width, self.height = int(self.cam.get(cv2.CAP_PROP_FRAME_WIDTH)), int(self.cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
         except: 
-            print('Error during Generic Camera Initialisation')
+            logging.error(e,stack_info=True, exc_info=True)
+            print('Error during Generic Camera Initialisation', traceback.format_exc())
 
     def setExposure(self, exposure_time_ms):
         print('Generic cameras usually don''t have ability to contol their exposure')

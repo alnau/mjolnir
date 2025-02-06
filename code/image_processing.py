@@ -11,6 +11,7 @@ from PIL import Image as img
 from PIL import ImageDraw
 
 import logging
+import traceback
 
 import utility
 from constants import *
@@ -238,9 +239,9 @@ class ImageData():
                 # (upd + ~1w, чисто для истории) Ты анализировал изображение, на котором ты успел нарисовать линию
                 self.brightness_values.append(brightness)
             except Exception as e:
-                logging.error("Error in Brightness:", e)
+                logging.error(e,stack_info=True, exc_info=True)
                 # print("ERROR in brightness", image.getpixel((x_coords_index[i]-1, y_coords_index[i]-1)))
-                print("ERROR in brightness")
+                print("ERROR in brightness", traceback.format_exc())
 
         len_of_line = 0
         self.coord.append(0)
@@ -254,7 +255,8 @@ class ImageData():
         try:
             self.maximum = max(self.brightness_values)
         except Exception as e:
-            logging.error(e, '\n', 'initial points: ', self.p0_initial, self.p1_initial, '\n', 'new: ', self.p0_new, self.p1_new)
+            logging.error(e,stack_info=True, exc_info=True)
+            print('exception in calculate numbers;', traceback.format_exc())
             print('initial points: ', self.p0_initial, self.p1_initial)
             print('new: ', self.p0_new, self.p1_new)
             print(self.brightness_values)
@@ -289,8 +291,8 @@ class ImageData():
                 elif (self.brightness_values[i]/self.maximum >= 1 - ENERGY_THRESHOLD):
                     self.right_side_mm = self.coord[i]
             except Exception as e:
-                logging.error('msg:', e, '\n', "error in max intensity; i =", i, "len =", lenght)
-                print("error in max intensity; i =", i, "len =", lenght) 
+                logging.error(e,stack_info=True, exc_info=True)
+                print("error in max intensity; i =", i, "len =", lenght, traceback.format_exc()) 
         
         
         self.coords_of_max_intensity[0] = x_coords_index[max_index]*PIXEL_TO_MM
@@ -309,8 +311,8 @@ class ImageData():
             _, tail= os.path.split(self.image_name)
             plotname, _ = os.path.splitext(tail)
         except Exception as e:
-            logging.error("Problems occured during name formatting;", e)
-            print("Problems occured during name formatting")
+            logging.error(e,stack_info=True, exc_info=True)
+            print("Problems occured during name formatting", traceback.format_exc())
             self.image_name = 'none'
             plotname = 'none'
         self.angle = np.degrees(np.arctan(np.abs((self.p1_new[1]-self.p0_new[1])/(self.p1_new[0]-self.p0_new[0]))))

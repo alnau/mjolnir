@@ -12,9 +12,12 @@ import os
 import sys
 import shutil
 import logging
+import traceback
 import configparser
 from datetime import datetime, timedelta
 import constants as const
+
+
 
 # from constants import KGW_REFRACTION_INDEX, DEFAULT_BASE_CM, CUTOFF_THRESHOLD, PIXEL_TO_MM
 
@@ -30,8 +33,9 @@ def resourcePath(relative_path):
         # # PyInstaller создает временную папку и сохраняет путь в _MEIPASS
         # base_path = sys._MEIPASS
         base_path = os.path.dirname(sys.argv[0])
-    except Exception:
-        print("You're in the world of pain" )
+    except Exception as e:
+        logging.error(e,stack_info=True, exc_info=True)
+        print("You're in the world of pain", traceback.format_exc())
         # base_path = os.path.abspath(".")
 
     return os.path.join(base_path, relative_path)
@@ -515,8 +519,8 @@ def getIntegral(x1,y1,x2,y2,image, moment = 0):
                 brightnessValues.append(brightness)
             except Exception as e:
             
-                logging.error("error in getIntegral, possibly out of bounds", str(e))
-                print("error in getIntegral, possibly out of bounds")
+                logging.error(e,stack_info=True, exc_info=True)
+                print("error in getIntegral, possibly out of bounds;", traceback.format_exc())
                 print(length)
 
         integral = 0
@@ -530,8 +534,8 @@ def getIntegral(x1,y1,x2,y2,image, moment = 0):
 
             integral = const.PIXEL_TO_MM*np.trapz(np_brightness, line_coordinates)
         except Exception as e:
-            logging.error("Error in get Integral", e,'\n', len(np_x_coords_index), len(np_brightness) )
-            print(len(np_x_coords_index), len(np_brightness))
+            logging.error(e,stack_info=True, exc_info=True)
+            print(len(np_x_coords_index), len(np_brightness), traceback.format_exc())
 
         return integral
 

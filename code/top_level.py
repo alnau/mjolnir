@@ -3,7 +3,6 @@ import constants as const
 
 
 class TopLevel(ctk.CTkToplevel):
-    
     def __init__(self, master, data_container):
         super().__init__(master)
         self.main = self.master.main
