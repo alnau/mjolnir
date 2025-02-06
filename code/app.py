@@ -40,6 +40,7 @@ class TitleMenu(CTkTitleMenu):
 
         self.backup_folders = folders_names
         self.data_is_external = False   #bool
+        self.data_was_reset = False     #bool
         
         self.file_button = self.add_cascade("Файл")
         # reopen_camera_buttom = self.add_cascade("Изменить камеру", command = self.master.initUI)
@@ -55,8 +56,8 @@ class TitleMenu(CTkTitleMenu):
 
         self.recover_sub_menu  = self.file_dropdown.add_submenu("Восстановить сессию")
 
-        for folder in self.backup_folders:
-            self.recover_sub_menu.add_option(option = folder, command = lambda: self.recoverFromFolder(folder))
+        for folder_name in self.backup_folders:
+            self.recover_sub_menu.add_option(option = folder_name, command = lambda name = folder_name: self.recoverFromFolder(name))
 
 
         self.file_dropdown.add_separator()
@@ -99,6 +100,7 @@ class TitleMenu(CTkTitleMenu):
         self.master.navigation_frame.image_index = 0
 
         # bool reset
+        self.data_was_reset = True
         self.data_is_external = False
         self.master.navigation_frame.is_active = True
         self.master.image_frame.man_we_just_switched_to_new_image = False
@@ -154,6 +156,7 @@ class TitleMenu(CTkTitleMenu):
 
 
     def recoverFromFolder(self, folder_name):
+        print(folder_name)
         self.master.is_pause = True
         dir_path = utility.resourcePath(self.master.base_path + folder_name)
         print(dir_path)
@@ -223,6 +226,8 @@ class TitleMenu(CTkTitleMenu):
                 pure_name = utility.removeSuffix(pure_name, '.tif')
                 self.master.image_data_container.append(ip.ImageData(image, pure_name))
             
+            self.master.right_frame.tabview.set('Обработка')
+            
             # self.master.image_frame.loadImage(self.master.image_data_container[0].norm_image, names[0])
             self.master.navigation_frame.switch()
             # self.master.right_frame.updateWindowAfterAnalysis()
@@ -230,7 +235,6 @@ class TitleMenu(CTkTitleMenu):
             
             text = "Импортировано " + str(len(self.master.image_data_container)) + " изображений. Вы можете приступить к их обработке"
             self.master.right_frame.logMessage(text)
-            self.master.right_frame.tabview.set('Обработка')
             self.master.navigation_frame.next_button.configure(state = 'normal')
             self.master.navigation_frame.prev_button.configure(state = 'normal')
 
@@ -345,8 +349,13 @@ class NavigationFrame(ctk.CTkFrame):
         if (len(self.master.image_data_container)!= 0):
             
             name = self.master.image_data_container[self.image_index].image_name
-        was_analyzed = self.master.image_data_container[self.image_index].image_has_been_analyzed
-
+        was_analyzed = False
+        try:
+            was_analyzed = self.master.image_data_container[self.image_index].image_has_been_analyzed
+        except:
+            print('Can not get access to self.master.image_data_container[self.image_index].image_has_been_analyzed')
+            logging.error('Can not get access to self.master.image_data_container[self.image_index].image_has_been_analyzed')
+            
         self.master.right_frame.entry.configure(placeholder_text = name)
         self.master.right_frame.curr_name_str_val.set(name)
         
@@ -1172,7 +1181,13 @@ class Tab(ctk.CTkTabview):
             self.p1 = (0,0)
         elif (self.get() == 'Обработка'):
             # TODO: все еще грязый трюк, но время 19:44, а я еще на работе. Эта возня с обработкой индексов - единственное, что тормозит новую версию
-            self.main.navigation_frame.image_index = max(self.main.navigation_frame.image_index - 1, 0)
+            if (self.master.menu.data_was_reset or self.master.menu.data_is_external):
+                # Иначе индекс становится равным -1
+                self.master.menu.data_was_reset = False
+                self.master.menu.data_is_external = False # TODO не знаю, нужно ли
+            else:
+                self.main.navigation_frame.image_index = max(self.main.navigation_frame.image_index - 1, 0)
+            
             for id in self.main.image_data_container:
                 print(id.plotname)
             self.needed_active_pos_monitoring = False
