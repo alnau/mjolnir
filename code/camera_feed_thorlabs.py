@@ -30,8 +30,9 @@ class ThorCamera():
         try:
             self.cam.set_exposure(min(exposure_time_ms, MAX_EXPOSURE_MS)/1000)
         except Exception as e:
-            logging('Error during exposure set;', e)
+            logging.error('Error during exposure set;', e)
             print('Error during exposure set')
+            
     
     def cameraFeed(self, master_app):
         try:

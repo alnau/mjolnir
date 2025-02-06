@@ -117,6 +117,17 @@ class TitleMenu(CTkTitleMenu):
         print("\nnames:")
         for id in self.master.image_data_container:
                 print(id.plotname)
+
+        print('\nFlags:')
+        print('menu.data_was_reset:',self.data_was_reset)
+        print('menu.data_is_external:',self.data_is_external) 
+        print('navigation_frame.is_active:',self.master.navigation_frame.is_active)
+        print('image_frame.man_we_just_switched_to_new_image:',self.master.image_frame.man_we_just_switched_to_new_image) 
+        print('right_frame.photo_is_captured:',self.master.right_frame.photo_is_captured)
+        print('right_frame.is_active:',self.master.right_frame.is_active)
+           
+        print('right_frame.needed_active_pos_monitoring:',self.master.right_frame.needed_active_pos_monitoring)
+        print('app.is_pause:',self.master.is_pause)
         print('--------------------------\n\n')
 
     def savePhoto(self): 
