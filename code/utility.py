@@ -120,6 +120,25 @@ def readIni():
     const.PIXEL_TO_MM = float(general.get('PIXEL_TO_MM'))
 
     return config
+
+def printIni():
+    ini_name = 'settings.ini'
+    ini_path = resourcePath(ini_name)
+
+    config = configparser.ConfigParser()
+
+    config.read(ini_path)
+
+    general = config['General']
+
+    print('\nini data:')
+    print('N_kgw =', general.get('KGW_REFRACTION_INDEX'))
+    print('Base, cm =', general.get('DEFAULT_BASE_CM'))
+    print('Cutoff threshold =', general.get('CUTOFF_THRESHOLD'))
+    print('Conversion pixel to mm coeff =', general.get('PIXEL_TO_MM'))
+    print('\n\n')
+
+
 def updateIni(param, value):
  
     """ Доступные пераметры: kgw_refraction_index, default_base_cm, cutoff_threshold, pixel_to_mm"""
@@ -133,6 +152,19 @@ def updateIni(param, value):
     
     with open(ini_path, 'w') as config_file:
         config.write(config_file)
+
+def getIniVal(param):
+    """ Доступные пераметры: kgw_refraction_index, default_base_cm, cutoff_threshold, pixel_to_mm"""
+
+    ini_name = 'settings.ini'
+    ini_path = resourcePath(ini_name)
+
+    config = configparser.ConfigParser()
+    config.read(ini_path)
+
+    val = config.get('General', param)
+    return val
+
 
 
 

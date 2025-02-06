@@ -71,6 +71,7 @@ class TitleMenu(CTkTitleMenu):
         self.extras_dropdown = CustomDropdownMenu(widget = self.extras_button)
         self.extras_dropdown.add_option("Изменить камеру", command = self.master.initUI)
         self.extras_dropdown.add_option("Начать новую серию измерений", command = self.resetStateAndData)
+        self.extras_dropdown.add_option("Изменить отсечку фона", command = self.updateThreshold)
 
 
 
@@ -84,6 +85,20 @@ class TitleMenu(CTkTitleMenu):
         
         
         # self.bind("<ControlRelease>", self.onCtrlRelease)
+
+
+    def updateThreshold(self):
+        val  = utility.getIniVal('cutoff_threshold')
+        msg = 'Эта величина используется для определения уровня (0-255) для удаления подложки.'
+        msg+= 'Все пиксели с интенсивности ниже данной величины будут считаться пикселями с нулевой интенсивностью.'
+        msg = msg+'Текущее значение: ' + str(val)
+        dialog = ctk.CTkInputDialog(text=msg, title="Введите уровень отсечки")
+        new_val = int(dialog.get_input())  
+        const.CUTOFF_THRESHOLD = new_val
+        utility.updateIni('cutoff_threshold', new_val)
+        msg = 'Текущий порог отсечения составляет:' + str(new_val)
+        messagebox.showinfo(title = 'Данные обновлены', message = msg)
+        
 
     def resetStateAndData(self):
         message =''
@@ -128,6 +143,9 @@ class TitleMenu(CTkTitleMenu):
         print('right_frame.is_active:',self.master.right_frame.is_active)
         print('right_frame.tabview.needed_active_pos_monitoring:',self.master.right_frame.tabview.needed_active_pos_monitoring)
         print('app.is_pause:',self.master.is_pause)
+
+        utility.printIni()
+
         print('--------------------------\n\n')
 
     def savePhoto(self): 
@@ -883,13 +901,9 @@ class RightFrame(ctk.CTkFrame):
             self.image_data.p0_im_space = self.master.image_frame.start_coords
             self.image_data.p1_im_space = self.master.image_frame.end_coords
 
-
-            self.image_data.initial_image.save(file_path)
-            
-            image_data_copy = self.image_data.copy()
-            self.image_data = None
-            self.master.image_data_container.append(image_data_copy)
+            self.master.image_data_container.append(self.image_data)
             self.master.files_are_unsaved = True
+
 
             need_to_check_for_duplicate = True
             number = ''
@@ -913,6 +927,11 @@ class RightFrame(ctk.CTkFrame):
             msg = 'Данные ' + pure_name + ' записаны в буфер'
             self.logMessage(msg)
             self.entry.delete(0, 'end')
+            
+            self.image_data.initial_image.save(file_path)
+            
+            # image_data_copy = self.image_data.copy()
+            # self.image_data = None
 
             self.unlockCamera()
 
@@ -997,6 +1016,7 @@ class RightFrame(ctk.CTkFrame):
 
     def updateWindowAfterAnalysis(self):
         # try:
+    
         self.after(100, self.tabview.configure(state = 'normal'))
         index = min(self.master.navigation_frame.image_index, len(self.master.image_data_container) - 1)
         self.updatePlotAfterAnalysis(index)
@@ -1370,7 +1390,6 @@ class Tab(ctk.CTkTabview):
         self.analyze_current_button.configure(state = 'disabled')
         threading.Thread(target=self.analyzeAllWorker, args=(data_container,), daemon=True).start()
 
-    # TODO: Добавить бегущий статус-бар при обработке (возможно, при любом вызове analyzeImage)
     def analyzeAllWorker(self, data_container, any_mismatches = False):
         start = time.time()
         self.main.setProgressBarActive()
@@ -1452,7 +1471,8 @@ class Tab(ctk.CTkTabview):
             self.slider.configure(button_color = const.FG_COLOR , progress_color= const.PROGRESS_COLOR, button_hover_color = const.HOVER_COLOR)
             self.slider2.configure(button_color = const.FG_COLOR , progress_color= const.PROGRESS_COLOR, button_hover_color = const.HOVER_COLOR)
             
-            self.master.capture_button.configure(state = 'normal', fg_color = const.FG_COLOR)
+            if self.get() == 'Захват':
+                self.master.capture_button.configure(state = 'normal', fg_color = const.FG_COLOR)
             return False
         else:
             # TODO: решил все-же убрать запрет захвата изображения. Возможно, зря
