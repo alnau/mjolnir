@@ -49,7 +49,6 @@ class TitleMenu(CTkTitleMenu):
         self.extras_button = self.add_cascade("Дополнительно")
         self.exterminate_button = self.add_cascade("DoW")
         self.exterminate_button.configure(state = 'disabled')
-
         self.open_sub_menu = self.file_dropdown.add_submenu("Открыть")
         self.open_sub_menu.add_option(option="Файл", command = self.openFile)
         self.open_sub_menu.add_option(option="Папку", command = self.openFolder)
@@ -66,14 +65,11 @@ class TitleMenu(CTkTitleMenu):
         export_sub_menu = self.file_dropdown.add_submenu("Экспортировать")
         export_sub_menu.add_option(option = "Данные текущего изображения", command = self.exportFile)
         export_sub_menu.add_option(option = "Данные всех изображений", command = self.exportAll)
-     
         
         self.extras_dropdown = CustomDropdownMenu(widget = self.extras_button)
         self.extras_dropdown.add_option("Изменить камеру", command = self.master.initUI)
         self.extras_dropdown.add_option("Начать новую серию измерений", command = self.resetStateAndData)
         self.extras_dropdown.add_option("Изменить отсечку фона", command = self.updateThreshold)
-
-
 
         self.geno_dropdown = CustomDropdownMenu(widget=self.exterminate_button)
         self.geno_dropdown.add_option(option = "NUKE EM, OPPIE!", command = self.restartInterface)
