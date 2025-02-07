@@ -22,7 +22,6 @@ from constants import *
 class ImageData():
 
     def __init__(self, original_image, name = None):
-        # TODO !!!! image_name и plot_name вероятно являются дубликатами, надо разобраться и удалить один из них. До тех пор, весь дальнейший код будет дублироваться для обеих переенных
         self.image_name = name
 
         tmp_image = original_image.copy()
@@ -58,9 +57,6 @@ class ImageData():
         self.brightness_values = []
         self.normalized_brightness_values = []
         self.coord = []
-
-
-        self.plotname = name
 
         self.p0_initial = (0,0)
         self.p1_initial = (0,0)
@@ -307,22 +303,14 @@ class ImageData():
 
         self.h_width = (self.right_side_mm - self.left_side_mm)/2
         
-        try:
-            _, tail= os.path.split(self.image_name)
-            plotname, _ = os.path.splitext(tail)
-        except Exception as e:
-            logging.error(e,stack_info=True, exc_info=True)
-            print("Problems occured during name formatting", traceback.format_exc())
-            self.image_name = 'none'
-            plotname = 'none'
         self.angle = np.degrees(np.arctan(np.abs((self.p1_new[1]-self.p0_new[1])/(self.p1_new[0]-self.p0_new[0]))))
         if (self.parallelism_has_been_calculated):
-            self.report = utility.getReport(plotname, self.radius_mm, 
+            self.report = utility.getReport(self.image_name, self.radius_mm, 
                                             self.h_width, self.left_side_mm, 
                                             self.right_side_mm, self.coords_of_max_intensity, 
                                             self.coords_of_com, self.angle, self.parallelism_angle_s)
         else:
-            self.report = utility.getReport(plotname, self.radius_mm, 
+            self.report = utility.getReport(self.image_name, self.radius_mm, 
                                             self.h_width, self.left_side_mm, 
                                             self.right_side_mm, self.coords_of_max_intensity, 
                                             self.coords_of_com, self.angle)
@@ -364,7 +352,7 @@ class ImageData():
         line_plt.grid(which = 'major', linestyle = '--')
         line_plt.grid(which = 'minor', linestyle =':')
         
-        filename = self.plotname + "_plot.png"
+        filename = self.image_name + "_plot.png"
         if (path == ''):
             plot_path_rel = "lastResults/" + filename
             plot_path = utility.resourcePath(plot_path_rel)
@@ -459,8 +447,8 @@ def analyzeAll(path, _start = 0):
         image_data.analyzeImage()
         image_data.plotBepis()
         
-        if (image_data.plotname!='control'):
-            number, test_for_d_o = image_data.plotname.rsplit("_",1)
+        if (image_data.image_name!='control'):
+            number, test_for_d_o = image_data.image_name.rsplit("_",1)
         
             if (test_for_d_o == "d"):
                 width_data_d.append(2*image_data.radius_mm)
@@ -468,7 +456,7 @@ def analyzeAll(path, _start = 0):
             elif (test_for_d_o == "o"):
                 width_data_o.append(2*image_data.radius_mm)
             image.close()
-        elif (image_data.plotname == 'control'):
+        elif (image_data.image_name == 'control'):
             d_ref = 2*image_data.radius_mm
         print("------------------")
 
@@ -491,7 +479,7 @@ def analyzeFile(path,name):
         image_data.analyzeImage()
         image_data.plotBepis()
 
-        number, _ , test_for_d_o = image_data.plotname.partition("_")
+        number, _ , test_for_d_o = image_data.image_name.rsplit("_",1)
         
         image.close()
 

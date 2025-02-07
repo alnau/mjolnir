@@ -128,7 +128,7 @@ class TitleMenu(CTkTitleMenu):
         print('Curr index =', self.master.navigation_frame.image_index)
         print("\nnames:")
         for id in self.master.image_data_container:
-                print(id.plotname)
+                print(id.image_name)
 
         print('\nFlags:')
         print('menu.data_was_reset:',self.data_was_reset)
@@ -222,9 +222,9 @@ class TitleMenu(CTkTitleMenu):
         if file_path:
             try:
                 _, tail= os.path.split(file_path)
-                plotname, _ = os.path.splitext(tail)
+                name, _ = os.path.splitext(tail)
                 image = Image.open(file_path)
-                pure_name,_ = os.path.splitext(plotname)
+                pure_name,_ = os.path.splitext(name)
                 self.master.image_data_container.append(ip.ImageData(image, pure_name))
                 self.data_is_external = True
             except Exception as e:
@@ -297,11 +297,11 @@ class TitleMenu(CTkTitleMenu):
                 
                 self.master.update_idletasks()
                 image_data.plotBepis(path)
-                name = image_data.plotname
+                name = image_data.image_name
                 if (name !='control'):
                     width_data.append(round(2*image_data.radius_mm, 2))
                     new_names.append(name)
-                elif (image_data.plotname == 'control'):
+                elif (image_data.image_name == 'control'):
                     r_ref = round(2*image_data.radius_mm,2)
             print("------------------")
             utility.printUnstructuredReportToXLSX(new_names, width_data, r_ref, path)
@@ -312,9 +312,9 @@ class TitleMenu(CTkTitleMenu):
                 
                 self.master.update_idletasks()
                 image_data.plotBepis(path)
-                name = image_data.plotname
+                name = image_data.image_name
                 if (name != 'control'):
-                    number, test_for_d_o = image_data.plotname.rsplit("_",1)
+                    number, test_for_d_o = image_data.image_name.rsplit("_",1)
                     if (test_for_d_o == "d"):
                         width_data_d.append(round(2*image_data.radius_mm, 2))
                         if number not in new_names:
@@ -323,17 +323,13 @@ class TitleMenu(CTkTitleMenu):
                         width_data_o.append(round(2*image_data.radius_mm,2))
                         if number not in new_names:
                             new_names.append(number)
-                elif (image_data.plotname == 'control'):
+                elif (image_data.image_name == 'control'):
                     r_ref = round(2*image_data.radius_mm,2)
             print("------------------")
             utility.printReportToXLSX(new_names, width_data_d, width_data_o, r_ref, path)  
-
-
-        path_printout = '/lastResults'
-        if (path != ''):
-            path_printout = path           
+                     
         self.master.setProgressBarInactive()
-        self.master.right_frame.logMessage("Данные измерений сохранены в папке " + str(path_printout))
+        self.master.right_frame.logMessage('Данные измерений сохранены')
         self.master.files_are_unsaved = False
 
 
@@ -796,7 +792,6 @@ class RightFrame(ctk.CTkFrame):
             if self.tabview.get() == 'Захват':
                 # if self.photo_is_captured:
                     # При этом оставим возможность редактуры после захвата
-                # self.image_data.plotname = name
                 # self.image_data.image_name = name 
                 # Возможно, исправит ошибку. В режиме захвата мы все равно не можем 
                 # переключать кадры, так что вовлекать индексы и image_data_container нет никакого смысла.
@@ -804,11 +799,9 @@ class RightFrame(ctk.CTkFrame):
             else:
                 # На самом деле, проявляется только в режиме обработки изображений. Но пока это 
                 # взаимозаменяемые вещи
-                self.master.image_data_container[_index].plotname = name
                 self.master.image_data_container[_index].image_name = name
             self.entry.configure(placeholder_text = name)
             self.tmp_name = name
-            # print('from entry: index =', name, self.master.image_data_container[_index].plotname)
         except Exception as e:
             # print('err in update Name')
             logging.error(e,stack_info=True, exc_info=True)
@@ -913,13 +906,13 @@ class RightFrame(ctk.CTkFrame):
                 pure_name = self.entry.get()
                 file_name = self.entry.get() + number + '.tif'
                 file_path = os.path.join(self.master.backup_path, file_name) 
-                print(file_path)
                 if (os.path.exists(file_path)):
                     counter+=1
                     number  = '(' + str(counter) + ')'
                 else:
                     need_to_check_for_duplicate  = False
 
+            print('Бэкап создан. Путь:', file_path)
             msg = 'Данные ' + pure_name + ' записаны в буфер'
             self.logMessage(msg)
             self.entry.delete(0, 'end')
@@ -963,7 +956,6 @@ class RightFrame(ctk.CTkFrame):
             self.tabview.check_var.set('off')
         elif(len(self.tmp_name)!=0) :
             # self.master.navigation_frame.image_index += 1
-            print(self.master.navigation_frame.image_index)
             # Показать картинку, сохранить в буффер
             self.lockCamera()
             self.image_data = ip.ImageData(self.master.current_image, self.entry.get())
@@ -1250,8 +1242,6 @@ class Tab(ctk.CTkTabview):
                 # изображения мы лишний раз прибавили 1
                 self.main.navigation_frame.image_index = max(self.main.navigation_frame.image_index - 1, 0)
             
-            for id in self.main.image_data_container:
-                print(id.plotname)
             self.needed_active_pos_monitoring = False
             if (self.angle_thread!= None):
                 self.angle_thread.join()
@@ -1363,7 +1353,7 @@ class Tab(ctk.CTkTabview):
         
         names = []
         for image_data in data_container:
-            names.append(image_data.plotname) 
+            names.append(image_data.image_name) 
         
         mismatches = self.findMismatches(names)
 
