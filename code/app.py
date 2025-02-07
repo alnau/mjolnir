@@ -327,7 +327,7 @@ class TitleMenu(CTkTitleMenu):
                     r_ref = round(2*image_data.radius_mm,2)
             print("------------------")
             utility.printReportToXLSX(new_names, width_data_d, width_data_o, r_ref, path)  
-                     
+
         self.master.setProgressBarInactive()
         self.master.right_frame.logMessage('Данные измерений сохранены')
         self.master.files_are_unsaved = False
@@ -348,12 +348,12 @@ class NavigationFrame(ctk.CTkFrame):
         
         self.prev_button = ctk.CTkButton(self.button_frame, text="<", 
                                         command = lambda: self.switch(btn = 'back'))
-        self.prev_button.grid(row = 0, column = 0, sticky = 'e', padx = const.DEFAULT_PADX, pady = 5)
+        self.prev_button.grid(row = 0, column = 0, sticky = 'e', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
 
 
         self.next_button = ctk.CTkButton(self.button_frame, text=">", 
                                         command = lambda: self.switch(btn = "fwd"))
-        self.next_button.grid(row = 0, column = 1, sticky = 'w', padx = const.DEFAULT_PADX, pady = 5)
+        self.next_button.grid(row = 0, column = 1, sticky = 'w', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
 
         self.master.bind('<Left>', lambda event: self.switch(btn = 'back'))
         self.master.bind('<Right>', lambda event: self.switch(btn = 'fwd'))
@@ -427,7 +427,7 @@ class ImageFrame(ctk.CTkFrame):
         self.man_we_just_switched_to_new_image = False     #bool
 
         self.start_dialog = ctk.CTkFrame(self)
-        self.start_dialog.pack(fill="both", padx = (5,0), pady = 5, expand=True)
+        self.start_dialog.pack(fill="both", padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY, expand=True)
 
         self.start_dialog.grid_columnconfigure((0,3), weight = 3)
         self.start_dialog.grid_columnconfigure((1,2), weight = 1)
@@ -520,7 +520,7 @@ class ImageFrame(ctk.CTkFrame):
     # трансляцию
     def activateCamera(self):
         self.start_dialog.pack_forget()
-        self.image_canvas.pack(fill="both", padx = (5,0), pady = 5, expand=True)
+        self.image_canvas.pack(fill="both", padx = (5,0), pady = const.DEFAULT_PADY, expand=True)
         self.bind("<Configure>", self.resizeImage)
         self.resizeImage(None)
         self.master.toggleControl()
@@ -748,7 +748,7 @@ class RightFrame(ctk.CTkFrame):
 
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
         self.canvas.draw()
-        self.canvas.get_tk_widget().pack(fill="x", padx = const.DEFAULT_PADX, pady = (5,0), side = "top")
+        self.canvas.get_tk_widget().pack(fill="x", padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY, side = "top")
 
         self.entry_frame = ctk.CTkFrame(self, )
         self.entry_frame.pack(fill="x", pady=(10, 5), padx = const.DEFAULT_PADX, side = 'top')
@@ -765,7 +765,7 @@ class RightFrame(ctk.CTkFrame):
         self.master.bind('<Return>', self.handleEnter)
     
         self.thin_frame = ctk.CTkFrame(self, height=2, bg_color="gray")
-        self.thin_frame.pack(fill="x", padx =10, pady=5,)
+        self.thin_frame.pack(fill="x", padx =10, pady=const.DEFAULT_PADY,)
 
         self.tabview = Tab(master = self, main=master)
         self.tabview.pack(side = 'top', fill = 'both', pady = const.DEFAULT_PADY, padx = const.DEFAULT_PADX) 
