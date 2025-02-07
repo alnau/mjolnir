@@ -35,12 +35,8 @@ ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("dark-blue")  
 
 class TitleMenu(CTkTitleMenu):
-    def __init__(self, master, folders_names):
+    def __init__(self, master):
         super().__init__(master)
-
-        self.backup_folders = folders_names
-        self.data_is_external = False   #bool
-        self.data_was_reset = False     #bool
         
         file_button = self.add_cascade("Файл")
         # reopen_camera_buttom = self.add_cascade("Изменить камеру", command = self.master.initUI)
@@ -55,7 +51,7 @@ class TitleMenu(CTkTitleMenu):
 
         recover_sub_menu  = file_dropdown.add_submenu("Восстановить сессию")
 
-        for folder_name in self.backup_folders:
+        for folder_name in self.master.backup_folders_names:
             recover_sub_menu.add_option(option = folder_name, command = lambda name = folder_name: self.recoverFromFolder(name))
 
 
@@ -111,14 +107,13 @@ class TitleMenu(CTkTitleMenu):
 
         self.master.image_data_container = []
         
-        self.master.navigation_frame.image_index = 0
+        self.master.image_index = 0
 
         # bool reset
-        self.data_was_reset = True
-        self.data_is_external = False
+        self.master.data_was_reset = True
+        self.master.data_is_external = False
         self.master.navigation_frame.is_active = True
-        self.master.image_frame.man_we_just_switched_to_new_image = False
-        self.master.right_frame.photo_is_captured = False  
+        self.master.photo_is_captured = False  
         self.master.right_frame.is_active = True   
            
         self.master.right_frame.tabview.needed_active_pos_monitoring = False
@@ -128,17 +123,16 @@ class TitleMenu(CTkTitleMenu):
     def dropInfo(self):
         print('\n\n--------------------------')
         print('Amount =', len(self.master.image_data_container))
-        print('Curr index =', self.master.navigation_frame.image_index)
+        print('Curr index =', self.master.image_index)
         print("\nnames:")
         for id in self.master.image_data_container:
                 print(id.image_name)
 
         print('\nFlags:')
-        print('menu.data_was_reset:',self.data_was_reset)
-        print('menu.data_is_external:',self.data_is_external) 
+        print('data_was_reset:',self.master.data_was_reset)
+        print('data_is_external:',self.master.data_is_external) 
         print('navigation_frame.is_active:',self.master.navigation_frame.is_active)
-        print('image_frame.man_we_just_switched_to_new_image:',self.master.image_frame.man_we_just_switched_to_new_image) 
-        print('right_frame.photo_is_captured:',self.master.right_frame.photo_is_captured)
+        print('photo_is_captured:',self.master.photo_is_captured)
         print('right_frame.is_active:',self.master.right_frame.is_active)
         print('right_frame.tabview.needed_active_pos_monitoring:',self.master.right_frame.tabview.needed_active_pos_monitoring)
         print('app.is_pause:',self.master.is_pause)
@@ -215,7 +209,7 @@ class TitleMenu(CTkTitleMenu):
         self.master.right_frame.tabview.set('Обработка')
         self.master.navigation_frame.next_button.configure(state = 'normal')
         self.master.navigation_frame.prev_button.configure(state = 'normal')
-        self.data_is_external = True
+        self.master.data_is_external = True
 
     def toggleControl(self):
         pass
@@ -229,7 +223,7 @@ class TitleMenu(CTkTitleMenu):
                 image = Image.open(file_path)
                 pure_name,_ = os.path.splitext(name)
                 self.master.image_data_container.append(ip.ImageData(image, pure_name))
-                self.data_is_external = True
+                self.master.data_is_external = True
             except Exception as e:
             # Логируем исключение
                 logging.error(e,stack_info=True, exc_info=True)
@@ -240,7 +234,7 @@ class TitleMenu(CTkTitleMenu):
         self.master.is_pause = True
         self.master.right_frame.logMessage('Начат импорт файлов...')
         self.master.image_data_container = []
-        self.master.navigation_frame.image_index = 0
+        self.master.image_index = 0
         
         dir_path = filedialog.askdirectory()
         self.master.right_frame.tabview.analyze_all_button.configure(state = 'normal')
@@ -269,12 +263,12 @@ class TitleMenu(CTkTitleMenu):
             self.master.navigation_frame.next_button.configure(state = 'normal')
             self.master.navigation_frame.prev_button.configure(state = 'normal')
 
-            self.data_is_external = True
+            self.master.data_is_external = True
         else:
             self.master.is_pause = False
 
     def exportFile(self, path = ''):
-        index = self.master.navigation_frame.image_index
+        index = self.master.image_index
         image_data = self.master.image_data_container[index]
         image_data.plotBepis(path)
         
@@ -341,7 +335,6 @@ class NavigationFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
 
-        self.image_index = 0
         self.is_active = True #bool
 
         button_frame = ctk.CTkFrame(self)
@@ -367,29 +360,30 @@ class NavigationFrame(ctk.CTkFrame):
             return
         
         if (btn == 'fwd'):
-            self.image_index = min(self.image_index+1, len(self.master.image_data_container) - 1)
+            self.master.image_index = min(self.master.image_index+1, len(self.master.image_data_container) - 1)
         elif btn == 'back':
-            self.image_index = max(0, self.image_index - 1)
+            self.master.image_index = max(0, self.master.image_index - 1)
         else:
             pass
         name = ''
         if (len(self.master.image_data_container)!= 0):
             
-            name = self.master.image_data_container[self.image_index].image_name
+            name = self.master.image_data_container[self.master.image_index].image_name
         was_analyzed = False
         try:
-            was_analyzed = self.master.image_data_container[self.image_index].image_has_been_analyzed
+            was_analyzed = self.master.image_data_container[self.master.image_index].image_has_been_analyzed
         except Exception as e:
-            print('Can not get access to self.master.image_data_container[self.image_index].image_has_been_analyzed', traceback.format_exc())
+            print('Can not get access to self.master.image_data_container[self.master.image_index].image_has_been_analyzed', traceback.format_exc())
             logging.error(e,stack_info=True, exc_info=True)
             
         self.master.right_frame.entry.configure(placeholder_text = name)
         self.master.right_frame.curr_name_str_val.set(name)
         
-        self.master.right_frame.updatePlotAfterAnalysis(self.image_index, was_analyzed)
-        self.master.right_frame.updatePrintedDataAfterAnalysis(self.image_index)
-        self.master.image_frame.loadImage(self.master.image_data_container[self.image_index].norm_image, name = self.master.image_data_container[self.image_index].image_name)
-        self.master.image_frame.switchImage(self.image_index)
+        # TODO: возможно, можно не передавать image_index в эти функции
+        self.master.right_frame.updatePlotAfterAnalysis(self.master.image_index, was_analyzed)
+        self.master.right_frame.updatePrintedDataAfterAnalysis(self.master.image_index)
+        self.master.image_frame.loadImage(self.master.image_data_container[self.master.image_index].norm_image, name = self.master.image_data_container[self.master.image_index].image_name)
+        self.master.image_frame.switchImage(self.master.image_index)
         # self.master.right_frame.updateWindowAfterAnalysis()
         self.master.image_frame.reset()
 
@@ -426,8 +420,6 @@ class ImageFrame(ctk.CTkFrame):
 
         self.p0_real_coords = (0,0)
         self.p1_real_coords = (0,0)
-
-        self.man_we_just_switched_to_new_image = False     #bool
 
         self.start_dialog = ctk.CTkFrame(self)
         self.start_dialog.pack(fill="both", padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY, expand=True)
@@ -544,13 +536,12 @@ class ImageFrame(ctk.CTkFrame):
         self.p1_real_coords = (0,0)
 
         self.clearPhoto()
-        self.man_we_just_switched_to_new_image  = True
 
 
     def drawLines(self, event):
 
-        if (self.master.right_frame.tabview.get() == 'Обработка' or  self.master.menu.data_is_external == True):
-            index = self.master.navigation_frame.image_index
+        if (self.master.right_frame.tabview.get() == 'Обработка' or  self.master.data_is_external == True):
+            index = self.master.image_index
             length = len(self.master.image_data_container)
             if (event.type == '4'):
                 # нажали
@@ -559,8 +550,6 @@ class ImageFrame(ctk.CTkFrame):
                 # что оптимизация не нужна. Уверен, на трезвую голову ты справишься куда лучше
                 # 
                 # При этом, все работает
-                # if (self.man_we_just_switched_to_new_image):
-                #     self.man_we_just_switched_to_new_image = False
                 # elif(length != 0 and index < length):
                 #     # TODO: Есть сценарии, при которых индекс может вести за пределы массива. Не знаю как решать эту проблему
                 #     # print('index =', index)
@@ -688,7 +677,7 @@ class ImageFrame(ctk.CTkFrame):
         self.image_canvas.create_image(0,0,image=self.photo,anchor = 'nw')
         self.image_canvas.image = self.photo
         
-        index = min(self.master.navigation_frame.image_index, len(self.master.image_data_container)-1)
+        index = min(self.master.image_index, len(self.master.image_data_container)-1)
         if (index < 0):
             index = 0
         self.master.right_frame.entry.configure(placeholder_text = name)
@@ -737,13 +726,12 @@ class RightFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
 
-        self.photo_is_captured = False  #bool
         self.is_active = True   #bool
 
         plot_width = 4.5
         plot_height = 2.7
 
-        self.image_data = None
+        
 
         self.tmp_name = ''
 
@@ -792,12 +780,12 @@ class RightFrame(ctk.CTkFrame):
                 return
             
             # TODO на текущий момент исправления в имени файла между захватом изображения и переходом к следующему кадру невозможны 
-            _index = self.master.navigation_frame.image_index
+            _index = self.master.image_index
             name = self.curr_name_str_val.get()
             if self.tabview.get() == 'Захват':
-                # if self.photo_is_captured:
+                # if self.master.photo_is_captured:
                     # При этом оставим возможность редактуры после захвата
-                # self.image_data.image_name = name 
+                # self.master.image_data.image_name = name 
                 # Возможно, исправит ошибку. В режиме захвата мы все равно не можем 
                 # переключать кадры, так что вовлекать индексы и image_data_container нет никакого смысла.
                 pass
@@ -810,7 +798,7 @@ class RightFrame(ctk.CTkFrame):
         except Exception as e:
             logging.error(e,stack_info=True, exc_info=True)
             print('exception in updateName;', traceback.format_exc())
-            _index = self.master.navigation_frame.image_index
+            _index = self.master.image_index
             name = self.curr_name_str_val.get()
             self.entry.configure(placeholder_text = name)
             self.tmp_name = name
@@ -850,7 +838,7 @@ class RightFrame(ctk.CTkFrame):
         self.capture_button.configure(text = 'Отмена')
         self.tabview.continue_button.configure(state = 'normal')
         self.master.image_frame.image_canvas.configure(highlightbackground="red")
-        self.photo_is_captured = True
+        self.master.photo_is_captured = True
         self.master.image_frame.loadImage(self.master.current_image, self.tmp_name)
 
         self.logMessage('Фото захвачено')
@@ -860,22 +848,22 @@ class RightFrame(ctk.CTkFrame):
         self.capture_button.configure(text = 'Захватить')
         self.tabview.continue_button.configure(state = 'disabled')
         self.master.image_frame.image_canvas.configure(highlightbackground="black")
-        self.photo_is_captured = False
+        self.master.photo_is_captured = False
         self.master.image_frame.clearPhoto()
 
     def nextImage(self):
-        self.master.navigation_frame.image_index += 1
+        self.master.image_index += 1
         if len(self.entry.get()) != 0:
             
             # self.tabview.check_var.set('off')
             self.entry.focus()
-            self.image_data.p0_new = self.master.image_frame.p0_real_coords
-            self.image_data.p1_new = self.master.image_frame.p1_real_coords
+            self.master.image_data.p0_new = self.master.image_frame.p0_real_coords
+            self.master.image_data.p1_new = self.master.image_frame.p1_real_coords
 
-            self.image_data.p0_im_space = self.master.image_frame.start_coords
-            self.image_data.p1_im_space = self.master.image_frame.end_coords
+            self.master.image_data.p0_im_space = self.master.image_frame.start_coords
+            self.master.image_data.p1_im_space = self.master.image_frame.end_coords
 
-            self.master.image_data_container.append(self.image_data)
+            self.master.image_data_container.append(self.master.image_data)
             self.master.files_are_unsaved = True
 
 
@@ -902,9 +890,8 @@ class RightFrame(ctk.CTkFrame):
             self.logMessage(msg)
             self.entry.delete(0, 'end')
             
-            self.image_data.initial_image.save(file_path)
+            self.master.image_data.initial_image.save(file_path)
             
-            # image_data_copy = self.image_data.copy()
             # self.image_data = None
 
             self.unlockCamera()
@@ -920,7 +907,7 @@ class RightFrame(ctk.CTkFrame):
     
     def handleEnter(self, event):
         if (self.tabview.get() == 'Захват'):
-            if (self.photo_is_captured):
+            if (self.master.photo_is_captured):
                 self.nextImage()
             else:
                 self.captureImage()
@@ -929,8 +916,8 @@ class RightFrame(ctk.CTkFrame):
 
     def captureImage(self):
         # отработка захвата или сброса текущего изображения
-        self.master.menu.data_is_external = False
-        if (self.photo_is_captured):
+        self.master.data_is_external = False
+        if (self.master.photo_is_captured):
             # self.master.navigation_frame.image_index = max(0,self.master.navigation_frame.image_index-1)
             # переход к живой камере
             self.unlockCamera()
@@ -943,7 +930,7 @@ class RightFrame(ctk.CTkFrame):
             # self.master.navigation_frame.image_index += 1
             # Показать картинку, сохранить в буффер
             self.lockCamera()
-            self.image_data = ip.ImageData(self.master.current_image, self.entry.get())
+            self.master.image_data = ip.ImageData(self.master.current_image, self.entry.get())
         else:
             self.logMessage('Введите имя файла')
 
@@ -954,8 +941,8 @@ class RightFrame(ctk.CTkFrame):
 
     def updatePlot(self, p0, p1): 
         
-        self.image_data.p0_initial = p0
-        self.image_data.p1_initial = p1
+        self.master.image_data.p0_initial = p0
+        self.master.image_data.p1_initial = p1
         coords, brightness = utility.getBrightness(p0, p1,self.master.current_image)
         self.ax.clear()
         self.ax.plot(coords, brightness)
@@ -991,7 +978,7 @@ class RightFrame(ctk.CTkFrame):
         # try:
     
         self.after(100, self.tabview.configure(state = 'normal'))
-        index = min(self.master.navigation_frame.image_index, len(self.master.image_data_container) - 1)
+        index = min(self.master.image_index, len(self.master.image_data_container) - 1)
         self.updatePlotAfterAnalysis(index)
         self.updatePrintedDataAfterAnalysis(index)
         self.master.image_frame.switchImage(index)
@@ -1175,7 +1162,7 @@ class Tab(ctk.CTkTabview):
         tmp_image_data = 0
         try:
             last_index = len(self.main.image_data_container) - 1
-            index = min(self.main.navigation_frame.image_index, last_index)
+            index = min(self.main.image_index, last_index)
             tmp_image_data = self.main.image_data_container[index]
             data_was_analyzed = tmp_image_data.radius_was_calculated
         except Exception as e:
@@ -1210,20 +1197,20 @@ class Tab(ctk.CTkTabview):
             self.master.capture_button.configure(state = 'normal')
             self.p1 = (0,0)
             # Обеспечим то, что счетчик указывает на последний эл-т в image_data_container 
-            self.main.navigation_frame.image_index = max(0, len(self.main.image_data_container) - 1)
+            self.main.image_index = max(0, len(self.main.image_data_container) - 1)
         elif (self.get() == 'Обработка'):
             # self.lockNameFromChanges()
             # TODO: все еще грязый трюк, но время 19:44, а я еще на работе. Эта возня с обработкой индексов - единственное, что тормозит новую версию
             self.master.capture_button.configure(state = 'disabled')
-            if (self.main.menu.data_was_reset or self.main.menu.data_is_external):
+            if (self.main.data_was_reset or self.main.data_is_external):
                 # Иначе индекс становится равным -1
-                self.main.menu.data_was_reset = False
-                self.main.menu.data_is_external = False # TODO не знаю, нужно ли
+                self.main.data_was_reset = False
+                self.main.data_is_external = False # TODO не знаю, нужно ли
             else:
                 # Т.к. единственный способ здесь оказаться с какими либо данными (минуя экспорт 
                 # или восстановление) - переход из захвата, где после захвата пооследнего 
                 # изображения мы лишний раз прибавили 1
-                self.main.navigation_frame.image_index = max(self.main.navigation_frame.image_index - 1, 0)
+                self.main.image_index = max(self.main.image_index - 1, 0)
             
             self.needed_active_pos_monitoring = False
             if (self.angle_thread!= None):
@@ -1232,7 +1219,7 @@ class Tab(ctk.CTkTabview):
             length = len(self.main.image_data_container) 
             if (length!=0):
 
-                index = self.main.navigation_frame.image_index
+                index = self.main.image_index
                 # print('index =', index,'; len =', length )
                 self.main.image_frame.switchImage(index)
                 if (self.main.image_data_container[index].image_has_been_analyzed):
@@ -1473,9 +1460,20 @@ class Tab(ctk.CTkTabview):
 class App(ctk.CTk):    
     def __init__(self, config):
         super().__init__()
-        self.config = config
-        self.initUI()
         
+        self.config = config
+        self.image_index = 0
+        self.data_is_external = False   #bool
+        self.data_was_reset = False     #bool
+        self.photo_is_captured = False  #bool
+
+        self.image_data = None
+        
+        self.initUI()
+
+
+
+
     def initUI(self):
         self.image_data_container = []
 
@@ -1506,7 +1504,7 @@ class App(ctk.CTk):
         current_date = utility.getCurrentDateStr() 
         self.backup_path = self.base_path + current_date + '_tmp/'
         self.organizeBackup() 
-        backup_folders_names = utility.getBackupFoldersNames(self.base_path)
+        self.backup_folders_names = utility.getBackupFoldersNames(self.base_path)
         self.crop_factor_x = 0
         self.crop_factor_y = 0
 
@@ -1516,7 +1514,7 @@ class App(ctk.CTk):
 
         self.setupGrid()
 
-        self.menu = TitleMenu(self, folders_names= backup_folders_names)
+        self.menu = TitleMenu(self)
         self.menu.grid()
 
         self.top_level_window = None
