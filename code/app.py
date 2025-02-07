@@ -580,7 +580,7 @@ class ImageFrame(ctk.CTkFrame):
                 self.p1_real_coords = (int(self.end_coords[0]*self.master.current_image.width/self.image_resized.width), int(self.end_coords[1]*self.master.current_image.height/self.image_resized.height))
                 self.right_frame_handle.updatePlot(self.p0_real_coords, self.p1_real_coords)
                 self.master.image_data_container[index].line_was_built = True
-                print(index)
+                # print(index)
 
             elif (event.type == '6'):
                 # Тащим
@@ -1146,7 +1146,7 @@ class Tab(ctk.CTkTabview):
         
         for i in range(len(self.main.image_data_container)):
             self.main.image_data_container[i].need_to_draw_line = self.draw_line_var.get() 
-            print(self.main.image_data_container[i].need_to_draw_line)
+            # print(self.main.image_data_container[i].need_to_draw_line)
         # print('Need to draw line:', self.main.image_data_container[0].need_to_draw_line)
 
     def changeNeedToDrawCircle(self,var,index,mode): 
@@ -1301,13 +1301,13 @@ class Tab(ctk.CTkTabview):
 
 
     def findMismatches(self , names):
-        # Create sets to store names ending with '_o' and '_d'
 
+        # set быстрее list, но у меня не так уж много элементов. Возможно удалю 
+        # из соображения унификации
         
         names_o = set()
         names_d = set()
 
-        # Populate the sets
         for name in names:
             if name.endswith('_o'):
                 names_o.add(name)
@@ -1318,17 +1318,19 @@ class Tab(ctk.CTkTabview):
         mismatches = []
         
         for name in names_o:
-            # Extract the base name (without the suffix)
-            base_name = name[:-2]  # Remove the last two characters '_o'
+            # достанем имя без суффикса
+            base_name = name[:-2]  
             if base_name + '_d' not in names_d:
                 mismatches.append(name)
 
         for name in names_d:
-            # Extract the base name (without the suffix)
-            base_name = name[:-2]  # Remove the last two characters '_d'
+            base_name = name[:-2] 
             if base_name + '_o' not in names_o:
                 mismatches.append(name)
 
+        if 'control' in mismatches:
+            mismatches.remove('control')
+            
         return mismatches
 
 
