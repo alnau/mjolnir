@@ -42,39 +42,39 @@ class TitleMenu(CTkTitleMenu):
         self.data_is_external = False   #bool
         self.data_was_reset = False     #bool
         
-        self.file_button = self.add_cascade("Файл")
+        file_button = self.add_cascade("Файл")
         # reopen_camera_buttom = self.add_cascade("Изменить камеру", command = self.master.initUI)
         
-        self.file_dropdown = CustomDropdownMenu(widget=self.file_button)
-        self.extras_button = self.add_cascade("Дополнительно")
+        file_dropdown = CustomDropdownMenu(widget=file_button)
+        extras_button = self.add_cascade("Дополнительно")
         self.exterminate_button = self.add_cascade("DoW")
         self.exterminate_button.configure(state = 'disabled')
-        self.open_sub_menu = self.file_dropdown.add_submenu("Открыть")
-        self.open_sub_menu.add_option(option="Файл", command = self.openFile)
-        self.open_sub_menu.add_option(option="Папку", command = self.openFolder)
+        open_sub_menu = file_dropdown.add_submenu("Открыть")
+        open_sub_menu.add_option(option="Файл", command = self.openFile)
+        open_sub_menu.add_option(option="Папку", command = self.openFolder)
 
-        self.recover_sub_menu  = self.file_dropdown.add_submenu("Восстановить сессию")
+        recover_sub_menu  = file_dropdown.add_submenu("Восстановить сессию")
 
         for folder_name in self.backup_folders:
-            self.recover_sub_menu.add_option(option = folder_name, command = lambda name = folder_name: self.recoverFromFolder(name))
+            recover_sub_menu.add_option(option = folder_name, command = lambda name = folder_name: self.recoverFromFolder(name))
 
 
-        self.file_dropdown.add_separator()
+        file_dropdown.add_separator()
         
-        save_sub_menu = self.file_dropdown.add_option("Сохранить изображение", command = self.savePhoto)
-        export_sub_menu = self.file_dropdown.add_submenu("Экспортировать")
+        save_sub_menu = file_dropdown.add_option("Сохранить изображение", command = self.savePhoto)
+        export_sub_menu = file_dropdown.add_submenu("Экспортировать")
         export_sub_menu.add_option(option = "Данные текущего изображения", command = self.exportFile)
         export_sub_menu.add_option(option = "Данные всех изображений", command = self.exportAll)
         
-        self.extras_dropdown = CustomDropdownMenu(widget = self.extras_button)
-        self.extras_dropdown.add_option("Изменить камеру", command = self.master.initUI)
-        self.extras_dropdown.add_option("Начать новую серию измерений", command = self.resetStateAndData)
-        self.extras_dropdown.add_option("Изменить отсечку фона", command = self.updateThreshold)
+        extras_dropdown = CustomDropdownMenu(widget = extras_button)
+        extras_dropdown.add_option("Изменить камеру", command = self.changeCamera)
+        extras_dropdown.add_option("Начать новую серию измерений", command = self.resetStateAndData)
+        extras_dropdown.add_option("Изменить отсечку фона", command = self.updateThreshold)
 
-        self.geno_dropdown = CustomDropdownMenu(widget=self.exterminate_button)
-        self.geno_dropdown.add_option(option = "NUKE EM, OPPIE!", command = self.restartInterface)
-        self.geno_dropdown.add_option(option = "SHOOT YOUR OWN FOOT!", command = self.shotYourself)
-        self.geno_dropdown.add_option(option = "TELL ME", command = self.dropInfo)
+        geno_dropdown = CustomDropdownMenu(widget=self.exterminate_button)
+        geno_dropdown.add_option(option = "NUKE EM, OPPIE!", command = self.restartInterface)
+        geno_dropdown.add_option(option = "SHOOT YOUR OWN FOOT!", command = self.shotYourself)
+        geno_dropdown.add_option(option = "TELL ME", command = self.dropInfo)
 
         self.master.bind("<Control-Up>", self.onControl_UpPress)
         self.master.bind("<Control_L>", self.onControlPress)
@@ -82,6 +82,9 @@ class TitleMenu(CTkTitleMenu):
         
         # self.bind("<ControlRelease>", self.onCtrlRelease)
 
+    def changeCamera(self):
+        self.resetStateAndData()
+        self.master.initUI()
 
     def updateThreshold(self):
         val  = utility.getIniVal('cutoff_threshold')
@@ -341,17 +344,17 @@ class NavigationFrame(ctk.CTkFrame):
         self.image_index = 0
         self.is_active = True #bool
 
-        self.button_frame = ctk.CTkFrame(self)
-        self.button_frame.pack(fill="x", pady=const.DEFAULT_PADY, padx = const.DEFAULT_PADX, side = 'top')
-        self.button_frame.grid_columnconfigure(0, weight=3)
-        self.button_frame.grid_columnconfigure(1, weight=3)
+        button_frame = ctk.CTkFrame(self)
+        button_frame.pack(fill="x", pady=const.DEFAULT_PADY, padx = const.DEFAULT_PADX, side = 'top')
+        button_frame.grid_columnconfigure(0, weight=3)
+        button_frame.grid_columnconfigure(1, weight=3)
         
-        self.prev_button = ctk.CTkButton(self.button_frame, text="<", 
+        self.prev_button = ctk.CTkButton(button_frame, text="<", 
                                         command = lambda: self.switch(btn = 'back'))
         self.prev_button.grid(row = 0, column = 0, sticky = 'e', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
 
 
-        self.next_button = ctk.CTkButton(self.button_frame, text=">", 
+        self.next_button = ctk.CTkButton(button_frame, text=">", 
                                         command = lambda: self.switch(btn = "fwd"))
         self.next_button.grid(row = 0, column = 1, sticky = 'w', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
 
@@ -737,14 +740,14 @@ class RightFrame(ctk.CTkFrame):
         self.photo_is_captured = False  #bool
         self.is_active = True   #bool
 
-        self.plot_width = 4.5
-        self.plot_height = 2.7
+        plot_width = 4.5
+        plot_height = 2.7
 
         self.image_data = None
 
         self.tmp_name = ''
 
-        self.fig, self.ax = plt.subplots(figsize=(self.plot_width, self.plot_height)) 
+        self.fig, self.ax = plt.subplots(figsize=(plot_width, plot_height)) 
         plt.tight_layout(pad=0) 
         self.ax.set_aspect('auto', adjustable='box')
 
@@ -752,31 +755,31 @@ class RightFrame(ctk.CTkFrame):
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(fill="x", padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY, side = "top")
 
-        self.entry_frame = ctk.CTkFrame(self, )
-        self.entry_frame.pack(fill="x", pady=const.DEFAULT_PADY/2, padx = const.DEFAULT_PADX, side = 'top')
+        entry_frame = ctk.CTkFrame(self, )
+        entry_frame.pack(fill="x", pady=const.DEFAULT_PADY/2, padx = const.DEFAULT_PADX, side = 'top')
         
         # Это будет самое безбожное, что ты делал с этим проектом
         self.curr_name_str_val = ctk.StringVar()
         self.curr_name_str_val.trace_add('write', self.updateName)
-        self.entry = ctk.CTkEntry(self.entry_frame, textvariable=self.curr_name_str_val)
+        self.entry = ctk.CTkEntry(entry_frame, textvariable=self.curr_name_str_val)
         self.entry.pack(fill="x", side = 'left', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY, expand = True)
         self.entry.focus()
         
-        self.capture_button = ctk.CTkButton(self.entry_frame, text = 'Захватить', command= self.captureImage)
+        self.capture_button = ctk.CTkButton(entry_frame, text = 'Захватить', command= self.captureImage)
         self.capture_button.pack(side = 'left', pady = const.DEFAULT_PADY, padx = const.DEFAULT_PADX)
         self.master.bind('<Return>', self.handleEnter)
     
-        self.thin_frame = ctk.CTkFrame(self, height=2, bg_color="gray")
-        self.thin_frame.pack(fill="x", padx =10, pady=const.DEFAULT_PADY/2,)
+        thin_frame = ctk.CTkFrame(self, height=2, bg_color="gray")
+        thin_frame.pack(fill="x", padx =10, pady=const.DEFAULT_PADY/2,)
 
         self.tabview = Tab(master = self, main=master)
         self.tabview.pack(side = 'top', fill = 'both', pady = (0,const.DEFAULT_PADY), padx = const.DEFAULT_PADX) 
         
 
-        self.status_frame = ctk.CTkFrame(self, height = master.navigation_frame.winfo_height())
-        self.status_frame.pack(fill="x", padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY, side = 'bottom')
+        frame_frame = ctk.CTkFrame(self, height = master.navigation_frame.winfo_height())
+        frame_frame.pack(fill="x", padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY, side = 'bottom')
 
-        self.status = ctk.CTkLabel(self.status_frame, text = '', )   
+        self.status = ctk.CTkLabel(frame_frame, text = '', )   
         self.status.pack( fill = 'both', pady = const.DEFAULT_PADY, padx = const.DEFAULT_PADX)
 
     def updateName(self,var,index,mode):
@@ -1040,73 +1043,69 @@ class Tab(ctk.CTkTabview):
 
         self.needed_active_pos_monitoring = False   #bool
 
-
-        self.firstImage = 0
-        self.secondImage = 0
-
         #################   Захват   #########################
 
-        self.capture_tab = self.add("Захват")  
+        capture_tab = self.add("Захват")  
           
-        self.slider_frame = ctk.CTkFrame(self.capture_tab, fg_color='transparent')
-        self.slider_frame.pack(fill = 'x', side = 'top')
+        slider_frame = ctk.CTkFrame(capture_tab, fg_color='transparent')
+        slider_frame.pack(fill = 'x', side = 'top')
 
-        self.slider_label = ctk.CTkLabel(self.slider_frame, text='Экспозиция    ')
-        self.slider_label.pack(side = 'left')
-        self.slider = ctk.CTkSlider(self.slider_frame, from_ = 0,to = const.MAX_EXPOSURE_MS, command = self.sliderEvent)
+        slider_label = ctk.CTkLabel(slider_frame, text='Экспозиция    ')
+        slider_label.pack(side = 'left')
+        self.slider = ctk.CTkSlider(slider_frame, from_ = 0,to = const.MAX_EXPOSURE_MS, command = self.sliderEvent)
         self.slider.pack(fill = 'x', side = 'left', expand = True) 
 
-        self.max_exposure_label = ctk.CTkLabel(self.slider_frame, text = '')
+        self.max_exposure_label = ctk.CTkLabel(slider_frame, text = '')
         self.max_exposure_label.pack(side = 'left')
 
-        self.option_frame = ctk.CTkFrame(self.capture_tab, fg_color='transparent')
-        self.option_frame.pack(side = 'top', fill = 'x', pady = (10,0))
+        option_frame = ctk.CTkFrame(capture_tab, fg_color='transparent')
+        option_frame.pack(side = 'top', fill = 'x', pady = (10,0))
         
     
         # self.check_var = ctk.StringVar(value="off")
-        # self.select_optimisation_button = ctk.CTkCheckBox(self.option_frame, onvalue= 'on', offvalue = 'off', variable= self.check_var, text = 'Использовать пользовательскую линию для анализа')
+        # self.select_optimisation_button = ctk.CTkCheckBox(option_frame, onvalue= 'on', offvalue = 'off', variable= self.check_var, text = 'Использовать пользовательскую линию для анализа')
         # self.select_optimisation_button.grid(sticky = 'nw')
 
         # TODO: command = self.master.nextImage - это что-то совсем безбожное
-        self.continue_button = ctk.CTkButton(master = self.capture_tab, command = self.master.nextImage, text = 'Продолжить', state = 'disabled')
+        self.continue_button = ctk.CTkButton(master = capture_tab, command = self.master.nextImage, text = 'Продолжить', state = 'disabled')
         self.continue_button.pack(side = 'bottom', fill = 'x')
 
         #################     Обработка   #########################
-        self.analyze_tab = self.add("Обработка")
+        analyze_tab = self.add("Обработка")
 
-        self.button_frame = ctk.CTkFrame(self.analyze_tab, fg_color='transparent')
-        self.button_frame.pack(fill = 'x', anchor = 'n')
-        self.button_frame.grid_columnconfigure((0,1), weight = 1)
-        self.analyze_all_button = ctk.CTkButton(self.button_frame, text = 'Обработать все', command= lambda: self.analyzeAll(data_container = self.main.image_data_container))
+        button_frame = ctk.CTkFrame(analyze_tab, fg_color='transparent')
+        button_frame.pack(fill = 'x', anchor = 'n')
+        button_frame.grid_columnconfigure((0,1), weight = 1)
+        self.analyze_all_button = ctk.CTkButton(button_frame, text = 'Обработать все', command= lambda: self.analyzeAll(data_container = self.main.image_data_container))
         self.analyze_all_button.grid(row = 0, column = 1, sticky = 'ew', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
-        self.analyze_current_button = ctk.CTkButton(self.button_frame, text = 'Обработать отдельные кадры', command=self.selectFramesToAnalyze)
+        self.analyze_current_button = ctk.CTkButton(button_frame, text = 'Обработать отдельные кадры', command=self.selectFramesToAnalyze)
         self.analyze_current_button.grid(row = 0, column = 0, sticky = 'ew', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
         
         
-        self.analysis_frame = ctk.CTkScrollableFrame(self.analyze_tab)
-        self.analysis_frame.pack(fill = 'both',anchor = 'n', expand = True)
+        analysis_frame = ctk.CTkScrollableFrame(analyze_tab)
+        analysis_frame.pack(fill = 'both',anchor = 'n', expand = True)
         
         self.draw_line_var = ctk.IntVar(value=0)
-        self.draw_line_checkbox = ctk.CTkCheckBox(self.analysis_frame, onvalue= 1, offvalue = 0, variable= self.draw_line_var, text = 'Вывести линию главной оси')
+        self.draw_line_checkbox = ctk.CTkCheckBox(analysis_frame, onvalue= 1, offvalue = 0, variable= self.draw_line_var, text = 'Вывести линию главной оси')
         self.draw_line_checkbox.pack(anchor = 'nw', pady = const.DEFAULT_PADY)
         self.draw_line_var.trace_add('write', self.changeNeedToDrawLine)
 
         self.draw_circle_var = ctk.IntVar(value=1)
-        self.draw_circle_checkbox = ctk.CTkCheckBox(self.analysis_frame, onvalue= 1, offvalue = 0, variable= self.draw_circle_var, text = 'Вывести окружность 86.5% энергии')
+        self.draw_circle_checkbox = ctk.CTkCheckBox(analysis_frame, onvalue= 1, offvalue = 0, variable= self.draw_circle_var, text = 'Вывести окружность 86.5% энергии')
         self.draw_circle_checkbox.pack(anchor = 'nw', pady = const.DEFAULT_PADY)
         self.draw_circle_var.trace_add('write', self.changeNeedToDrawCircle)
         
 
-        self.report_textbox = ctk.CTkTextbox(self.analysis_frame)
+        self.report_textbox = ctk.CTkTextbox(analysis_frame)
         self.report_textbox.insert('0.0', 'Данные не обработаны')
         self.report_textbox.configure(state = 'disabled')
         self.report_textbox.pack(fill = 'x', side = 'top')
         # self.report_textbox.grid(row = 0, column = 0, sticky = 'new', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
 
         #################   Клиновидность   #########################
-        self.parallelism_tab = self.add("Клиновидность")
+        parallelism_tab = self.add("Клиновидность")
 
-        self.slider_frame2 = ctk.CTkFrame(self.parallelism_tab, fg_color='transparent')
+        self.slider_frame2 = ctk.CTkFrame(parallelism_tab, fg_color='transparent')
         self.slider_frame2.pack(fill = 'x', side = 'top')
 
 
@@ -1118,24 +1117,24 @@ class Tab(ctk.CTkTabview):
         self.max_exposure_label2 = ctk.CTkLabel(self.slider_frame2, text = '')
         self.max_exposure_label2.pack(side = 'left')
         
-        self.base_entry_frame = ctk.CTkFrame(self.parallelism_tab, )
-        self.base_entry_frame.pack(fill="x", pady=(10, 5), side = 'top')
+        base_entry_frame = ctk.CTkFrame(parallelism_tab, )
+        base_entry_frame.pack(fill="x", pady=(10, 5), side = 'top')
         
-        self.base_label = ctk.CTkLabel(self.base_entry_frame, text = 'База (см)')
-        self.base_label.pack(side = 'left', pady = const.DEFAULT_PADY, padx = const.DEFAULT_PADX)
+        base_label = ctk.CTkLabel(base_entry_frame, text = 'База (см)')
+        base_label.pack(side = 'left', pady = const.DEFAULT_PADY, padx = const.DEFAULT_PADX)
         
         self.base_var = ctk.StringVar(self.main,value = str(const.DEFAULT_BASE_CM))
-        self.base_entry = ctk.CTkEntry(self.base_entry_frame, textvariable=self.base_var)
+        self.base_entry = ctk.CTkEntry(base_entry_frame, textvariable=self.base_var)
         self.base_entry.pack(fill="x", side = 'left', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY, expand = True)
         self.base_var.trace_add('write', self.updateBase)
 
         # self.base_entry.insert(0, str(const.DEFAULT_BASE_CM))
 
-        self.first_button = ctk.CTkButton(self.parallelism_tab, text = 'Записать первую точку', command=self.setFirstPosition)
-        self.first_button.pack(fill = 'x', side = 'top')
+        first_button = ctk.CTkButton(parallelism_tab, text = 'Записать первую точку', command=self.setFirstPosition)
+        first_button.pack(fill = 'x', side = 'top')
     
         res = self.getParallelismReport()
-        self.resultsLabel = ctk.CTkLabel(self.parallelism_tab, text =res , anchor= 'n')
+        self.resultsLabel = ctk.CTkLabel(parallelism_tab, text =res , anchor= 'n')
         self.resultsLabel.pack(fill = 'x', expand = True, side = 'top', pady = 2)
         self.resultsLabel.cget("font").configure(size=45)
 
@@ -1282,8 +1281,7 @@ class Tab(ctk.CTkTabview):
         print("thread killed (?)")
     def setFirstPosition(self):
         
-        self.firstImage = self.main.getImage()
-        self.p0 = utility.getCOM(self.firstImage)
+        self.p0 = utility.getCOM(self.main.getImage())
         # self.needed_active_pos_monitoring = True
     
         self.angle_sec = self.calculateAngleSec()
@@ -1488,10 +1486,11 @@ class App(ctk.CTk):
         height = int(0.8*screen_height)
         width = int(0.8*screen_width)
         self.geometry(f"{width}x{height}")
-
+        
+        self.camera_feed_image = None
         try:
-            self.image_path= utility.resourcePath('mockup.tif')        
-            self.camera_feed_image = Image.open(self.image_path).convert('L')
+            image_path= utility.resourcePath('mockup.tif')        
+            self.camera_feed_image = Image.open(image_path).convert('L')
         except Exception as e:
             logging.error(e,stack_info=True, exc_info=True)
             print('Checkout initUI', traceback.format_exc())
@@ -1507,7 +1506,7 @@ class App(ctk.CTk):
         current_date = utility.getCurrentDateStr() 
         self.backup_path = self.base_path + current_date + '_tmp/'
         self.organizeBackup() 
-        self.backup_folders_names = utility.getBackupFoldersNames(self.base_path)
+        backup_folders_names = utility.getBackupFoldersNames(self.base_path)
         self.crop_factor_x = 0
         self.crop_factor_y = 0
 
@@ -1517,7 +1516,7 @@ class App(ctk.CTk):
 
         self.setupGrid()
 
-        self.menu = TitleMenu(self, folders_names= self.backup_folders_names)
+        self.menu = TitleMenu(self, folders_names= backup_folders_names)
         self.menu.grid()
 
         self.top_level_window = None
