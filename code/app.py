@@ -529,7 +529,7 @@ class ImageFrame(ctk.CTkFrame):
         # self.resizeImage(None)
         self.master.right_frame.tabview.slider.set(self.cam.getExposureFrac()) 
         self.master.right_frame.tabview.slider2.set(self.cam.getExposureFrac()) 
-        
+        self.master.right_frame.tabview.slider3.set(self.cam.getExposureFrac()) 
         # self.startVideoFeed()
         self.startCameraFeed()
 
@@ -556,23 +556,35 @@ class ImageFrame(ctk.CTkFrame):
         if (event.type == '4'):
             # нажали
             # логика отделения 
-            tabview_handle.center_coords = (event.x, event.y)
-            self.clearPhoto()   # Тут тоже надо подумать, требется накладывать первый и второй круги
+            if (tabview_handle.first_center_coords == None):
+                tabview_handle.first_center_coords = (event.x, event.y)
+                tabview_handle.p0 = (tabview_handle.first_center_coords[0]/self.master.crop_factor_x, tabview_handle.first_center_coords[1]/self.master.crop_factor_y)
+                tabview_handle.second_center_coords = None
+                tabview_handle.p1 = (0,0)
+
+            else:
+                tabview_handle.second_center_coords = (event.x, event.y)
+                tabview_handle.p1 = (tabview_handle.second_center_coords[0]/self.master.crop_factor_x, tabview_handle.second_center_coords[1]/self.master.crop_factor_y)
+            # self.clearPhoto()   # Тут тоже надо подумать, требется накладывать первый и второй круги
         elif (event.type == '6'):
             # тащим
             coords_image_space = (event.x, event.y)
-            radius_image_space = utility.getRadius(tabview_handle.center_coords, coords_image_space) 
-            updated_image = self.updateCircleOnPhoto(tabview_handle.center_coords, radius_image_space)
+            if (tabview_handle.second_center_coords == None):
+                tabview_handle.first_radius_image_space = utility.getRadius(tabview_handle.first_center_coords, coords_image_space) 
+            else:
+                tabview_handle.second_radius_image_space = utility.getRadius(tabview_handle.second_center_coords, coords_image_space)
 
-            photo = ImageTk.PhotoImage(updated_image)
-
-            self.image_canvas.config(width=updated_image.width, height=updated_image.height)
-            self.image_canvas.create_image(0,0,image=photo,anchor = 'nw')
-            self.image_canvas.image = photo
-
+            # updated_image = self.updateCircleOnPhoto(tabview_handle.first_center_coords, tabview_handle.first_radius_image_space)
+            # photo = ImageTk.PhotoImage(updated_image)
+            # self.image_canvas.config(width=updated_image.width, height=updated_image.height)
+            # self.image_canvas.create_image(0,0,image=photo,anchor = 'nw')
+            # self.image_canvas.image = photo
         elif (event.type == '5'):
             # отпустили
-            pass
+            if (tabview_handle.second_center_coords!=None and tabview_handle.first_center_coords!=None ):
+                # посчитали и вывели угол
+                tabview_handle.manualySetCoords()
+                
 
 
 
@@ -644,7 +656,20 @@ class ImageFrame(ctk.CTkFrame):
 
         img = shared_image.copy()
         self.image_resized = img.resize((self.winfo_width(), self.winfo_height()), Image.ANTIALIAS)
-        photo = ImageTk.PhotoImage(self.image_resized)
+        
+        tabview_handle = self.master.right_frame.tabview
+
+        photo = None
+
+        if (self.master.manual_drawing and tabview_handle.first_center_coords != None):
+            updated_image = self.updateCircleOnPhoto(tabview_handle.first_center_coords, tabview_handle.first_radius_image_space)
+            if (tabview_handle.second_center_coords != None):
+                updated_image = self.updateCircleOnPhoto(tabview_handle.second_center_coords, tabview_handle.second_radius_image_space, updated_image)
+        else:
+            updated_image = self.image_resized
+ 
+        
+        photo = ImageTk.PhotoImage(updated_image)
         self.image_canvas.config(width=self.image_resized.width, height=self.image_resized.height)
 
         # AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
@@ -669,12 +694,13 @@ class ImageFrame(ctk.CTkFrame):
             self.draw.line(self.getCrossLineCoord(point,False), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
         return tmp_image
     
-    def updateCircleOnPhoto(self, start, radius):
-        tmp_image = self.image_resized.copy()
-
+    def updateCircleOnPhoto(self,start, radius, image = None):
+        if (image != None):
+            tmp_image = image.copy()
+        else:
+            tmp_image = self.image_resized.copy()
         self.draw = ImageDraw.Draw(tmp_image)
-
-        self.draw.ellipse(utility.getCircleBound(start, radius), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
+        self.draw.ellipse(utility.getCircleBound(start, radius), fill = None, width = const.LINE_WIDTH, outline = const.LINE_COLOR)
         
         return tmp_image
     
@@ -716,6 +742,8 @@ class ImageFrame(ctk.CTkFrame):
         height = self.winfo_height()
 
         self.image_resized = image.resize((width, height))
+
+
         self.photo = ImageTk.PhotoImage(self.image_resized)
 
         self.image_canvas.config(width=self.image_resized.width, height=self.image_resized.height)
@@ -762,9 +790,12 @@ class ImageFrame(ctk.CTkFrame):
         self.image_canvas.create_image(0,0,image=self.photo,anchor = 'nw')
         self.image_canvas.image = self.photo
         
-        # ... и данные по кропу
+        # ... и данные по кропу. отношение размера окна к изображению
         self.master.crop_factor_x = width/self.master.current_image.width
         self.master.crop_factor_y = height/self.master.current_image.height
+
+        
+        
         self.master.update_idletasks()
 
 class RightFrame(ctk.CTkFrame):
@@ -1172,12 +1203,38 @@ class Tab(ctk.CTkTabview):
         self.resultsLabel.cget("font").configure(size=45)
 
         #################   Ручной режим   #########################
-        self.manual_tab = self.add('Ручной режим')
+        manual_tab = self.add('Ручной режим')
 
-        self.center_coords = (0,0)
+        self.first_center_coords = None
+        self.first_radius_image_space = 0
+
+        self.second_center_coords = None
+        self.second_radius_image_space = 0
+
+        self.slider_frame3 = ctk.CTkFrame(manual_tab, fg_color='transparent')
+        self.slider_frame3.pack(fill = 'x', side = 'top')
+        
+        self.slider_label3 = ctk.CTkLabel(self.slider_frame3, text='Экспозиция    ')
+        self.slider_label3.pack(side = 'left')
+        self.slider3 = ctk.CTkSlider(self.slider_frame3, from_ = 0,to = const.MAX_EXPOSURE_MS, command = self.sliderEvent)
+        self.slider3.pack(fill = 'x', side = 'left', expand = True) 
+
+        self.max_exposure_label3 = ctk.CTkLabel(self.slider_frame3, text = '')
+        self.max_exposure_label3.pack(side = 'left')
+
+        self.discard_manual_button = ctk.CTkButton(manual_tab, text = 'Сбросить результаты', command = self.discardManual)
+        self.discard_manual_button.pack(fill = 'x', side = 'top', pady = 2)        
+        self.manual_resultsLabel = ctk.CTkLabel(manual_tab, text = 'NA', anchor= 'n')
+        self.manual_resultsLabel.pack(fill = 'x', expand = True, side = 'top', pady = 2)
+        self.manual_resultsLabel.cget("font").configure(size=45)
 
 
         self.tabHandler()
+
+    def discardManual(self):
+        self.first_center_coords = None
+        self.second_center_coords = None
+        self.discard_manual_button.configure(text = 'NA')
 
     def changeNeedToDrawLine(self,var,index,mode): 
         # self.draw_line_var
@@ -1250,9 +1307,15 @@ class Tab(ctk.CTkTabview):
             self.p1 = (0,0)
             # Обеспечим то, что счетчик указывает на последний эл-т в image_data_container 
             self.main.image_index = max(0, len(self.main.image_data_container) - 1)
+            self.main.manual_drawing = False
+            self.first_center_coords = None
+            self.second_center_coords = None
         elif (self.get() == 'Обработка'):
             # self.lockNameFromChanges()
             # TODO: все еще грязый трюк, но время 19:44, а я еще на работе. Эта возня с обработкой индексов - единственное, что тормозит новую версию
+            self.main.manual_drawing = False
+            self.first_center_coords = None
+            self.second_center_coords = None
             self.master.capture_button.configure(state = 'disabled')
             if (self.main.data_was_reset or self.main.data_is_external):
                 # Иначе индекс становится равным -1
@@ -1293,13 +1356,25 @@ class Tab(ctk.CTkTabview):
             self.master.capture_button.configure(state = 'disabled')
             self.main.is_pause = False
             self.angle_sec = 0
+            self.main.manual_drawing = False
+            self.first_center_coords = None
+            self.second_center_coords = None
 
         elif (self.get() == 'Ручной режим'):
+            self.main.manual_drawing = True
+            self.angle_sec = 0
+            self.main.manual_drawing = True # TODO добавил на время разработки фичи
             self.main.navigation_frame.next_button.configure(state = 'disabled')
             self.main.navigation_frame.prev_button.configure(state = 'disabled')
             self.master.capture_button.configure(state = 'disabled')
             self.main.is_pause = False
             self.angle_sec = 0
+
+    def manualySetCoords(self):
+        self.angle_sec = self.calculateAngleSec()
+        res = self.getParallelismReport()
+        self.manual_resultsLabel.configure(text = res)
+
 
     def calculateAngleSec(self):
         dist_px  = np.sqrt((self.p0[0]-self.p1[0])**2 + (self.p0[1]-self.p1[1])**2)
@@ -1484,6 +1559,7 @@ class Tab(ctk.CTkTabview):
         
         self.slider.set(val)
         self.slider2.set(val)
+        self.slider3.set(val)
         self.main.image_frame.cam.setExposure(exposure_time_ms = val)
 
         self.checkForOverexposure()
@@ -1498,6 +1574,7 @@ class Tab(ctk.CTkTabview):
         if (brightest_pixel_value < 250):
             self.slider.configure(button_color = const.FG_COLOR , progress_color= const.PROGRESS_COLOR, button_hover_color = const.HOVER_COLOR)
             self.slider2.configure(button_color = const.FG_COLOR , progress_color= const.PROGRESS_COLOR, button_hover_color = const.HOVER_COLOR)
+            self.slider3.configure(button_color = const.FG_COLOR , progress_color= const.PROGRESS_COLOR, button_hover_color = const.HOVER_COLOR)
             
             if self.get() == 'Захват':
                 self.master.capture_button.configure(state = 'normal', fg_color = const.FG_COLOR)
@@ -1507,6 +1584,7 @@ class Tab(ctk.CTkTabview):
             # self.master.capture_button.configure(state = 'disabled', fg_color = 'red')
             self.slider.configure(button_color = 'red', button_hover_color = 'red', progress_color = 'red' )
             self.slider2.configure(button_color = 'red', button_hover_color = 'red', progress_color = 'red' )
+            self.slider3.configure(button_color = 'red', button_hover_color = 'red', progress_color = 'red' )
             
             return True
 

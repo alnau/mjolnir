@@ -37,16 +37,15 @@ class ThorCamera():
     def cameraFeed(self, master_app):
         try:
             while (not self.cam.wait_for_frame()):
-                time.sleep(0.05)
+                time.sleep(0.01)
 
             arr_img = np.array(self.cam.read_newest_image())
 
             master_app.master.camera_feed_image = Image.fromarray(arr_img.astype('uint8'),'L')
 
             self.frame_is_ready =True
-            self.counter+=1
+            # self.counter+=1
 
-            time.sleep(0.05)
         except Exception as e:
             logging.error('I fucking hate working without physical camera attached to my dying laptop \nIf this error occured on stable version of mjolnir (stable? Heh, nevermind), please check out ThorCamera.cameraFeed \nOf course I have no ideas of what had I done to cause this shitshow in the first place')
             print('I fucking hate working without physical camera attached to my dying laptop')
