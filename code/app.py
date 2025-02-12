@@ -115,6 +115,7 @@ class TitleMenu(CTkTitleMenu):
         self.master.navigation_frame.is_active = True
         self.master.photo_is_captured = False  
         self.master.right_frame.is_active = True   
+        self.master.manual_drawing = False
            
         self.master.right_frame.tabview.needed_active_pos_monitoring = False
 
@@ -135,6 +136,7 @@ class TitleMenu(CTkTitleMenu):
         print('photo_is_captured:',self.master.photo_is_captured)
         print('right_frame.is_active:',self.master.right_frame.is_active)
         print('right_frame.tabview.needed_active_pos_monitoring:',self.master.right_frame.tabview.needed_active_pos_monitoring)
+        print('app.manual_drawing:', self.master.manual_drawing)
         print('app.is_pause:',self.master.is_pause)
 
         utility.printIni()
@@ -187,6 +189,7 @@ class TitleMenu(CTkTitleMenu):
         pure_names = []
         self.master.image_data_container = []
 
+        
         for image_name in os.listdir(dir_path):
             if (image_name.endswith('.tif')):
                 names.append(image_name)
@@ -202,6 +205,7 @@ class TitleMenu(CTkTitleMenu):
             self.master.right_frame.logMessage('Ошибка при импорте')
             logging.error('Err occured during recovery from folder. Image_data_container is empty')
         
+        # TODO: возможно, если подменить на switchImage, решится баг с подгрузкой
         self.master.image_frame.loadImage(self.master.image_data_container[0].norm_image, pure_names[0])
         
         text = "Восстановлено " + str(len(self.master.image_data_container)) + " изображений. Вы можете продолжить работу"
@@ -215,6 +219,7 @@ class TitleMenu(CTkTitleMenu):
         pass
 
     def openFile(self):
+        # TODO: надо сделать возможным импорт png и jpg файлов
         file_path = filedialog.askopenfilename(filetypes = [("tif file(*.tif)","*.tif")], defaultextension = [("tif file(*.tif)","*.tif")])
         if file_path:
             try:
@@ -382,7 +387,8 @@ class NavigationFrame(ctk.CTkFrame):
         # TODO: возможно, можно не передавать image_index в эти функции
         self.master.right_frame.updatePlotAfterAnalysis(self.master.image_index, was_analyzed)
         self.master.right_frame.updatePrintedDataAfterAnalysis(self.master.image_index)
-        self.master.image_frame.loadImage(self.master.image_data_container[self.master.image_index].norm_image, name = self.master.image_data_container[self.master.image_index].image_name)
+        # TODO: убрал 10.02.25 за ненадобностью. Возможно, ошибся
+        # self.master.image_frame.loadImage(self.master.image_data_container[self.master.image_index].norm_image, name = self.master.image_data_container[self.master.image_index].image_name)
         self.master.image_frame.switchImage(self.master.image_index)
         # self.master.right_frame.updateWindowAfterAnalysis()
         self.master.image_frame.reset()
@@ -441,10 +447,10 @@ class ImageFrame(ctk.CTkFrame):
 
         self.image_canvas = tk.Canvas(self, highlightbackground="black")
         
-        self.image_canvas.bind("<ButtonPress-1>", self.drawLines )
-        self.image_canvas.bind("<B1-Motion>", self.drawLines )
-        self.image_canvas.bind("<ButtonRelease-1>", self.drawLines )
-        self.image_canvas.bind("<ButtonRelease-1>", self.drawLines )
+        self.image_canvas.bind("<ButtonPress-1>", self.draw )
+        self.image_canvas.bind("<B1-Motion>", self.draw )
+        self.image_canvas.bind("<ButtonRelease-1>", self.draw )
+        self.image_canvas.bind("<ButtonRelease-1>", self.draw )
 
     def getCameraList(self):
         tmp_camera_list = []
@@ -477,7 +483,8 @@ class ImageFrame(ctk.CTkFrame):
 
     def forgetCamera(self):
         try:
-            self.cam.__delete__()
+            # self.cam.__delete__()
+            self.cam.releaseCamera()
             self.cam = FakeCamera()
         except Exception as e:
             logging.error(e,stack_info=True, exc_info=True)
@@ -537,56 +544,85 @@ class ImageFrame(ctk.CTkFrame):
 
         self.clearPhoto()
 
-
-    def drawLines(self, event):
-
+    def draw(self, event):
         if (self.master.right_frame.tabview.get() == 'Обработка' or  self.master.data_is_external == True):
-            index = self.master.image_index
-            length = len(self.master.image_data_container)
-            if (event.type == '4'):
-                # нажали
-                # тут какая-то полная грязь с логикой. Я уже слишком пьян чтобы разобраться в этом дерьме
-                # фактически ифы ниже только для того, чтобы нормально отрабатывала логика сброса галки о том, 
-                # что оптимизация не нужна. Уверен, на трезвую голову ты справишься куда лучше
-                # 
-                # При этом, все работает
-                # elif(length != 0 and index < length):
-                #     # TODO: Есть сценарии, при которых индекс может вести за пределы массива. Не знаю как решать эту проблему
-                #     # print('index =', index)
-                #     self.master.image_data_container[index].line_was_built = False
-                #     self.master.image_data_container[index].optimisation_needed = True
-                self.master.right_frame.clearPlot()
-                tabview_handle = self.master.right_frame.tabview 
-                # tabview_handle.check_var.set('on')
-                self.tmp_coords = (0,0)
-                self.start_coords = (event.x, event.y)
-                tabview_handle.analyze_all_button.configure(state = 'normal')
-                tabview_handle.analyze_current_button.configure(state = 'normal')
-                self.clearPhoto()
-                
-            elif (event.type == '5'):
-                # Отпустили
-                self.end_coords = (event.x, event.y)
-                self.tmp_coords = self.end_coords
-                self.p0_real_coords = (int(self.start_coords[0]*self.master.current_image.width/self.image_resized.width), int(self.start_coords[1]*self.master.current_image.height/self.image_resized.height))
-                self.p1_real_coords = (int(self.end_coords[0]*self.master.current_image.width/self.image_resized.width), int(self.end_coords[1]*self.master.current_image.height/self.image_resized.height))
-                self.right_frame_handle.updatePlot(self.p0_real_coords, self.p1_real_coords)
-                self.master.image_data_container[index].line_was_built = True
-                # print(index)
+            self.drawLines(event)
+        elif (self.master.right_frame.tabview.get() == 'Ручной режим' and self.master.manual_drawing):
+            self.drawCircles(event)
 
-            elif (event.type == '6'):
-                # Тащим
-                self.tmp_coords = (event.x, event.y)
-            if (self.tmp_coords != (0,0)):
-                updated_image = self.updateLineOnPhoto()
-                
-                photo = ImageTk.PhotoImage(updated_image)
+    def drawCircles(self,event):
+        tabview_handle = self.master.right_frame.tabview 
 
-                self.image_canvas.config(width=updated_image.width, height=updated_image.height)
-                self.image_canvas.create_image(0,0,image=photo,anchor = 'nw')
-                self.image_canvas.image = photo
-        else:
-            self.master.right_frame.logMessage("Необходимо сначала захватить изображение")
+        if (event.type == '4'):
+            # нажали
+            # логика отделения 
+            tabview_handle.center_coords = (event.x, event.y)
+            self.clearPhoto()   # Тут тоже надо подумать, требется накладывать первый и второй круги
+        elif (event.type == '6'):
+            # тащим
+            coords_image_space = (event.x, event.y)
+            radius_image_space = utility.getRadius(tabview_handle.center_coords, coords_image_space) 
+            updated_image = self.updateCircleOnPhoto(tabview_handle.center_coords, radius_image_space)
+
+            photo = ImageTk.PhotoImage(updated_image)
+
+            self.image_canvas.config(width=updated_image.width, height=updated_image.height)
+            self.image_canvas.create_image(0,0,image=photo,anchor = 'nw')
+            self.image_canvas.image = photo
+
+        elif (event.type == '5'):
+            # отпустили
+            pass
+
+
+
+    def drawLines(self, event):    
+        index = self.master.image_index
+        length = len(self.master.image_data_container)
+        if (event.type == '4'):
+            # нажали
+            # тут какая-то полная грязь с логикой. Я уже слишком пьян чтобы разобраться в этом дерьме
+            # фактически ифы ниже только для того, чтобы нормально отрабатывала логика сброса галки о том, 
+            # что оптимизация не нужна. Уверен, на трезвую голову ты справишься куда лучше
+            # 
+            # При этом, все работает
+            # elif(length != 0 and index < length):
+            #     # TODO: Есть сценарии, при которых индекс может вести за пределы массива. Не знаю как решать эту проблему
+            #     # print('index =', index)
+            #     self.master.image_data_container[index].line_was_built = False
+            #     self.master.image_data_container[index].optimisation_needed = True
+            self.master.right_frame.clearPlot()
+            tabview_handle = self.master.right_frame.tabview 
+            # tabview_handle.check_var.set('on')
+            self.tmp_coords = (0,0)
+            self.start_coords = (event.x, event.y)
+            tabview_handle.analyze_all_button.configure(state = 'normal')
+            tabview_handle.analyze_current_button.configure(state = 'normal')
+            self.clearPhoto()
+            
+        elif (event.type == '5'):
+            # Отпустили
+            self.end_coords = (event.x, event.y)
+            self.tmp_coords = self.end_coords
+            self.p0_real_coords = (int(self.start_coords[0]*self.master.current_image.width/self.image_resized.width), int(self.start_coords[1]*self.master.current_image.height/self.image_resized.height))
+            self.p1_real_coords = (int(self.end_coords[0]*self.master.current_image.width/self.image_resized.width), int(self.end_coords[1]*self.master.current_image.height/self.image_resized.height))
+            self.right_frame_handle.updatePlot(self.p0_real_coords, self.p1_real_coords)
+            self.master.image_data_container[index].line_was_built = True
+            # print(index)
+
+        elif (event.type == '6'):
+            # Тащим
+            self.tmp_coords = (event.x, event.y)
+        if (self.tmp_coords != (0,0)):
+            updated_image = self.updateLineOnPhoto()
+            
+            photo = ImageTk.PhotoImage(updated_image)
+
+            self.image_canvas.config(width=updated_image.width, height=updated_image.height)
+            self.image_canvas.create_image(0,0,image=photo,anchor = 'nw')
+            self.image_canvas.image = photo
+        # else:
+        #     self.master.right_frame.logMessage("Необходимо сначала захватить изображение")
 
     
     def getCrossLineCoord(self, point, is_rising):
@@ -631,6 +667,15 @@ class ImageFrame(ctk.CTkFrame):
             point = self.master.right_frame.tabview.p0
             self.draw.line(self.getCrossLineCoord(point,True), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
             self.draw.line(self.getCrossLineCoord(point,False), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
+        return tmp_image
+    
+    def updateCircleOnPhoto(self, start, radius):
+        tmp_image = self.image_resized.copy()
+
+        self.draw = ImageDraw.Draw(tmp_image)
+
+        self.draw.ellipse(utility.getCircleBound(start, radius), fill = const.LINE_COLOR, width = const.LINE_WIDTH)
+        
         return tmp_image
     
     def callForCrossesRefresh(self):
@@ -686,8 +731,8 @@ class ImageFrame(ctk.CTkFrame):
         L = ctk.CTkLabel(self.image_canvas, text = text, fg_color = 'transparent', width = 20, text_color = 'black')
         L.place(x = 10,y = 10, anchor = 'nw')
 
-
     def switchImage(self, index):
+        """ Оболочка для loadImage, преобразающая данныe imageData в изображение, в зависимости от того, было ли оно обработано"""
         idata = self.master.image_data_container[index]
         name = ''
         if (idata != 'None'):
@@ -701,8 +746,8 @@ class ImageFrame(ctk.CTkFrame):
             self.loadImage(idata.norm_image, name)
 
     def resizeImage(self, event):
-        self.master.update_idletasks()
         # TODO разберись уже с этой функцией, это уже непрофессионально
+        
         self.master.update_idletasks()
         width = self.winfo_width()
         height = self.winfo_height()
@@ -739,9 +784,9 @@ class RightFrame(ctk.CTkFrame):
         plt.tight_layout(pad=0) 
         self.ax.set_aspect('auto', adjustable='box')
 
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self)
-        self.canvas.draw()
-        self.canvas.get_tk_widget().pack(fill="x", padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY, side = "top")
+        self.plot_canvas = FigureCanvasTkAgg(self.fig, master=self)
+        self.plot_canvas.draw()
+        self.plot_canvas.get_tk_widget().pack(fill="x", padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY, side = "top")
 
         entry_frame = ctk.CTkFrame(self, )
         entry_frame.pack(fill="x", pady=const.DEFAULT_PADY/2, padx = const.DEFAULT_PADX, side = 'top')
@@ -906,6 +951,7 @@ class RightFrame(ctk.CTkFrame):
 
     
     def handleEnter(self, event):
+        
         if (self.tabview.get() == 'Захват'):
             if (self.master.photo_is_captured):
                 self.nextImage()
@@ -937,7 +983,7 @@ class RightFrame(ctk.CTkFrame):
         
     def clearPlot(self):
         self.ax.clear()
-        self.canvas.draw()
+        self.plot_canvas.draw()
 
     def updatePlot(self, p0, p1): 
         
@@ -965,7 +1011,7 @@ class RightFrame(ctk.CTkFrame):
         self.ax.grid(which = 'both')
         self.ax.grid(which = 'major', linestyle = '--')
         self.ax.grid(which = 'minor', linestyle =':')
-        self.canvas.draw()
+        self.plot_canvas.draw()
 
     # def updateWidowOnSwitch(self):
     #     self.after(100, self.tabview.configure(state = 'normal'))
@@ -1005,7 +1051,7 @@ class RightFrame(ctk.CTkFrame):
             self.ax.grid(which = 'both')
             self.ax.grid(which = 'major', linestyle = '--')
             self.ax.grid(which = 'minor', linestyle =':')
-        self.canvas.draw()
+        self.plot_canvas.draw()
 
     def updatePrintedDataAfterAnalysis(self, index):
         self.tabview.displayReport()
@@ -1125,6 +1171,12 @@ class Tab(ctk.CTkTabview):
         self.resultsLabel.pack(fill = 'x', expand = True, side = 'top', pady = 2)
         self.resultsLabel.cget("font").configure(size=45)
 
+        #################   Ручной режим   #########################
+        self.manual_tab = self.add('Ручной режим')
+
+        self.center_coords = (0,0)
+
+
         self.tabHandler()
 
     def changeNeedToDrawLine(self,var,index,mode): 
@@ -1242,6 +1294,13 @@ class Tab(ctk.CTkTabview):
             self.main.is_pause = False
             self.angle_sec = 0
 
+        elif (self.get() == 'Ручной режим'):
+            self.main.navigation_frame.next_button.configure(state = 'disabled')
+            self.main.navigation_frame.prev_button.configure(state = 'disabled')
+            self.master.capture_button.configure(state = 'disabled')
+            self.main.is_pause = False
+            self.angle_sec = 0
+
     def calculateAngleSec(self):
         dist_px  = np.sqrt((self.p0[0]-self.p1[0])**2 + (self.p0[1]-self.p1[1])**2)
         dist_mm = const.PIXEL_TO_MM*dist_px
@@ -1266,6 +1325,7 @@ class Tab(ctk.CTkTabview):
             self.master.update_idletasks()
             time.sleep(0.2)
         print("thread killed (?)")
+
     def setFirstPosition(self):
         
         self.p0 = utility.getCOM(self.main.getImage())
@@ -1299,7 +1359,6 @@ class Tab(ctk.CTkTabview):
             elif name.endswith('_d'):
                 names_d.add(name)
 
-        # Find mismatches
         mismatches = []
         
         for name in names_o:
@@ -1337,7 +1396,7 @@ class Tab(ctk.CTkTabview):
             message+= 'Продолжить, несмотря на это?'
             answer = messagebox.askquestion(title='Внимание', message=message, )
             if answer == 'no':
-                messagebox.showinfo(title = 'обработка отменена', message = 'Попытайтесь испраить названия и попробуйте снова')
+                messagebox.showinfo(title = 'Обработка отменена', message = 'Попытайтесь испраить названия и попробуйте снова')
                 return
             else:
                 self.main.continue_unstructured = True
@@ -1357,7 +1416,6 @@ class Tab(ctk.CTkTabview):
         # self.main.navigation_frame.image_index = max(0, self.main.navigation_frame.image_index-1)
         
         # все изображения прошли базовую обработку и имеют полный набор данных (хотелось бы верить)
-        # self.analyze_button.configure(state = 'disabled')
         self.master.logMessage("Обработка начата...")
         for image_data in data_container:
             if (image_data.image_has_been_analyzed):
@@ -1413,7 +1471,6 @@ class Tab(ctk.CTkTabview):
         print("Finished in", time_tot, "s. Average time:", time_avg,"s. That wasn''t too shabby, I would say.")
 
 
-
     def selectFramesToAnalyze(self):
         top_level = self.main.top_level_window
         if (top_level != None):
@@ -1422,9 +1479,6 @@ class Tab(ctk.CTkTabview):
 
         self.main.top_level_window = TopLevel(self, self.main.image_data_container)
 
-        
-
-        
     
     def sliderEvent(self, val):
         
@@ -1466,6 +1520,7 @@ class App(ctk.CTk):
         self.data_is_external = False   #bool
         self.data_was_reset = False     #bool
         self.photo_is_captured = False  #bool
+        self.manual_drawing = True # bool
 
         self.image_data = None
         
@@ -1561,9 +1616,11 @@ class App(ctk.CTk):
                 self.menu.exportAll()
             elif(answer == False):
                 print('Destroying window...')
+                self.image_frame.forgetCamera()
                 self.destroy()
         else:
             print('Destroying window...')
+            self.image_frame.forgetCamera()
             self.destroy()
             print("Window destroyed, cleanup finished. Wait for this window to close...")
         #     pass

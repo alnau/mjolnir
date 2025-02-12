@@ -23,7 +23,10 @@ class FakeCamera():
     
     def __del__(self):
         pass
-
+    
+    def releaseCamera(self):
+        print('Fake camera is "closing"')
+        pass
 def isCameraConnected():
     return True
 

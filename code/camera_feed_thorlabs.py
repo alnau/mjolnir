@@ -64,6 +64,10 @@ class ThorCamera():
         exposure_ms = self.cam.get_exposure()/1000
         return exposure_ms/MAX_EXPOSURE_MS
 
+    def releaseCamera(self):
+        self.cam.stop_acquisition()
+        self.cam.close()
+
     def __del__(self):
         self.cam.stop_acquisition()
         self.cam.close()
