@@ -12,7 +12,7 @@ import customtkinter as ctk
 import tkinter as tk
 from  tkinter import filedialog, messagebox
 from CTkMenuBar import *
-# import CTkMessagebox as msg
+
 import os
 import logging
 import traceback
@@ -28,6 +28,7 @@ import constants as const
 import utility 
 import image_processing as ip
 from top_level import TopLevel
+from bool_wrangler import boolWrangler
 
 
 
@@ -71,12 +72,27 @@ class TitleMenu(CTkTitleMenu):
         geno_dropdown.add_option(option = "NUKE EM, OPPIE!", command = self.restartInterface)
         geno_dropdown.add_option(option = "SHOOT YOUR OWN FOOT!", command = self.shotYourself)
         geno_dropdown.add_option(option = "TELL ME", command = self.dropInfo)
+        geno_dropdown.add_option(option = 'BETTER CALL LESLIE GOVES', command = self.changeFlags)
 
         self.master.bind("<Control-Up>", self.onControl_UpPress)
         self.master.bind("<Control_L>", self.onControlPress)
         
         
         # self.bind("<ControlRelease>", self.onCtrlRelease)
+
+    def changeFlags(self):
+         
+        flags_dict = {
+            'data was reset': self.master.data_was_reset,
+            'data is external': self.master.data_is_external,
+            'navigation_frame: is active': self.master.navigation_frame.is_active,
+            'right_frame: is active': self.master.right_frame.is_active,
+            'photo is captured': self.master.photo_is_captured,
+            'manual drawing': self.master.manual_drawing,
+            'right_frame.tabview: needed active pos monitoring': self.master.right_frame.tabview.needed_active_pos_monitoring,
+            'is pause': self.master.is_pause
+        }
+        bool_menu = boolWrangler(self.master, flags_dict)
 
     def changeCamera(self):
         self.resetStateAndData()
