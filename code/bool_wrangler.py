@@ -24,9 +24,7 @@ class boolWrangler(ctk.CTkToplevel):
 
 
     def updateBool(self, key, *args):
-        print('before:',self.bool_values[key] )
         self.bool_values[key] = self.check_vars[key].get()
-        print('after:',self.bool_values[key])
 
 
     def closeWindow(self):
