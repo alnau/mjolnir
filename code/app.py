@@ -309,6 +309,10 @@ class TitleMenu(CTkTitleMenu):
 
         self.master.setProgressBarActive()
         
+        raw_dir = "Raw"
+        raw_path = os.path.join(path, raw_dir)
+        os.makedirs(raw_path)
+
         if (self.master.continue_unstructured):
             width_data = []
             for image_data in self.master.image_data_container:
@@ -316,6 +320,11 @@ class TitleMenu(CTkTitleMenu):
                 self.master.update_idletasks()
                 image_data.plotBepis(path)
                 name = image_data.image_name
+                raw_image = image_data.initial_image
+
+                image_path = os.path.join(raw_path, name) + ".png"
+                raw_image.save(image_path)
+                
                 if (name !='control'):
                     width_data.append(round(2*image_data.radius_mm, 2))
                     new_names.append(name)
@@ -331,6 +340,10 @@ class TitleMenu(CTkTitleMenu):
                 self.master.update_idletasks()
                 image_data.plotBepis(path)
                 name = image_data.image_name
+                raw_image = image_data.initial_image
+
+                image_path = os.path.join(raw_path, name) + ".png"
+                raw_image.save(image_path)
                 if (name != 'control'):
                     number, test_for_d_o = image_data.image_name.rsplit("_",1)
                     if (test_for_d_o == "d"):

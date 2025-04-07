@@ -38,6 +38,7 @@ class ImageData():
         self.right_side_mm = 0
         self.h_width = 0
         self.radius_mm = 0
+        self.angle63_mrad = 0
         self.parallelism_angle_s = 0
 
         self.line_was_built = False
@@ -115,9 +116,31 @@ class ImageData():
         radius_mm = radius_px*PIXEL_TO_MM
         
         return radius_mm
+    
+    def get63Angle(self, master = None):
+
+        
+
+        com_xy = self.getCOM()
+        self.coords_of_com[0] = com_xy[0]*PIXEL_TO_MM
+        self.coords_of_com[1] = com_xy[1]*PIXEL_TO_MM
+
+        r_max = self.getRMax(com_xy)
+
+        full_integral, error_full_integral = utility.integrateOverPolar(self.norm_image, com_xy[0], com_xy[1], r_max, master = master)
+
+        radius_mm = 0
+
+        radius_px = self.binarySearch(4, com_xy, r_max, full_integral, energy_threshold=0.63)
+        # radius_px_n = utility.newtonMetod(self.norm_image, com_xy, r_max, full_integral)
+        radius_mm =  radius_px * PIXEL_TO_MM
+        angle_mrad = 2 * np.arctan(radius_mm/(10 * DEFAULT_BASE_CM)) * 1000 
+        
+        return angle_mrad
 
 
-    def binarySearch(self, epsilon, com, r_max, full_integral, master = None):
+
+    def binarySearch(self, epsilon, com, r_max, full_integral, energy_threshold = ENERGY_THRESHOLD, master = None):
         print('Radius evaluation algorithm has been initiated...')
         start = time.time()
         r0 = 0
@@ -126,7 +149,7 @@ class ImageData():
 
         left_val = 0
         integral_tmp = full_integral
-        right_val = integral_tmp/full_integral - ENERGY_THRESHOLD
+        right_val = integral_tmp/full_integral - energy_threshold
         intermediate_val = 0
         iter_counter = 0
         while ((r1-r0)/2 >= epsilon and iter_counter < 10):
@@ -134,7 +157,7 @@ class ImageData():
 
             integral_tmp, _ =  utility.integrateOverPolar(self.norm_image, com[0],  com[1], r_inter, master = master)
             # print(integral_tmp)
-            intermediate_val = integral_tmp/full_integral - ENERGY_THRESHOLD
+            intermediate_val = integral_tmp/full_integral - energy_threshold
             if (right_val*intermediate_val < 0):
                 # величины меняют знак => ноль между ними
                 r0 = r_inter
@@ -297,6 +320,7 @@ class ImageData():
         self.radius_mm = self.getRadius(master = master)
         self.radius_was_calculated = True
 
+        self.angle63_mrad = self.get63Angle(master = master)
         
         
         self.modified_image = self.getModifiedImage()
@@ -308,12 +332,12 @@ class ImageData():
             self.report = utility.getReport(self.image_name, self.radius_mm, 
                                             self.h_width, self.left_side_mm, 
                                             self.right_side_mm, self.coords_of_max_intensity, 
-                                            self.coords_of_com, self.angle, self.parallelism_angle_s)
+                                            self.coords_of_com, self.angle, self.parallelism_angle_s, self.angle63_mrad)
         else:
             self.report = utility.getReport(self.image_name, self.radius_mm, 
                                             self.h_width, self.left_side_mm, 
                                             self.right_side_mm, self.coords_of_max_intensity, 
-                                            self.coords_of_com, self.angle)
+                                            self.coords_of_com, self.angle, self.angle63_mrad)
 
 
 
