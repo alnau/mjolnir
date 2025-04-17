@@ -322,7 +322,7 @@ class TitleMenu(CTkTitleMenu):
                 name = image_data.image_name
                 raw_image = image_data.initial_image
 
-                image_path = os.path.join(raw_path, name) + ".png"
+                image_path = os.path.join(raw_path, name) + ".tif"
                 raw_image.save(image_path)
                 
                 if (name !='control'):
@@ -342,7 +342,7 @@ class TitleMenu(CTkTitleMenu):
                 name = image_data.image_name
                 raw_image = image_data.initial_image
 
-                image_path = os.path.join(raw_path, name) + ".png"
+                image_path = os.path.join(raw_path, name) + ".tif"
                 raw_image.save(image_path)
                 if (name != 'control'):
                     number, test_for_d_o = image_data.image_name.rsplit("_",1)
