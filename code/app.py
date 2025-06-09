@@ -615,7 +615,7 @@ class ImageFrame(ctk.CTkFrame):
     def updateCanvas(self, shared_image):
 
         img = shared_image.copy()
-        self.image_resized = img.resize((self.winfo_width(), self.winfo_height()), Image.ANTIALIAS)
+        self.image_resized = img.resize((self.winfo_width(), self.winfo_height()), Image.Resampling.LANCZOS)
         photo = ImageTk.PhotoImage(self.image_resized)
         self.image_canvas.config(width=self.image_resized.width, height=self.image_resized.height)
 
