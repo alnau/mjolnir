@@ -16,7 +16,7 @@ class GenericCamera():
             self.camera_index = camera_index
             self.cam = cv2.VideoCapture(camera_index) 
             self.width, self.height = int(self.cam.get(cv2.CAP_PROP_FRAME_WIDTH)), int(self.cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        except: 
+        except Exception as e: 
             logging.error(e,stack_info=True, exc_info=True)
             print('Error during Generic Camera Initialisation', traceback.format_exc())
 
@@ -54,6 +54,13 @@ class GenericCamera():
     def getExposureFrac(self):
         # TODO поднять ошибку или вывести в строку логов
         return 1
+    
+    def releaseCamera(self):
+        self.is_active = False
+        self.cam.release()
+        self.cam = None
+        cv2.destroyAllWindows()
+
     
     def __del__(self):
         self.is_active = False

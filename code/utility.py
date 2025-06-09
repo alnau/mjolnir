@@ -196,14 +196,15 @@ def getBackupFoldersNames(base_path):
 
     
 
-def getReport(name, radius, h_width, left_side_mm, right_side_mm, coords_of_max_intensity, coords_of_com, angle, parallelism_sec = -1):
+def getReport(name, radius, h_width, left_side_mm, right_side_mm, coords_of_max_intensity, coords_of_com, angle, angle63_mrad, parallelism_sec = -1):
     str_name = "Имя файла: " + name + "\n"
     str_date = "Дата анализа: " + time.strftime("%d.%m.%Y") + "\n"
     str_width = "Диаметр 86.5% от интегральной энергии: " + str(round(2*radius,2)) + " (мм) \n"
+    str_angle63 = "Угол 63% от интегральной энергии: " + str(round(angle63_mrad, 2)) + " (мрад) \n"
     str_angle = "Угол поворота оси: " + str(round(angle,2)) + " (град) \n"
     str_max_I = "Координаты максимума интенсивности: " + str(round(coords_of_max_intensity[0],2)) + ", " + str(round(coords_of_max_intensity[1],2)) + " (мм) \n"
     str_COM = "Координаты центра масс пучка: " + str(round(coords_of_com[0],2)) + ", " + str(round(coords_of_com[1],2)) + " (мм) \n"    
-    report = str_name + str_date + str_width + str_angle + str_max_I + str_COM
+    report = str_name + str_date + str_width + str_angle63 + str_angle + str_max_I + str_COM
     if (parallelism_sec > 0):
         str_Par = "Угол клиновидности: " + str(round(parallelism_sec,0)) + " сек\n"
         report+=str_Par
@@ -397,6 +398,8 @@ def normalizeImage(image):
 
     return new_img
 
+def getRadius(p0,p1):
+    return np.sqrt((p0[0] - p1[0])**2+ (p0[1]-p1[1])**2)
 
 def getCOM(image):
 
