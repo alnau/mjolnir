@@ -3,8 +3,10 @@ import time
 import csv
 import cv2
 import xlsxwriter as xlsx
-from scipy.optimize import differential_evolution
+from scipy.optimize import differential_evolution, curve_fit
 from scipy import integrate 
+from scipy.signal import find_peaks, savgol_filter
+
 
 
 from PIL import Image as img
@@ -730,3 +732,195 @@ def sumOverPixels(image_data,r):
                 if ((com[0]-ix)**2+(com[1] - iy)**2 < r**2):
                     I_in+=brightness
     return (I_in/I_sum)
+
+
+def gaussian(x, A, mu, sigma):
+    """Одиночная гауссова функция."""
+    return A * np.exp(-(x - mu)**2 / (2 * sigma**2))
+
+def multi_gaussian(x, *params):
+    """Сумма нескольких гауссовых функций."""
+    y = np.zeros_like(x)
+    for i in range(0, len(params), 3):
+        A, mu, sigma = params[i:i+3]
+        y += gaussian(x, A, mu, sigma)
+    return y
+
+def is_trapezoidal(y, x, center_ratio=0.2, min_intensity_ratio=0.5, max_std_ratio=0.05, min_width_ratio=0.3):
+    """
+    Проверяет, имеет ли распределение трапециевидную форму (брак).
+    
+    Параметры:
+        y (array): Значения интенсивности
+        x (array): Координаты
+        center_ratio (float): Относительная ширина центральной области
+        min_intensity_ratio (float): Порог интенсивности для плато
+        max_std_ratio (float): Максимальное отклонение в плато
+        min_width_ratio (float): Минимальная относительная ширина плато
+        
+    Возвращает:
+        bool: True если форма трапециевидная (брак)
+    """
+    total_width = x[-1] - x[0]
+    center_width = total_width * center_ratio
+    center_start = (x[0] + x[-1] - center_width) / 2
+    center_end = center_start + center_width
+    
+    mask = (x >= center_start) & (x <= center_end)
+    y_center = y[mask]
+    
+    if len(y_center) == 0:
+        return False
+    
+    max_intensity = np.max(y)
+    mean_center = np.mean(y_center)
+    std_center = np.std(y_center)
+    
+    return (mean_center > min_intensity_ratio * max_intensity and
+            std_center < max_std_ratio * mean_center and
+            center_width > min_width_ratio * total_width)
+
+def fitGaussianMixture(x, y, max_peaks=3, min_peak_height_ratio=0.1, min_peak_distance_ratio=0.1):
+    """
+    Аппроксимирует данные смесью гауссовых функций.
+    
+    Параметры:
+        x (array): Координаты
+        y (array): Интенсивности
+        max_peaks (int): Максимальное число гауссовых функций
+        min_peak_height_ratio (float): Минимальная высота пика
+        min_peak_distance_ratio (float): Минимальное расстояние между пиками
+        
+    Возвращает:
+        dict: Параметры аппроксимации или None при браке/ошибке
+    """
+    print("Gaussian aproximation started...")
+    start_time = time.time()
+
+    # TODO: можно добавить ручную проверку на то, что боковые пики примерно одинакового размера
+
+    # Пока опустим
+    # # Проверка на брак (трапециевидная форма)
+    # if is_trapezoidal(y, x):
+    #     print("No valid fit found (invalid profile)")
+    #     return None
+    
+    # Предварительная обработка данных
+    y_smooth = savgol_filter(y, window_length=11, polyorder=3)
+    y_max = np.max(y)
+    min_peak_height = min_peak_height_ratio * y_max
+    min_peak_distance = max(5, int(len(x) * min_peak_distance_ratio))
+    
+    # Обнаружение пиков
+    peaks, properties = find_peaks(
+        y_smooth, 
+        height=min_peak_height, 
+        distance=min_peak_distance
+    )
+    n_peaks = min(len(peaks), max_peaks)
+    
+    # Оценка параметров основного пика
+    idx_max = np.argmax(y_smooth)
+    x0 = x[idx_max]
+    half_max = y_smooth[idx_max] * 0.5
+    above_half = y_smooth >= half_max
+    if np.any(above_half):
+        left = np.argmax(above_half)
+        right = len(y) - np.argmax(above_half[::-1]) - 1
+        fwhm = x[right] - x[left]
+        sigma0 = fwhm / (2 * np.sqrt(2 * np.log(2)))
+    else:
+        sigma0 = (x[-1] - x[0]) / 6
+    
+    # Границы параметров
+    min_sigma = (x[1] - x[0]) * 0.5
+    max_sigma = (x[-1] - x[0]) / 2
+    bounds_low = [0, x[0], min_sigma] * max_peaks
+    bounds_high = [np.inf, x[-1], max_sigma] * max_peaks
+    
+    # Перебор количества гауссовых компонент
+    best_result = None
+    best_bic = np.inf
+    
+    for n_components in range(1, max_peaks + 1):
+        # Формирование начального приближения
+        init_params = []
+        if n_peaks >= n_components:
+            # Используем найденные пики
+            sorted_indices = np.argsort(y_smooth[peaks])[::-1][:n_components]
+            selected_peaks = peaks[sorted_indices]
+            for peak in selected_peaks:
+                init_params += [y_smooth[peak], x[peak], sigma0]
+        else:
+            # Добавляем фиктивные пики
+            for i in range(n_components):
+                pos = x[0] + (i + 1) * (x[-1] - x[0]) / (n_components + 1)
+                init_params += [y_max * 0.5, pos, sigma0]
+        
+        # Оптимизация параметров
+        try:
+            params, _ = curve_fit(
+                lambda xx, *pp: multi_gaussian(xx, *pp),
+                x, y,
+                p0=init_params,
+                bounds=(bounds_low[:3*n_components], bounds_high[:3*n_components]),
+                maxfev=10000
+            )
+        except RuntimeError as e:
+            logging.error(e, stack_info=True, exc_info=True)
+            continue
+        
+        # Проверка физической осмысленности параметров
+        valid = True
+        for i in range(n_components):
+            A, mu, sigma = params[3*i:3*i+3]
+            if A < 0.1 * y_max or sigma < min_sigma or sigma > max_sigma:
+                valid = False
+                break
+        
+        if not valid:
+            continue
+        
+        # Расчет информационного критерия (BIC)
+        y_fit = multi_gaussian(x, *params)
+        residuals = y - y_fit
+        sse = np.sum(residuals**2)
+        n = len(x)
+        k = 3 * n_components
+        bic = n * np.log(sse/n) + k * np.log(n)
+        
+        # Выбор лучшей модели
+        if bic < best_bic:
+            best_bic = bic
+            best_result = {
+                'n_components': n_components,
+                'params': params,
+                'bic': bic,
+                'y_fit': y_fit
+            }
+    
+    if best_result is None:
+        print("No valid fit found (invalid profile)")
+        return None
+    
+    # Сортировка параметров по положению пиков
+    components = []
+    params = best_result['params']
+    for i in range(best_result['n_components']):
+        components.append((params[3*i], params[3*i+1], params[3*i+2]))
+    components.sort(key=lambda c: c[1])
+    
+    # Формирование результата
+    sorted_params = []
+    intensities = []
+    for A, mu, sigma in components:
+        sorted_params.extend([A, mu, sigma])
+        intensities.append(A)
+    
+    end_time = time.time()
+    print('Success! It took:', end_time-start_time, 's. \nIntensities:', intensities)
+    return {
+        'intensities': intensities,
+        'params': components,
+        'y_fit': multi_gaussian(x, *sorted_params)
+    }

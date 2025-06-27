@@ -304,65 +304,72 @@ class TitleMenu(CTkTitleMenu):
 
         
     def exportAllWorker(self, path):
-        new_names = []
-        r_ref = 0
 
-        self.master.setProgressBarActive()
-        
-        raw_dir = "Raw"
-        raw_path = os.path.join(path, raw_dir)
-        os.makedirs(raw_path)
+        try:
+            new_names = []
+            r_ref = 0
 
-        if (self.master.continue_unstructured):
-            width_data = []
-            for image_data in self.master.image_data_container:
-                
-                self.master.update_idletasks()
-                image_data.plotBepis(path)
-                name = image_data.image_name
-                raw_image = image_data.initial_image
+            self.master.setProgressBarActive()
+            
+            raw_dir = "Raw"
+            raw_path = os.path.join(path, raw_dir)
+            
+            if not os.path.exists(raw_path):
+                os.makedirs(raw_path)
 
-                image_path = os.path.join(raw_path, name) + ".tif"
-                raw_image.save(image_path)
-                
-                if (name !='control'):
-                    width_data.append(round(2*image_data.radius_mm, 2))
-                    new_names.append(name)
-                elif (image_data.image_name == 'control'):
-                    r_ref = round(2*image_data.radius_mm,2)
-            print("------------------")
-            utility.printUnstructuredReportToXLSX(new_names, width_data, r_ref, path)
-        else:
-            width_data_d = []
-            width_data_o = []
-            for image_data in self.master.image_data_container:
-                
-                self.master.update_idletasks()
-                image_data.plotBepis(path)
-                name = image_data.image_name
-                raw_image = image_data.initial_image
+            if (self.master.continue_unstructured):
+                width_data = []
+                for image_data in self.master.image_data_container:
+                    
+                    self.master.update_idletasks()
+                    image_data.plotBepis(path)
+                    name = image_data.image_name
+                    raw_image = image_data.initial_image
 
-                image_path = os.path.join(raw_path, name) + ".tif"
-                raw_image.save(image_path)
-                if (name != 'control'):
-                    number, test_for_d_o = image_data.image_name.rsplit("_",1)
-                    if (test_for_d_o == "d"):
-                        width_data_d.append(round(2*image_data.radius_mm, 2))
-                        if number not in new_names:
-                            new_names.append(number)
-                    elif (test_for_d_o == "o"):
-                        width_data_o.append(round(2*image_data.radius_mm,2))
-                        if number not in new_names:
-                            new_names.append(number)
-                elif (image_data.image_name == 'control'):
-                    r_ref = round(2*image_data.radius_mm,2)
-            print("------------------")
-            utility.printReportToXLSX(new_names, width_data_d, width_data_o, r_ref, path)  
+                    image_path = os.path.join(raw_path, name) + ".tif"
+                    raw_image.save(image_path)
+                    
+                    if (name !='control'):
+                        width_data.append(round(2*image_data.radius_mm, 2))
+                        new_names.append(name)
+                    elif (image_data.image_name == 'control'):
+                        r_ref = round(2*image_data.radius_mm,2)
+                print("------------------")
+                utility.printUnstructuredReportToXLSX(new_names, width_data, r_ref, path)
+            else:
+                width_data_d = []
+                width_data_o = []
+                for image_data in self.master.image_data_container:
+                    
+                    self.master.update_idletasks()
+                    image_data.plotBepis(path)
+                    name = image_data.image_name
+                    raw_image = image_data.initial_image
 
+                    image_path = os.path.join(raw_path, name) + ".tif"
+                    raw_image.save(image_path)
+                    if (name != 'control'):
+                        number, test_for_d_o = image_data.image_name.rsplit("_",1)
+                        if (test_for_d_o == "d"):
+                            width_data_d.append(round(2*image_data.radius_mm, 2))
+                            if number not in new_names:
+                                new_names.append(number)
+                        elif (test_for_d_o == "o"):
+                            width_data_o.append(round(2*image_data.radius_mm,2))
+                            if number not in new_names:
+                                new_names.append(number)
+                    elif (image_data.image_name == 'control'):
+                        r_ref = round(2*image_data.radius_mm,2)
+                print("------------------")
+                utility.printReportToXLSX(new_names, width_data_d, width_data_o, r_ref, path)  
+
+            self.master.right_frame.logMessage('Данные измерений сохранены')
+            self.master.files_are_unsaved = False
+        except Exception as e:
+            print('Something went wrong during saving process', traceback.format_exc())
+            self.master.right_frame.logMessage('Ошибка сохранения. см. Терминал')
+            logging.error(e,stack_info=True, exc_info=True)
         self.master.setProgressBarInactive()
-        self.master.right_frame.logMessage('Данные измерений сохранены')
-        self.master.files_are_unsaved = False
-
 
 
 class NavigationFrame(ctk.CTkFrame):
@@ -1052,6 +1059,20 @@ class RightFrame(ctk.CTkFrame):
         coords, brightness = utility.getBrightness(p0, p1,self.master.current_image)
         self.ax.clear()
         self.ax.plot(coords, brightness)
+
+        # # self.ax.figure(figsize=(10, 6))
+        # self.ax.plot(self.coord, self.brightness_values, 'b-', label='Оригинальные данные')
+        
+        # if self.gauss_fit_dict is not None:
+        #     self.ax.plot(self.coords, self.gauss_fit_dict['y_fit'], 'r--', label='Гаусова апроксимация')
+        #     # line_plt.title(f"Апроксимация с {len(self.gauss_fit_dict['intensities'])} Гауссианами")
+        #     for i, (A, mu, sigma) in enumerate(self.gauss_fit_dict['params']):
+        #         self.ax.plot(self.coord, utility.gaussian(self.coord, A, mu, sigma), ':', label=f'Компонента {i+1}')
+        #     # print("Intensities:", self.gauss_fit_dict['intensities'])
+        # else:
+        #     self.ax.title("Некорректный профиль (апроксимация провалилась)")
+        # self.ax.legend()
+
         # Каждый мм
         self.ax.xaxis.set_major_locator(MultipleLocator(1))
         # Каждые 0.2 мм (1/5 = 0.2)

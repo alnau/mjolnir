@@ -7,6 +7,7 @@ import time
 # from scipy.stats import norm
 
 
+
 from PIL import Image as img
 from PIL import ImageDraw
 
@@ -50,6 +51,8 @@ class ImageData():
 
         self.need_to_draw_line = False
         self.need_to_draw_circle = True
+
+        self.gauss_fit_dict = None
 
         self.report = ''
 
@@ -228,6 +231,7 @@ class ImageData():
 
     
 
+
     def calculateNumbers(self, master = None):
         if (self.optimisation_needed):
             self.p0_new, self.p1_new = utility.getIntersections(self.p0_initial, self.p1_initial, self.initial_image)
@@ -328,6 +332,11 @@ class ImageData():
         self.h_width = (self.right_side_mm - self.left_side_mm)/2
         
         self.angle = np.degrees(np.arctan(np.abs((self.p1_new[1]-self.p0_new[1])/(self.p1_new[0]-self.p0_new[0]))))
+
+        # Поиск гаусовой апроксимации
+        self.gauss_fit_dict = utility.fitGaussianMixture(self.coord, self.brightness_values)
+        
+
         if (self.parallelism_has_been_calculated):
             self.report = utility.getReport(self.image_name, self.radius_mm, 
                                             self.h_width, self.left_side_mm, 
@@ -362,7 +371,20 @@ class ImageData():
 
         # График яркости
         line_plt = plt.subplot(222)
-        line_plt.plot(self.coord, self.brightness_values)
+
+        # Визуализация результатов
+        # line_plt.figure(figsize=(10, 6))
+        line_plt.plot(self.coord, self.brightness_values, 'b-', label='Данные')
+        
+        if self.gauss_fit_dict is not None:
+            line_plt.plot(self.coord, self.gauss_fit_dict['y_fit'], 'r--', label='Апроксимация')
+            # line_plt.title(f"Апроксимация с {len(self.gauss_fit_dict['intensities'])} Гауссианами")
+            for i, (A, mu, sigma) in enumerate(self.gauss_fit_dict['params']):
+                line_plt.plot(self.coord, utility.gaussian(self.coord, A, mu, sigma), ':')
+            # print("Intensities:", self.gauss_fit_dict['intensities'])
+        else:
+            line_plt.title("Некорректный профиль (апроксимация провалилась)")
+        line_plt.legend()
 
         # Каждый мм
         line_plt.xaxis.set_major_locator(MultipleLocator(1))
