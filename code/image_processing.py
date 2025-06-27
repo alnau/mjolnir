@@ -466,7 +466,7 @@ class ImageData():
             self.p0_new = self.p0_initial
             self.p1_new = self.p1_initial
 
-        self.calculateNumbers(gauss_fit, master = master)
+        self.calculateNumbers(master, gauss_fit)
 
 
     

@@ -398,8 +398,9 @@ class NavigationFrame(ctk.CTkFrame):
                                         command = lambda: self.switch(btn = "fwd"))
         self.next_button.grid(row = 0, column = 1, sticky = 'w', padx = const.DEFAULT_PADX, pady = const.DEFAULT_PADY)
 
-        self.master.bind('<Left>', lambda event: self.switch(btn = 'back'))
-        self.master.bind('<Right>', lambda event: self.switch(btn = 'fwd'))
+        # Убрал, потому-что перекрывалось перемещение курсора и изображений (в теории можно исправить)
+        # self.master.bind('<Left>', lambda event: self.switch(btn = 'back'))
+        # self.master.bind('<Right>', lambda event: self.switch(btn = 'fwd'))
 
     # посылает сигнал о переключении картинок
     def switch(self, event = None, btn = ''):
@@ -1010,7 +1011,7 @@ class RightFrame(ctk.CTkFrame):
             
             self.master.image_data.initial_image.save(file_path)
             
-            # self.image_data = None
+            self.image_data = None
 
             self.unlockCamera()
 
@@ -1059,46 +1060,46 @@ class RightFrame(ctk.CTkFrame):
         self.plot_canvas.draw()
 
     def updatePlot(self, p0, p1): 
-        
-        self.master.image_data.p0_initial = p0
-        self.master.image_data.p1_initial = p1
-        coords, brightness = utility.getBrightness(p0, p1,self.master.current_image)
-        self.ax.clear()
-        self.ax.plot(coords, brightness)
+        if (self.master.image_data != None):
+            self.master.image_data.p0_initial = p0
+            self.master.image_data.p1_initial = p1
+            coords, brightness = utility.getBrightness(p0, p1,self.master.current_image)
+            self.ax.clear()
+            self.ax.plot(coords, brightness)
 
-        # # self.ax.figure(figsize=(10, 6))
-        # self.ax.plot(self.coord, self.brightness_values, 'b-', label='Оригинальные данные')
-        
-        # if self.gauss_fit_dict is not None:
-        #     self.ax.plot(self.coords, self.gauss_fit_dict['y_fit'], 'r--', label='Гаусова апроксимация')
-        #     # line_plt.title(f"Апроксимация с {len(self.gauss_fit_dict['intensities'])} Гауссианами")
-        #     for i, (A, mu, sigma) in enumerate(self.gauss_fit_dict['params']):
-        #         self.ax.plot(self.coord, utility.gaussian(self.coord, A, mu, sigma), ':', label=f'Компонента {i+1}')
-        #     # print("Intensities:", self.gauss_fit_dict['intensities'])
-        # else:
-        #     self.ax.title("Некорректный профиль (апроксимация провалилась)")
-        # self.ax.legend()
+            # # self.ax.figure(figsize=(10, 6))
+            # self.ax.plot(self.coord, self.brightness_values, 'b-', label='Оригинальные данные')
+            
+            # if self.gauss_fit_dict is not None:
+            #     self.ax.plot(self.coords, self.gauss_fit_dict['y_fit'], 'r--', label='Гаусова апроксимация')
+            #     # line_plt.title(f"Апроксимация с {len(self.gauss_fit_dict['intensities'])} Гауссианами")
+            #     for i, (A, mu, sigma) in enumerate(self.gauss_fit_dict['params']):
+            #         self.ax.plot(self.coord, utility.gaussian(self.coord, A, mu, sigma), ':', label=f'Компонента {i+1}')
+            #     # print("Intensities:", self.gauss_fit_dict['intensities'])
+            # else:
+            #     self.ax.title("Некорректный профиль (апроксимация провалилась)")
+            # self.ax.legend()
 
-        # Каждый мм
-        self.ax.xaxis.set_major_locator(MultipleLocator(1))
-        # Каждые 0.2 мм (1/5 = 0.2)
-        self.ax.xaxis.set_minor_locator(AutoMinorLocator(5))
+            # Каждый мм
+            self.ax.xaxis.set_major_locator(MultipleLocator(1))
+            # Каждые 0.2 мм (1/5 = 0.2)
+            self.ax.xaxis.set_minor_locator(AutoMinorLocator(5))
 
-        if (max(brightness) < 10):
-            # каждые 50 ед
-            self.ax.yaxis.set_major_locator(MultipleLocator(0.2))
-            # Каждые 10 ед (0.2/2 = 0.1)
-            self.ax.yaxis.set_minor_locator(AutoMinorLocator(2))
-        else:
-            # каждые 50 ед
-            self.ax.yaxis.set_major_locator(MultipleLocator(50))
-            # Каждые 10 ед (50/5 = 10)
-            self.ax.yaxis.set_minor_locator(AutoMinorLocator(5))
-        
-        self.ax.grid(which = 'both')
-        self.ax.grid(which = 'major', linestyle = '--')
-        self.ax.grid(which = 'minor', linestyle =':')
-        self.plot_canvas.draw()
+            if (max(brightness) < 10):
+                # каждые 50 ед
+                self.ax.yaxis.set_major_locator(MultipleLocator(0.2))
+                # Каждые 10 ед (0.2/2 = 0.1)
+                self.ax.yaxis.set_minor_locator(AutoMinorLocator(2))
+            else:
+                # каждые 50 ед
+                self.ax.yaxis.set_major_locator(MultipleLocator(50))
+                # Каждые 10 ед (50/5 = 10)
+                self.ax.yaxis.set_minor_locator(AutoMinorLocator(5))
+            
+            self.ax.grid(which = 'both')
+            self.ax.grid(which = 'major', linestyle = '--')
+            self.ax.grid(which = 'minor', linestyle =':')
+            self.plot_canvas.draw()
 
     # def updateWidowOnSwitch(self):
     #     self.after(100, self.tabview.configure(state = 'normal'))
