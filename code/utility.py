@@ -738,7 +738,7 @@ def gaussian(x, A, mu, sigma):
     """Одиночная гауссова функция."""
     return A * np.exp(-(x - mu)**2 / (2 * sigma**2))
 
-def multi_gaussian(x, *params):
+def multiGaussian(x, *params):
     """Сумма нескольких гауссовых функций."""
     y = np.zeros_like(x)
     for i in range(0, len(params), 3):
@@ -809,7 +809,7 @@ def fitGaussianMixture(x, y, max_peaks=3, min_peak_height_ratio=0.1, min_peak_di
     y_smooth = savgol_filter(y, window_length=11, polyorder=3)
     y_max = np.max(y)
     min_peak_height = min_peak_height_ratio * y_max
-    min_peak_distance = max(5, int(len(x) * min_peak_distance_ratio))
+    min_peak_distance = max(5, int(len(x) * min_peak_distance_ratio)) # Тут нужно будет поиграться с параметрами
     
     # Обнаружение пиков
     peaks, properties = find_peaks(
@@ -833,7 +833,7 @@ def fitGaussianMixture(x, y, max_peaks=3, min_peak_height_ratio=0.1, min_peak_di
         sigma0 = (x[-1] - x[0]) / 6
     
     # Границы параметров
-    min_sigma = (x[1] - x[0]) * 0.5
+    min_sigma = (x[1] - x[0]) / 2
     max_sigma = (x[-1] - x[0]) / 2
     bounds_low = [0, x[0], min_sigma] * max_peaks
     bounds_high = [np.inf, x[-1], max_sigma] * max_peaks
@@ -860,7 +860,7 @@ def fitGaussianMixture(x, y, max_peaks=3, min_peak_height_ratio=0.1, min_peak_di
         # Оптимизация параметров
         try:
             params, _ = curve_fit(
-                lambda xx, *pp: multi_gaussian(xx, *pp),
+                lambda xx, *pp: multiGaussian(xx, *pp),
                 x, y,
                 p0=init_params,
                 bounds=(bounds_low[:3*n_components], bounds_high[:3*n_components]),
@@ -868,6 +868,7 @@ def fitGaussianMixture(x, y, max_peaks=3, min_peak_height_ratio=0.1, min_peak_di
             )
         except RuntimeError as e:
             logging.error(e, stack_info=True, exc_info=True)
+            print("fitGaussian: RuntimeError")
             continue
         
         # Проверка физической осмысленности параметров
@@ -882,7 +883,9 @@ def fitGaussianMixture(x, y, max_peaks=3, min_peak_height_ratio=0.1, min_peak_di
             continue
         
         # Расчет информационного критерия (BIC)
-        y_fit = multi_gaussian(x, *params)
+        # Используем Баесовский Информационный Критерий для 
+        # гауссианов (а не просто BIC), потому-что я умный, да
+        y_fit = multiGaussian(x, *params)
         residuals = y - y_fit
         sse = np.sum(residuals**2)
         n = len(x)
@@ -913,14 +916,20 @@ def fitGaussianMixture(x, y, max_peaks=3, min_peak_height_ratio=0.1, min_peak_di
     # Формирование результата
     sorted_params = []
     intensities = []
+    centers = []
+    sigmas = []
     for A, mu, sigma in components:
         sorted_params.extend([A, mu, sigma])
         intensities.append(A)
+        centers.append(mu)
+        sigmas.append(sigma)
     
     end_time = time.time()
     print('Success! It took:', end_time-start_time, 's. \nIntensities:', intensities)
     return {
         'intensities': intensities,
+        'centers': centers,
+        'sigmas': sigmas,
         'params': components,
-        'y_fit': multi_gaussian(x, *sorted_params)
+        'y_fit': multiGaussian(x, *sorted_params)
     }
