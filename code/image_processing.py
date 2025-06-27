@@ -52,7 +52,9 @@ class ImageData():
         self.need_to_draw_line = False
         self.need_to_draw_circle = True
 
+        # self.need_to_do_gauss_fit = False
         self.gauss_fit_dict = None
+
 
         self.report = ''
 
@@ -232,7 +234,7 @@ class ImageData():
     
 
 
-    def calculateNumbers(self, master = None):
+    def calculateNumbers(self, master = None, gauss_fit = False):
         if (self.optimisation_needed):
             self.p0_new, self.p1_new = utility.getIntersections(self.p0_initial, self.p1_initial, self.initial_image)
             self.line_was_built = True
@@ -334,7 +336,8 @@ class ImageData():
         self.angle = np.degrees(np.arctan(np.abs((self.p1_new[1]-self.p0_new[1])/(self.p1_new[0]-self.p0_new[0]))))
 
         # Поиск гаусовой апроксимации
-        self.gauss_fit_dict = utility.fitGaussianMixture(self.coord, self.brightness_values)
+        if gauss_fit:
+            self.gauss_fit_dict = utility.fitGaussianMixture(self.coord, self.brightness_values)
         
 
         if (self.parallelism_has_been_calculated):
@@ -383,7 +386,8 @@ class ImageData():
                 line_plt.plot(self.coord, utility.gaussian(self.coord, A, mu, sigma), ':')
             # print("Intensities:", self.gauss_fit_dict['intensities'])
         else:
-            line_plt.title("Некорректный профиль (апроксимация провалилась)")
+            pass
+            # line_plt.title("Некорректный профиль (апроксимация провалилась)")
         line_plt.legend()
 
         # Каждый мм
@@ -446,7 +450,7 @@ class ImageData():
 
         return tmp_image
 
-    def analyzeImage(self, master = None):
+    def analyzeImage(self, master = None, gauss_fit = False):
         
         ZERO = (0,0)
         if (self.p0_initial == ZERO or self.p1_initial == ZERO):
@@ -462,7 +466,7 @@ class ImageData():
             self.p0_new = self.p0_initial
             self.p1_new = self.p1_initial
 
-        self.calculateNumbers(master = master)
+        self.calculateNumbers(gauss_fit, master = master)
 
 
     

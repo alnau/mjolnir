@@ -73,12 +73,15 @@ class TitleMenu(CTkTitleMenu):
         geno_dropdown.add_option(option = "SHOOT YOUR OWN FOOT!", command = self.shotYourself)
         geno_dropdown.add_option(option = "TELL ME", command = self.dropInfo)
         geno_dropdown.add_option(option = 'BETTER CALL LESLIE GOVES', command = self.changeFlags)
-
+        geno_dropdown.add_option(option = 'LETS GO GAUSSIN', command = self.switchGauss)
         self.master.bind("<Control-Up>", self.onControl_UpPress)
         self.master.bind("<Control_L>", self.onControlPress)
         
         
         # self.bind("<ControlRelease>", self.onCtrlRelease)
+
+    def switchGauss(self):
+        self.master.gauss_fit = not self.master.gauss_fit
 
     def changeFlags(self):
          
@@ -90,7 +93,8 @@ class TitleMenu(CTkTitleMenu):
             'photo is captured': self.master.photo_is_captured,
             'manual drawing': self.master.manual_drawing,
             'right_frame.tabview: needed active pos monitoring': self.master.right_frame.tabview.needed_active_pos_monitoring,
-            'is pause': self.master.is_pause
+            'is pause': self.master.is_pause,
+            'gauss_fit': self.master.gauss_fit
         }
         bool_menu = boolWrangler(self.master, flags_dict)
 
@@ -132,6 +136,7 @@ class TitleMenu(CTkTitleMenu):
         self.master.photo_is_captured = False  
         self.master.right_frame.is_active = True   
         self.master.manual_drawing = False
+        self.master.gauss_fit = False
            
         self.master.right_frame.tabview.needed_active_pos_monitoring = False
 
@@ -154,6 +159,7 @@ class TitleMenu(CTkTitleMenu):
         print('right_frame.tabview.needed_active_pos_monitoring:',self.master.right_frame.tabview.needed_active_pos_monitoring)
         print('app.manual_drawing:', self.master.manual_drawing)
         print('app.is_pause:',self.master.is_pause)
+        print('app.gauss_fit', self.master.gauss_fit)
 
         utility.printIni()
 
@@ -313,7 +319,7 @@ class TitleMenu(CTkTitleMenu):
             
             raw_dir = "Raw"
             raw_path = os.path.join(path, raw_dir)
-            
+
             if not os.path.exists(raw_path):
                 os.makedirs(raw_path)
 
@@ -1566,7 +1572,7 @@ class Tab(ctk.CTkTabview):
                     image_data.p1_new = p1_true
 
                 self.main.update_idletasks()
-                image_data.analyzeImage(master = self.main)
+                image_data.analyzeImage(master = self.main, gauss_fit = self.main.gauss_fit)
                 name = image_data.image_name
                 image_data.image_has_been_analyzed = True
                 
@@ -1694,6 +1700,8 @@ class App(ctk.CTk):
         self.files_are_unsaved = False  #bool
         self.is_pause = False   #bool
         self.continue_unstructured = False #bool
+
+        self.gauss_fit = False #bool
 
         self.setupGrid()
 
